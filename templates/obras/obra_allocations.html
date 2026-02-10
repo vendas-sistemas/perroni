@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>{{ title }}</h3>
+    <div>
+      <a href="{% url 'obras:obra_detail' obra.pk %}" class="btn btn-sm btn-secondary">Voltar à obra</a>
+      <a href="{% url 'obras:obra_allocations_csv' obra.pk %}" class="btn btn-sm btn-outline-primary ms-2">Exportar CSV</a>
+      <a href="" onclick="location.reload(); return false;" class="btn btn-sm btn-outline-secondary ms-2">Atualizar</a>
+    </div>
+  </div>
+
+  {% for item in allocations %}
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5>Etapa {{ item.etapa.numero_etapa }} - {{ item.etapa.get_numero_etapa_display }}</h5>
+        {% if item.allocations %}
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Medida</th>
+                <th>Período</th>
+                <th>Total</th>
+                <th>Workers</th>
+                <th>Por Pedreiro</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for field, data in item.allocations.items %}
+                <tr>
+                  <td>{{ field }}</td>
+                  <td>{{ data.period_formatted.start }} — {{ data.period_formatted.end }}</td>
+                  <td>{{ data.total }}</td>
+                  <td>{{ data.workers }}</td>
+                  <td>{{ data.per_worker }}</td>
+                </tr>
+                <tr>
+                  <td colspan="5">
+                    <strong>Breakdown:</strong>
+                    {% if data.breakdown %}
+                      <table class="table table-sm mt-2">
+                        <thead><tr><th>Funcionário</th><th>Valor</th></tr></thead>
+                        <tbody>
+                          {% for b in data.breakdown %}
+                            <tr>
+                              <td>
+                                {% if b.funcionario_id %}
+                                  <a href="{% url 'funcionarios:funcionario_detail' b.funcionario_id %}">{{ b.nome }}</a>
+                                {% else %}
+                                  {{ b.nome }}
+                                {% endif %}
+                              </td>
+                              <td>{{ b.value }}</td>
+                            </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    {% else %}
+                      <div class="alert alert-warning mb-0">Nenhum trabalhador encontrado neste período.</div>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="alert alert-info">Sem dados mensuráveis nesta etapa.</div>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* small visual tweaks for allocations view */
+  .card h5 { margin-bottom: 0.75rem; }
+  .table-sm td, .table-sm th { vertical-align: middle; }
+</style>
+{% endblock %}

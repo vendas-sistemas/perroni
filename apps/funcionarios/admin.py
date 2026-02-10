@@ -40,14 +40,26 @@ class FuncionarioAdmin(admin.ModelAdmin):
 
 @admin.register(ApontamentoFuncionario)
 class ApontamentoFuncionarioAdmin(admin.ModelAdmin):
-    list_display = ['funcionario', 'obra', 'data', 'valor_diaria']
-    list_filter = ['data', 'funcionario__funcao']
+    list_display = [
+        'funcionario', 'obra', 'etapa', 'data', 'horas_trabalhadas',
+        'clima', 'houve_ociosidade', 'houve_retrabalho', 'valor_diaria'
+    ]
+    list_filter = ['data', 'funcionario__funcao', 'clima', 'houve_ociosidade', 'houve_retrabalho', 'obra']
     search_fields = ['funcionario__nome_completo', 'obra__nome']
     date_hierarchy = 'data'
     
     fieldsets = (
         ('Apontamento', {
-            'fields': ('funcionario', 'obra', 'data')
+            'fields': ('funcionario', 'obra', 'etapa', 'data', 'horas_trabalhadas')
+        }),
+        ('Condições do Dia', {
+            'fields': ('clima',)
+        }),
+        ('Ocorrências', {
+            'fields': (
+                'houve_ociosidade', 'observacao_ociosidade',
+                'houve_retrabalho', 'motivo_retrabalho'
+            )
         }),
         ('Valores', {
             'fields': ('valor_diaria',)
@@ -62,7 +74,9 @@ class ApontamentoFuncionarioAdmin(admin.ModelAdmin):
 class FechamentoSemanalAdmin(admin.ModelAdmin):
     list_display = [
         'funcionario', 'data_inicio', 'data_fim',
-        'total_dias', 'total_valor', 'status', 'data_pagamento'
+        'total_dias', 'total_horas', 'total_valor',
+        'dias_ociosidade', 'dias_retrabalho',
+        'status', 'data_pagamento'
     ]
     list_filter = ['status', 'data_inicio', 'data_pagamento']
     search_fields = ['funcionario__nome_completo']
@@ -73,7 +87,10 @@ class FechamentoSemanalAdmin(admin.ModelAdmin):
             'fields': ('funcionario', 'data_inicio', 'data_fim')
         }),
         ('Totais', {
-            'fields': ('total_dias', 'total_valor')
+            'fields': ('total_dias', 'total_horas', 'total_valor')
+        }),
+        ('Indicadores', {
+            'fields': ('dias_ociosidade', 'dias_retrabalho')
         }),
         ('Status e Pagamento', {
             'fields': ('status', 'data_pagamento')

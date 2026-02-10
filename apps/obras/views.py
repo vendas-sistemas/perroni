@@ -2,6 +2,9 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import Obra, Etapa
+from django.http import HttpResponse
+import csv
+from decimal import Decimal
 from .forms import ObraForm
 from .forms import (
     EtapaForm, Etapa1FundacaoForm, Etapa2EstruturaForm,
@@ -305,3 +308,135 @@ def etapa5_detail(request, pk):
     else:
         form = Etapa5FinalizacaoForm(instance=detalhe)
     return render(request, 'obras/etapa5_finalizacao_detail.html', {'etapa': etapa, 'detalhe': detalhe, 'form': form, 'title': f'Finalização - {etapa.obra.nome}'})
+
+
+@login_required
+def obra_allocations(request, pk):
+    """Mostra alocações por pedreiro para cada etapa mensurável da obra."""
+    obra = get_object_or_404(Obra, pk=pk)
+    etapas = obra.etapas.all().order_by('numero_etapa')
+    allocations = []
+    for etapa in etapas:
+        detalhe = None
+        try:
+            if etapa.numero_etapa == 1:
+                detalhe = etapa.fundacao
+            elif etapa.numero_etapa == 2:
+                detalhe = etapa.estrutura
+            elif etapa.numero_etapa == 3:
+                detalhe = etapa.instalacoes
+            elif etapa.numero_etapa == 4:
+                detalhe = etapa.acabamentos
+            elif etapa.numero_etapa == 5:
+                detalhe = etapa.finalizacao
+        except Exception:
+            detalhe = None
+
+        etapa_data = {'etapa': etapa, 'allocations': None}
+        if detalhe and hasattr(detalhe, 'allocations_summary'):
+            etapa_data['allocations'] = detalhe.allocations_summary()
+        allocations.append(etapa_data)
+
+    # human-friendly labels for measurable fields
+    field_labels = {
+        'reboco_externo_m2': 'Reboco Externo (m²)',
+        'reboco_interno_m2': 'Reboco Interno (m²)'
+    }
+
+    # format period dates and ensure numeric strings formatted
+    for item in allocations:
+        allocs = item.get('allocations')
+        if not allocs:
+            continue
+        new_allocs = {}
+        for field, data in allocs.items():
+            # format period
+            period = data.get('period', {})
+            start = period.get('start')
+            end = period.get('end')
+            def fmt(d):
+                try:
+                    return datetime.date.fromisoformat(d).strftime('%d/%m/%Y')
+                except Exception:
+                    return '—'
+            data['period_formatted'] = {'start': fmt(start), 'end': fmt(end)}
+            # ensure numbers have two decimals
+            try:
+                data['total'] = f"{Decimal(data.get('total') or '0'):.2f}"
+            except Exception:
+                pass
+            try:
+                data['per_worker'] = f"{Decimal(data.get('per_worker') or '0'):.2f}"
+            except Exception:
+                pass
+            # map field key to user-friendly label
+            label = field_labels.get(field, field)
+            new_allocs[label] = data
+        # replace allocations mapping with label-keyed mapping
+        item['allocations'] = new_allocs
+
+    context = {
+        'obra': obra,
+        'allocations': allocations,
+        'field_labels': field_labels,
+        'title': f'Alocações - {obra.nome}'
+    }
+    return render(request, 'obras/obra_allocations.html', context)
+
+
+@login_required
+def obra_allocations_csv(request, pk):
+    """Export allocations CSV for an obra."""
+    obra = get_object_or_404(Obra, pk=pk)
+    etapas = obra.etapas.all().order_by('numero_etapa')
+
+    # build rows
+    rows = []
+    for etapa in etapas:
+        detalhe = None
+        try:
+            if etapa.numero_etapa == 1:
+                detalhe = etapa.fundacao
+            elif etapa.numero_etapa == 2:
+                detalhe = etapa.estrutura
+            elif etapa.numero_etapa == 3:
+                detalhe = etapa.instalacoes
+            elif etapa.numero_etapa == 4:
+                detalhe = etapa.acabamentos
+            elif etapa.numero_etapa == 5:
+                detalhe = etapa.finalizacao
+        except Exception:
+            detalhe = None
+
+        if detalhe and hasattr(detalhe, 'allocations_summary'):
+            summary = detalhe.allocations_summary()
+            for field, data in summary.items():
+                total = data.get('total')
+                workers = data.get('workers')
+                per_worker = data.get('per_worker')
+                # breakdown rows
+                if data.get('breakdown'):
+                    for b in data['breakdown']:
+                        rows.append([
+                            etapa.numero_etapa,
+                            etapa.get_numero_etapa_display(),
+                            field,
+                            total,
+                            workers,
+                            per_worker,
+                            b.get('funcionario_id'),
+                            b.get('nome'),
+                            b.get('value')
+                        ])
+                else:
+                    rows.append([etapa.numero_etapa, etapa.get_numero_etapa_display(), field, total, workers, per_worker, '', '', ''])
+
+    # Create CSV response
+    filename = f"allocations_obra_{obra.pk}.csv"
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+    writer.writerow(['etapa_num', 'etapa_label', 'field', 'total', 'workers', 'per_worker', 'funcionario_id', 'funcionario_nome', 'value'])
+    for r in rows:
+        writer.writerow(r)
+    return response

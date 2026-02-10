@@ -20,7 +20,11 @@ def dashboard(request):
         'total_obras': dados.get('obras', {}).get('total', 0),
         'obras_em_andamento': dados.get('obras', {}).get('em_andamento', 0),
         'total_clientes': Cliente.objects.count(),
-        'avg_percentual': float(Obra.objects.filter(ativo=True).aggregate(avg=Avg('percentual_concluido'))['avg'] or 0)
+        'avg_percentual': float(Obra.objects.filter(ativo=True).aggregate(avg=Avg('percentual_concluido'))['avg'] or 0),
+        'custo_mes': dados.get('financeiro', {}).get('custo_mes', 0),
+        'horas_mes': dados.get('financeiro', {}).get('horas_mes', 0),
+        'ociosidades_mes': dados.get('ocorrencias', {}).get('ociosidades_mes', 0),
+        'retrabalhos_mes': dados.get('ocorrencias', {}).get('retrabalhos_mes', 0),
     }
 
     # Obras em andamento queryset (limit to 10)

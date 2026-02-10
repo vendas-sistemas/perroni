@@ -81,7 +81,22 @@
               </tbody>
             </table>
           {% else %}
-            <div class="alert alert-info">Detalhes desta etapa ainda não foram inicializados. <a href="{% url 'obras:obra_inicializar_detalhes' etapa.obra.pk %}">Inicializar agora</a></div>
+            <div class="alert alert-info">
+              Detalhes desta etapa ainda não foram inicializados.
+              {% if etapa.numero_etapa == 1 %}
+                <a href="{% url 'obras:etapa1_detail' etapa.pk %}">Inicializar agora</a>
+              {% elif etapa.numero_etapa == 2 %}
+                <a href="{% url 'obras:etapa2_detail' etapa.pk %}">Inicializar agora</a>
+              {% elif etapa.numero_etapa == 3 %}
+                <a href="{% url 'obras:etapa3_detail' etapa.pk %}">Inicializar agora</a>
+              {% elif etapa.numero_etapa == 4 %}
+                <a href="{% url 'obras:etapa4_detail' etapa.pk %}">Inicializar agora</a>
+              {% elif etapa.numero_etapa == 5 %}
+                <a href="{% url 'obras:etapa5_detail' etapa.pk %}">Inicializar agora</a>
+              {% else %}
+                <a href="{% url 'obras:etapa_edit' etapa.pk %}">Editar etapa</a>
+              {% endif %}
+            </div>
           {% endif %}
 
         </div>

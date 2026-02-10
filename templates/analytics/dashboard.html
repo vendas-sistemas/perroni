@@ -58,6 +58,49 @@
     </div>
   </div>
 
+  <!-- Mão de Obra - Mês Atual -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-md-3">
+      <div class="card metric-card shadow-sm border-start border-success border-3">
+        <div class="card-body">
+          <h6 class="text-uppercase text-muted">Custo Mês</h6>
+          <h3 class="mt-2 text-success">R$ {{ metrics.custo_mes|default:"0.00" }}</h3>
+          <small class="text-muted">Mão de obra no mês</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-md-3">
+      <div class="card metric-card shadow-sm border-start border-info border-3">
+        <div class="card-body">
+          <h6 class="text-uppercase text-muted">Horas Mês</h6>
+          <h3 class="mt-2 text-info">{{ metrics.horas_mes|default:"0.0" }}h</h3>
+          <small class="text-muted">Horas trabalhadas no mês</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-md-3">
+      <div class="card metric-card shadow-sm border-start border-warning border-3">
+        <div class="card-body">
+          <h6 class="text-uppercase text-muted">Ociosidades</h6>
+          <h3 class="mt-2 text-warning">{{ metrics.ociosidades_mes|default:0 }}</h3>
+          <small class="text-muted">Registros no mês</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-md-3">
+      <div class="card metric-card shadow-sm border-start border-danger border-3">
+        <div class="card-body">
+          <h6 class="text-uppercase text-muted">Retrabalhos</h6>
+          <h3 class="mt-2 text-danger">{{ metrics.retrabalhos_mes|default:0 }}</h3>
+          <small class="text-muted">Registros no mês</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="row g-4">
     <div class="col-lg-7">
       <div class="card shadow-sm">

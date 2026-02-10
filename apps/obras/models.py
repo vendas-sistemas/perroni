@@ -300,6 +300,95 @@ class Etapa3Instalacoes(models.Model):
     def __str__(self):
         return f"Instalações - {self.etapa.obra.nome}"
 
+    def _get_period(self, start=None, end=None):
+        # determine period to consider: provided or etapa dates
+        if start:
+            di = start
+        else:
+            di = self.etapa.data_inicio
+        if end:
+            df = end
+        else:
+            df = self.etapa.data_termino or di
+        return di, df
+
+    def allocation_per_worker(self, field_name, start=None, end=None):
+        """Calculate allocation for a numeric field (e.g. 'reboco_externo_m2').
+
+        Returns a dict with:
+          - total: Decimal total value from the field
+          - workers: number of distinct workers in obra during period
+          - per_worker: Decimal (total/workers) or 0
+          - breakdown: list of {funcionario_id, nome, value}
+
+        The period defaults to the etapa's data_inicio/data_termino if available.
+        """
+        from decimal import Decimal, InvalidOperation
+        # lazy import to avoid circular imports
+        try:
+            from apps.funcionarios.models import ApontamentoFuncionario
+            from apps.funcionarios.models import Funcionario
+        except Exception:
+            ApontamentoFuncionario = None
+
+        di, df = self._get_period(start, end)
+
+        # get total from the field
+        try:
+            total = getattr(self, field_name)
+            if total is None:
+                total = Decimal('0.00')
+        except Exception:
+            total = Decimal('0.00')
+
+        workers_qs = None
+        if ApontamentoFuncionario and di:
+            workers_qs = ApontamentoFuncionario.objects.filter(
+                obra=self.etapa.obra,
+                data__gte=di,
+                data__lte=df
+            ).values('funcionario').distinct()
+
+        workers = workers_qs.count() if workers_qs is not None else 0
+
+        per_worker = Decimal('0.00')
+        breakdown = []
+        if workers > 0:
+            try:
+                per_worker = (Decimal(total) / Decimal(workers)).quantize(Decimal('0.01'))
+            except (InvalidOperation, ZeroDivisionError):
+                per_worker = Decimal('0.00')
+
+            # build breakdown by funcionario
+            func_ids = [w['funcionario'] for w in workers_qs]
+            funcionarios = Funcionario.objects.filter(id__in=func_ids)
+            nome_map = {f.id: str(f) for f in funcionarios}
+            for fid in func_ids:
+                breakdown.append({
+                    'funcionario_id': fid,
+                    'nome': nome_map.get(fid, ''),
+                    'value': per_worker,
+                })
+
+        return {
+            'total': str(total),
+            'workers': workers,
+            'per_worker': str(per_worker),
+            'breakdown': breakdown,
+            'period': {
+                'start': di.isoformat() if di else None,
+                'end': df.isoformat() if df else None,
+            }
+        }
+
+    def allocations_summary(self, start=None, end=None):
+        """Convenience method to compute allocations for the main measurable fields."""
+        fields = ['reboco_externo_m2', 'reboco_interno_m2']
+        result = {}
+        for f in fields:
+            result[f] = self.allocation_per_worker(f, start=start, end=end)
+        return result
+
 
 # ========== ETAPA 4 - ACABAMENTOS (84%) ==========
 

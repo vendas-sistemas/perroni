@@ -3,48 +3,167 @@
 {% block title %}Apontamentos{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>Apontamentos</h3>
-    <a href="{% url 'funcionarios:apontamento_create' %}" class="btn btn-sm btn-primary">Novo Apontamento</a>
+<div class="container-fluid py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <h3 class="mb-0">Apontamentos</h3>
+    <div class="d-flex gap-2">
+      <a href="{% url 'funcionarios:apontamento_diario' %}" class="btn btn-sm btn-success">📋 Apontamento Diário</a>
+      <a href="{% url 'funcionarios:apontamento_create' %}" class="btn btn-sm btn-primary">+ Novo Individual</a>
+    </div>
   </div>
+
+  <!-- Summary cards -->
+  {% if totais %}
+  <div class="row g-2 mb-3">
+    <div class="col-6 col-md-2">
+      <div class="card text-center">
+        <div class="card-body p-2">
+          <div class="small text-muted">Registros</div>
+          <div class="h5 mb-0">{{ totais.total_registros }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card text-center">
+        <div class="card-body p-2">
+          <div class="small text-muted">Horas</div>
+          <div class="h5 mb-0">{{ totais.total_horas|default:"0" }}h</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center">
+        <div class="card-body p-2">
+          <div class="small text-muted">Valor Total</div>
+          <div class="h5 mb-0 text-success">R$ {{ totais.total_valor|default:"0.00" }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-3 col-md-2">
+      <div class="card text-center border-warning">
+        <div class="card-body p-2">
+          <div class="small text-muted">Ociosidade</div>
+          <div class="h5 mb-0 text-warning">{{ totais.total_ociosidade }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-3 col-md-2">
+      <div class="card text-center border-danger">
+        <div class="card-body p-2">
+          <div class="small text-muted">Retrabalho</div>
+          <div class="h5 mb-0 text-danger">{{ totais.total_retrabalho }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <div class="card">
     <div class="card-body">
-      <table class="table table-sm table-striped">
-        <thead>
-          <tr>
-            <th>Funcionário</th>
-            <th>Data</th>
-            <th>Horas</th>
-            <th>Descrição</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for a in apontamentos %}
+      <!-- Filters -->
+      <form method="get" class="row g-2 mb-3">
+        <div class="col-6 col-md-2">
+          <input type="date" name="data" class="form-control form-control-sm" value="{{ request.GET.data }}" placeholder="Data">
+        </div>
+        <div class="col-6 col-md-2">
+          <select name="funcionario" class="form-select form-select-sm">
+            <option value="">Todos Funcionários</option>
+            {% for f in funcionarios %}
+              <option value="{{ f.id }}" {% if request.GET.funcionario == f.id|stringformat:"s" %}selected{% endif %}>{{ f.nome_completo }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <select name="obra" class="form-select form-select-sm">
+            <option value="">Todas Obras</option>
+            {% for o in obras %}
+              <option value="{{ o.id }}" {% if request.GET.obra == o.id|stringformat:"s" %}selected{% endif %}>{{ o.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <select name="clima" class="form-select form-select-sm">
+            <option value="">Qualquer Clima</option>
+            <option value="sol" {% if request.GET.clima == "sol" %}selected{% endif %}>Sol</option>
+            <option value="chuva" {% if request.GET.clima == "chuva" %}selected{% endif %}>Chuva</option>
+            <option value="nublado" {% if request.GET.clima == "nublado" %}selected{% endif %}>Nublado</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <select name="ociosidade" class="form-select form-select-sm">
+            <option value="">Ociosidade?</option>
+            <option value="1" {% if request.GET.ociosidade == "1" %}selected{% endif %}>Apenas com Ociosidade</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="d-flex gap-1">
+            <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+            <a href="{% url 'funcionarios:apontamento_list' %}" class="btn btn-sm btn-outline-secondary">Limpar</a>
+          </div>
+        </div>
+      </form>
+
+      <!-- Table -->
+      <div class="table-responsive">
+        <table class="table table-sm table-striped table-hover">
+          <thead>
             <tr>
-              <td>{{ a.funcionario }}</td>
-              <td>{{ a.data }}</td>
-              <td>{{ a.horas }}</td>
-              <td>{{ a.descricao|truncatechars:80 }}</td>
-              <td><a href="#" class="btn btn-sm btn-outline-secondary">Editar</a></td>
+              <th>Funcionário</th>
+              <th>Obra</th>
+              <th>Etapa</th>
+              <th>Data</th>
+              <th>Horas</th>
+              <th>Clima</th>
+              <th>Valor</th>
+              <th>Status</th>
+              <th></th>
             </tr>
-          {% empty %}
-            <tr><td colspan="5">Nenhum apontamento encontrado.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {% for a in apontamentos %}
+              <tr class="{% if a.houve_retrabalho %}table-danger{% elif a.houve_ociosidade %}table-warning{% endif %}">
+                <td>
+                  <a href="{% url 'funcionarios:funcionario_historico' a.funcionario.pk %}">{{ a.funcionario.nome_completo }}</a>
+                  <br><small class="text-muted">{{ a.funcionario.get_funcao_display }}</small>
+                </td>
+                <td>{{ a.obra.nome }}</td>
+                <td>{{ a.etapa|default:"-" }}</td>
+                <td>{{ a.data|date:'d/m/Y' }}</td>
+                <td>{{ a.horas_trabalhadas }}h</td>
+                <td>
+                  {% if a.clima == 'sol' %}☀️{% elif a.clima == 'chuva' %}🌧️{% else %}☁️{% endif %}
+                </td>
+                <td>R$ {{ a.valor_diaria }}</td>
+                <td>
+                  {% if a.houve_retrabalho %}<span class="badge bg-danger" title="{{ a.motivo_retrabalho }}">Retrabalho</span>{% endif %}
+                  {% if a.houve_ociosidade %}<span class="badge bg-warning text-dark" title="{{ a.observacao_ociosidade }}">Ocioso</span>{% endif %}
+                  {% if not a.houve_retrabalho and not a.houve_ociosidade %}<span class="badge bg-success">OK</span>{% endif %}
+                </td>
+                <td>
+                  <form method="post" action="{% url 'funcionarios:apontamento_delete' a.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remover?')">✕</button>
+                  </form>
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="9">Nenhum apontamento encontrado.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
       {% if is_paginated %}
-        <nav aria-label="Page navigation">
+        <nav aria-label="Paginação">
           <ul class="pagination pagination-sm">
             {% if page_obj.has_previous %}
-              <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+              <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a></li>
             {% else %}
               <li class="page-item disabled"><span class="page-link">Anterior</span></li>
             {% endif %}
             <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
             {% if page_obj.has_next %}
-              <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Próximo</a></li>
+              <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Próximo</a></li>
             {% else %}
               <li class="page-item disabled"><span class="page-link">Próximo</span></li>
             {% endif %}

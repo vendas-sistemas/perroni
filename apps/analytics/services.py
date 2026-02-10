@@ -19,16 +19,8 @@ class AnalyticsService:
     def ranking_pedreiros_por_etapa(numero_etapa, top=3, bottom=3):
         """
         Retorna ranking dos melhores e piores pedreiros em uma etapa específica
-        
-        Args:
-            numero_etapa (int): Número da etapa (1 a 5)
-            top (int): Quantidade de melhores a retornar
-            bottom (int): Quantidade de piores a retornar
-        
-        Returns:
-            dict: {'melhores': [...], 'piores': [...]}
+        com critérios: produtividade, menor retrabalho, menor ociosidade
         """
-        # Busca todas as etapas concluídas do número especificado
         etapas = Etapa.objects.filter(
             numero_etapa=numero_etapa,
             concluida=True,
@@ -36,35 +28,66 @@ class AnalyticsService:
             data_termino__isnull=False
         )
         
-        # Calcula dias para conclusão de cada etapa
-        pedreiros_performance = defaultdict(list)
+        pedreiros_performance = defaultdict(lambda: {
+            'dias_list': [],
+            'total_retrabalho': 0,
+            'total_ociosidade': 0,
+            'total_apontamentos': 0,
+            'total_horas': Decimal('0.0'),
+        })
         
         for etapa in etapas:
             dias = (etapa.data_termino - etapa.data_inicio).days
             
-            # Busca pedreiros que trabalharam nesta etapa
             apontamentos = ApontamentoFuncionario.objects.filter(
                 obra=etapa.obra,
+                etapa=etapa,
                 data__gte=etapa.data_inicio,
                 data__lte=etapa.data_termino,
                 funcionario__funcao='pedreiro'
             ).select_related('funcionario')
             
-            for apontamento in apontamentos:
-                pedreiros_performance[apontamento.funcionario].append(dias)
+            # Fallback: also consider apontamentos without etapa link
+            if not apontamentos.exists():
+                apontamentos = ApontamentoFuncionario.objects.filter(
+                    obra=etapa.obra,
+                    data__gte=etapa.data_inicio,
+                    data__lte=etapa.data_termino,
+                    funcionario__funcao='pedreiro'
+                ).select_related('funcionario')
+            
+            for ap in apontamentos:
+                perf = pedreiros_performance[ap.funcionario]
+                perf['dias_list'].append(dias)
+                perf['total_apontamentos'] += 1
+                perf['total_horas'] += ap.horas_trabalhadas or Decimal('0.0')
+                if ap.houve_retrabalho:
+                    perf['total_retrabalho'] += 1
+                if ap.houve_ociosidade:
+                    perf['total_ociosidade'] += 1
         
-        # Calcula média de dias por pedreiro
         ranking_data = []
-        for pedreiro, dias_list in pedreiros_performance.items():
-            media_dias = sum(dias_list) / len(dias_list)
+        for pedreiro, perf in pedreiros_performance.items():
+            if not perf['dias_list']:
+                continue
+            media_dias = sum(perf['dias_list']) / len(perf['dias_list'])
+            taxa_retrabalho = (perf['total_retrabalho'] / perf['total_apontamentos'] * 100) if perf['total_apontamentos'] > 0 else 0
+            taxa_ociosidade = (perf['total_ociosidade'] / perf['total_apontamentos'] * 100) if perf['total_apontamentos'] > 0 else 0
+            
+            # Score: lower is better (media_dias * (1 + taxa_retrabalho/100) * (1 + taxa_ociosidade/100))
+            score = media_dias * (1 + taxa_retrabalho / 100) * (1 + taxa_ociosidade / 100)
+            
             ranking_data.append({
                 'pedreiro': pedreiro,
                 'media_dias': round(media_dias, 2),
-                'total_obras': len(dias_list)
+                'total_obras': len(perf['dias_list']),
+                'total_horas': perf['total_horas'],
+                'taxa_retrabalho': round(taxa_retrabalho, 1),
+                'taxa_ociosidade': round(taxa_ociosidade, 1),
+                'score': round(score, 2),
             })
         
-        # Ordena por média de dias (menor é melhor)
-        ranking_data.sort(key=lambda x: x['media_dias'])
+        ranking_data.sort(key=lambda x: x['score'])
         
         return {
             'melhores': ranking_data[:top],
@@ -72,12 +95,10 @@ class AnalyticsService:
         }
     
     @staticmethod
-    def media_dias_por_etapa():
+    def media_dias_por_etapa(clima=None, equipe_ids=None, data_inicio=None, data_fim=None):
         """
         Calcula a média de dias para execução de cada etapa
-        
-        Returns:
-            dict: {etapa_numero: media_dias}
+        com filtros opcionais de clima, equipe e período
         """
         resultado = {}
         
@@ -89,48 +110,74 @@ class AnalyticsService:
                 data_termino__isnull=False
             )
             
-            if etapas.exists():
-                total_dias = 0
-                count = 0
+            if data_inicio:
+                etapas = etapas.filter(data_inicio__gte=data_inicio)
+            if data_fim:
+                etapas = etapas.filter(data_termino__lte=data_fim)
+            
+            total_dias = 0
+            count = 0
+            
+            for etapa in etapas:
+                # Apply clima filter
+                if clima:
+                    has_clima = ApontamentoFuncionario.objects.filter(
+                        obra=etapa.obra,
+                        data__gte=etapa.data_inicio,
+                        data__lte=etapa.data_termino,
+                        clima=clima
+                    ).exists()
+                    if not has_clima:
+                        continue
                 
-                for etapa in etapas:
-                    dias = (etapa.data_termino - etapa.data_inicio).days
-                    total_dias += dias
-                    count += 1
+                # Apply equipe filter
+                if equipe_ids:
+                    has_equipe = ApontamentoFuncionario.objects.filter(
+                        obra=etapa.obra,
+                        data__gte=etapa.data_inicio,
+                        data__lte=etapa.data_termino,
+                        funcionario_id__in=equipe_ids
+                    ).exists()
+                    if not has_equipe:
+                        continue
                 
-                media = total_dias / count if count > 0 else 0
-                resultado[numero] = round(media, 2)
-            else:
-                resultado[numero] = 0
+                dias = (etapa.data_termino - etapa.data_inicio).days
+                total_dias += dias
+                count += 1
+            
+            media = total_dias / count if count > 0 else 0
+            resultado[numero] = {
+                'media': round(media, 2),
+                'total_etapas': count,
+            }
         
         return resultado
     
     @staticmethod
     def rendimento_individual_pedreiro(pedreiro_id):
         """
-        Calcula o rendimento individual de um pedreiro
-        
-        Args:
-            pedreiro_id (int): ID do pedreiro
-        
-        Returns:
-            dict: Estatísticas de rendimento do pedreiro
+        Calcula o rendimento individual de um pedreiro com métricas avançadas
         """
         try:
             pedreiro = Funcionario.objects.get(id=pedreiro_id, funcao='pedreiro')
         except Funcionario.DoesNotExist:
             return None
         
-        # Busca todos os apontamentos
         apontamentos = ApontamentoFuncionario.objects.filter(
             funcionario=pedreiro
-        ).select_related('obra')
+        ).select_related('obra', 'etapa')
         
-        # Estatísticas gerais
         total_dias_trabalhados = apontamentos.count()
         obras_trabalhadas = apontamentos.values('obra').distinct().count()
+        total_horas = apontamentos.aggregate(t=Sum('horas_trabalhadas'))['t'] or Decimal('0.0')
         
-        # Análise por etapa
+        # Taxa de retrabalho e ociosidade globais
+        dias_retrabalho = apontamentos.filter(houve_retrabalho=True).count()
+        dias_ociosidade = apontamentos.filter(houve_ociosidade=True).count()
+        taxa_retrabalho = (dias_retrabalho / total_dias_trabalhados * 100) if total_dias_trabalhados > 0 else 0
+        taxa_ociosidade = (dias_ociosidade / total_dias_trabalhados * 100) if total_dias_trabalhados > 0 else 0
+        
+        # Performance por etapa
         performance_etapas = {}
         for numero_etapa in range(1, 6):
             etapas = Etapa.objects.filter(
@@ -141,50 +188,145 @@ class AnalyticsService:
             )
             
             dias_totais = []
+            horas_etapa = Decimal('0.0')
+            retrabalho_etapa = 0
+            ociosidade_etapa = 0
+            total_ap_etapa = 0
+            
             for etapa in etapas:
-                # Verifica se o pedreiro trabalhou nesta etapa
-                trabalhou = apontamentos.filter(
+                aps_etapa = apontamentos.filter(
                     obra=etapa.obra,
                     data__gte=etapa.data_inicio,
                     data__lte=etapa.data_termino
-                ).exists()
+                )
                 
-                if trabalhou:
+                if aps_etapa.exists():
                     dias = (etapa.data_termino - etapa.data_inicio).days
                     dias_totais.append(dias)
+                    for ap in aps_etapa:
+                        horas_etapa += ap.horas_trabalhadas or Decimal('0.0')
+                        total_ap_etapa += 1
+                        if ap.houve_retrabalho:
+                            retrabalho_etapa += 1
+                        if ap.houve_ociosidade:
+                            ociosidade_etapa += 1
             
             if dias_totais:
                 performance_etapas[numero_etapa] = {
                     'media_dias': round(sum(dias_totais) / len(dias_totais), 2),
-                    'total_execucoes': len(dias_totais)
+                    'total_execucoes': len(dias_totais),
+                    'total_horas': horas_etapa,
+                    'taxa_retrabalho': round(retrabalho_etapa / total_ap_etapa * 100 if total_ap_etapa else 0, 1),
+                    'taxa_ociosidade': round(ociosidade_etapa / total_ap_etapa * 100 if total_ap_etapa else 0, 1),
                 }
+        
+        # Produtividade: calcular m²/dia para reboco, blocos/dia para parede
+        produtividade = AnalyticsService._calcular_produtividade_pedreiro(pedreiro, apontamentos)
         
         return {
             'pedreiro': pedreiro,
             'total_dias_trabalhados': total_dias_trabalhados,
+            'total_horas': total_horas,
             'obras_trabalhadas': obras_trabalhadas,
-            'performance_por_etapa': performance_etapas
+            'taxa_retrabalho': round(taxa_retrabalho, 1),
+            'taxa_ociosidade': round(taxa_ociosidade, 1),
+            'performance_por_etapa': performance_etapas,
+            'produtividade': produtividade,
         }
+    
+    @staticmethod
+    def _calcular_produtividade_pedreiro(pedreiro, apontamentos):
+        """Calcula produtividade em unidades específicas (m²/dia, blocos/dia)"""
+        produtividade = {}
+        
+        # Reboco externo: m²/dia
+        from apps.obras.models import Etapa3Instalacoes
+        etapas3 = Etapa.objects.filter(
+            numero_etapa=3,
+            concluida=True,
+            data_inicio__isnull=False,
+            data_termino__isnull=False
+        )
+        
+        total_m2_reboco = Decimal('0.0')
+        total_dias_reboco = 0
+        
+        for etapa in etapas3:
+            aps = apontamentos.filter(
+                obra=etapa.obra,
+                data__gte=etapa.data_inicio,
+                data__lte=etapa.data_termino
+            )
+            if aps.exists():
+                try:
+                    inst = etapa.instalacoes
+                    total_workers = ApontamentoFuncionario.objects.filter(
+                        obra=etapa.obra,
+                        data__gte=etapa.data_inicio,
+                        data__lte=etapa.data_termino,
+                        funcionario__funcao='pedreiro'
+                    ).values('funcionario').distinct().count()
+                    if total_workers > 0:
+                        m2_per_worker = (inst.reboco_externo_m2 + inst.reboco_interno_m2) / total_workers
+                        dias_trabalhados = aps.count()
+                        total_m2_reboco += m2_per_worker
+                        total_dias_reboco += dias_trabalhados
+                except Exception:
+                    pass
+        
+        if total_dias_reboco > 0:
+            produtividade['reboco_m2_dia'] = round(float(total_m2_reboco / total_dias_reboco), 2)
+        
+        # Blocos/dia (Etapa 1 - parede 7 fiadas)
+        from apps.obras.models import Etapa1Fundacao
+        etapas1 = Etapa.objects.filter(
+            numero_etapa=1,
+            concluida=True,
+            data_inicio__isnull=False,
+            data_termino__isnull=False
+        )
+        
+        total_blocos = 0
+        total_dias_blocos = 0
+        
+        for etapa in etapas1:
+            aps = apontamentos.filter(
+                obra=etapa.obra,
+                data__gte=etapa.data_inicio,
+                data__lte=etapa.data_termino
+            )
+            if aps.exists():
+                try:
+                    fund = etapa.fundacao
+                    total_workers = ApontamentoFuncionario.objects.filter(
+                        obra=etapa.obra,
+                        data__gte=etapa.data_inicio,
+                        data__lte=etapa.data_termino,
+                        funcionario__funcao='pedreiro'
+                    ).values('funcionario').distinct().count()
+                    if total_workers > 0:
+                        blocos_per_worker = fund.parede_7fiadas_blocos / total_workers
+                        dias_trabalhados = aps.count()
+                        total_blocos += blocos_per_worker
+                        total_dias_blocos += dias_trabalhados
+                except Exception:
+                    pass
+        
+        if total_dias_blocos > 0:
+            produtividade['blocos_dia'] = round(total_blocos / total_dias_blocos, 2)
+        
+        return produtividade
     
     @staticmethod
     def custo_mao_obra_por_obra(obra_id, data_inicio=None, data_fim=None):
         """
-        Calcula o custo de mão de obra de uma obra
-        
-        Args:
-            obra_id (int): ID da obra
-            data_inicio (date): Data inicial para filtro (opcional)
-            data_fim (date): Data final para filtro (opcional)
-        
-        Returns:
-            dict: Custos detalhados
+        Calcula o custo de mão de obra de uma obra com detalhes por etapa
         """
         try:
             obra = Obra.objects.get(id=obra_id)
         except Obra.DoesNotExist:
             return None
         
-        # Filtra apontamentos
         apontamentos = ApontamentoFuncionario.objects.filter(obra=obra)
         
         if data_inicio:
@@ -192,10 +334,10 @@ class AnalyticsService:
         if data_fim:
             apontamentos = apontamentos.filter(data__lte=data_fim)
         
-        # Calcula totais
         total_geral = apontamentos.aggregate(
             total=Sum('valor_diaria'),
-            dias=Count('id')
+            dias=Count('id'),
+            horas=Sum('horas_trabalhadas'),
         )
         
         # Por funcionário
@@ -204,7 +346,10 @@ class AnalyticsService:
             'funcionario__funcao'
         ).annotate(
             total=Sum('valor_diaria'),
-            dias=Count('id')
+            dias=Count('id'),
+            horas=Sum('horas_trabalhadas'),
+            retrabalhos=Count('id', filter=Q(houve_retrabalho=True)),
+            ociosidades=Count('id', filter=Q(houve_ociosidade=True)),
         ).order_by('-total')
         
         # Por tipo de função
@@ -212,28 +357,33 @@ class AnalyticsService:
             'funcionario__funcao'
         ).annotate(
             total=Sum('valor_diaria'),
-            dias=Count('id')
+            dias=Count('id'),
+            horas=Sum('horas_trabalhadas'),
         )
+        
+        # Por etapa
+        por_etapa = apontamentos.values(
+            'etapa__numero_etapa'
+        ).annotate(
+            total=Sum('valor_diaria'),
+            dias=Count('id'),
+            horas=Sum('horas_trabalhadas'),
+        ).order_by('etapa__numero_etapa')
         
         return {
             'obra': obra,
             'total_geral': total_geral['total'] or Decimal('0.00'),
             'total_dias': total_geral['dias'] or 0,
+            'total_horas': total_geral['horas'] or Decimal('0.0'),
             'por_funcionario': list(por_funcionario),
-            'por_funcao': list(por_funcao)
+            'por_funcao': list(por_funcao),
+            'por_etapa': list(por_etapa),
         }
     
     @staticmethod
     def historico_funcionario_semanal(funcionario_id, semanas=4):
         """
         Retorna histórico de trabalho de um funcionário nas últimas semanas
-        
-        Args:
-            funcionario_id (int): ID do funcionário
-            semanas (int): Número de semanas para buscar
-        
-        Returns:
-            list: Histórico semanal
         """
         try:
             funcionario = Funcionario.objects.get(id=funcionario_id)
@@ -246,13 +396,11 @@ class AnalyticsService:
         apontamentos = ApontamentoFuncionario.objects.filter(
             funcionario=funcionario,
             data__gte=data_inicio
-        ).select_related('obra').order_by('-data')
+        ).select_related('obra', 'etapa').order_by('-data')
         
-        # Agrupa por semana
         semanas_dict = defaultdict(list)
         
         for apontamento in apontamentos:
-            # Calcula número da semana
             semana = apontamento.data.isocalendar()[1]
             ano = apontamento.data.year
             chave = f"{ano}-W{semana}"
@@ -260,17 +408,28 @@ class AnalyticsService:
             semanas_dict[chave].append({
                 'data': apontamento.data,
                 'obra': apontamento.obra.nome,
-                'valor': apontamento.valor_diaria
+                'etapa': str(apontamento.etapa) if apontamento.etapa else None,
+                'horas': apontamento.horas_trabalhadas,
+                'valor': apontamento.valor_diaria,
+                'clima': apontamento.clima,
+                'ociosidade': apontamento.houve_ociosidade,
+                'retrabalho': apontamento.houve_retrabalho,
             })
         
-        # Formata resultado
         resultado = []
         for chave, apontamentos_semana in sorted(semanas_dict.items(), reverse=True):
             total_semana = sum(a['valor'] for a in apontamentos_semana)
+            total_horas = sum(a['horas'] for a in apontamentos_semana)
+            ociosidades = sum(1 for a in apontamentos_semana if a['ociosidade'])
+            retrabalhos = sum(1 for a in apontamentos_semana if a['retrabalho'])
+            
             resultado.append({
                 'semana': chave,
                 'dias_trabalhados': len(apontamentos_semana),
+                'total_horas': total_horas,
                 'total_valor': total_semana,
+                'ociosidades': ociosidades,
+                'retrabalhos': retrabalhos,
                 'detalhes': apontamentos_semana
             })
         
@@ -283,36 +442,38 @@ class AnalyticsService:
     def dashboard_geral():
         """
         Retorna dados para dashboard geral do sistema
-        
-        Returns:
-            dict: Dados consolidados
         """
         hoje = datetime.now().date()
         inicio_mes = hoje.replace(day=1)
         
-        # Obras
         total_obras = Obra.objects.filter(ativo=True).count()
         obras_em_andamento = Obra.objects.filter(
             status='em_andamento',
             ativo=True
         ).count()
         
-        # Funcionários
         total_funcionarios = Funcionario.objects.filter(ativo=True).count()
         pedreiros_ativos = Funcionario.objects.filter(
             funcao='pedreiro',
             ativo=True
         ).count()
         
-        # Custos do mês
         custo_mes = ApontamentoFuncionario.objects.filter(
             data__gte=inicio_mes
         ).aggregate(total=Sum('valor_diaria'))['total'] or Decimal('0.00')
         
-        # Fiscalizações do mês
+        horas_mes = ApontamentoFuncionario.objects.filter(
+            data__gte=inicio_mes
+        ).aggregate(total=Sum('horas_trabalhadas'))['total'] or Decimal('0.0')
+        
         fiscalizacoes_mes = RegistroFiscalizacao.objects.filter(
             data_fiscalizacao__gte=inicio_mes
         ).count()
+        
+        # Ocorrências do mês
+        apontamentos_mes = ApontamentoFuncionario.objects.filter(data__gte=inicio_mes)
+        ociosidades_mes = apontamentos_mes.filter(houve_ociosidade=True).count()
+        retrabalhos_mes = apontamentos_mes.filter(houve_retrabalho=True).count()
         
         return {
             'obras': {
@@ -324,9 +485,14 @@ class AnalyticsService:
                 'pedreiros': pedreiros_ativos
             },
             'financeiro': {
-                'custo_mes': custo_mes
+                'custo_mes': custo_mes,
+                'horas_mes': horas_mes,
             },
             'fiscalizacoes': {
                 'total_mes': fiscalizacoes_mes
+            },
+            'ocorrencias': {
+                'ociosidades_mes': ociosidades_mes,
+                'retrabalhos_mes': retrabalhos_mes,
             }
         }

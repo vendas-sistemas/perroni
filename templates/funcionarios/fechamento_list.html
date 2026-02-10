@@ -4,9 +4,12 @@
 
 {% block content %}
 <div class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
     <h3>Fechamentos Semanais</h3>
-    <a href="{% url 'funcionarios:fechamento_create' %}" class="btn btn-sm btn-primary">Novo Fechamento</a>
+    <div class="d-flex gap-2">
+      <a href="{% url 'funcionarios:fechamento_auto' %}" class="btn btn-sm btn-success">⚡ Fechamento Automático</a>
+      <a href="{% url 'funcionarios:fechamento_create' %}" class="btn btn-sm btn-primary">+ Novo Fechamento</a>
+    </div>
   </div>
   <div class="card">
     <div class="card-body">
@@ -14,8 +17,12 @@
         <thead>
           <tr>
             <th>Semana</th>
-            <th>Responsável</th>
-            <th>Total Horas</th>
+            <th>Funcionário</th>
+            <th>Dias</th>
+            <th>Horas</th>
+            <th>Valor</th>
+            <th>Ociosid.</th>
+            <th>Retrab.</th>
             <th>Status</th>
             <th></th>
           </tr>
@@ -23,14 +30,22 @@
         <tbody>
           {% for f in fechamentos %}
             <tr>
-              <td>{{ f.inicio }} — {{ f.fim }}</td>
-              <td>{{ f.usuario }}</td>
-              <td>{{ f.total_horas }}</td>
-              <td>{{ f.status }}</td>
-              <td><a href="{% url 'funcionarios:fechamento_detail' f.id %}" class="btn btn-sm btn-outline-secondary">Abrir</a></td>
+              <td>{{ f.data_inicio|date:'d/m/Y' }} — {{ f.data_fim|date:'d/m/Y' }}</td>
+              <td>{{ f.funcionario.nome_completo }}</td>
+              <td>{{ f.total_dias }}</td>
+              <td>{{ f.total_horas }}h</td>
+              <td class="text-success">R$ {{ f.total_valor }}</td>
+              <td>{% if f.dias_ociosidade %}<span class="badge bg-warning text-dark">{{ f.dias_ociosidade }}</span>{% else %}0{% endif %}</td>
+              <td>{% if f.dias_retrabalho %}<span class="badge bg-danger">{{ f.dias_retrabalho }}</span>{% else %}0{% endif %}</td>
+              <td>
+                <span class="badge {% if f.status == 'pago' %}bg-success{% elif f.status == 'fechado' %}bg-primary{% else %}bg-secondary{% endif %}">
+                  {{ f.get_status_display }}
+                </span>
+              </td>
+              <td><a href="{% url 'funcionarios:fechamento_detail' f.pk %}" class="btn btn-sm btn-outline-secondary">Abrir</a></td>
             </tr>
           {% empty %}
-            <tr><td colspan="5">Nenhum fechamento encontrado.</td></tr>
+            <tr><td colspan="9">Nenhum fechamento encontrado.</td></tr>
           {% endfor %}
         </tbody>
       </table>

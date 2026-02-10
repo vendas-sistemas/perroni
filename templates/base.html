@@ -24,9 +24,37 @@
         <div class="collapse navbar-collapse" id="mainNav">
           {% if user.is_authenticated %}
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            <li class="nav-item"><a class="nav-link" href="/obras/">Obras</a></li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="obrasMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">Obras</a>
+              <ul class="dropdown-menu" aria-labelledby="obrasMenu">
+                <li><a class="dropdown-item" href="{% url 'obras:obra_list' %}">Todas as Obras</a></li>
+                <li><hr class="dropdown-divider"></li>
+                {% for obra in recent_obras %}
+                  <li>
+                    <a class="dropdown-item" href="{% url 'obras:obra_allocations' obra.id %}">
+                      {{ obra.nome }}
+                      <small class="text-muted"> - {{ obra.created_at|date:"d/m/Y" }}</small>
+                    </a>
+                  </li>
+                {% empty %}
+                  <li><span class="dropdown-item text-muted">Nenhuma obra recente</span></li>
+                {% endfor %}
+              </ul>
+            </li>
+            <li class="nav-item"><a class="nav-link" href="/obras/#allocacoes">Alocações</a></li>
             <li class="nav-item"><a class="nav-link" href="/fiscalizacao/">Fiscalização</a></li>
-            <li class="nav-item"><a class="nav-link" href="/funcionarios/">Funcionários</a></li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="funcMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">Funcionários</a>
+              <ul class="dropdown-menu" aria-labelledby="funcMenu">
+                <li><a class="dropdown-item" href="/funcionarios/">Lista de Funcionários</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item fw-bold text-success" href="/funcionarios/apontamentos/diario/">📋 Apontamento Diário</a></li>
+                <li><a class="dropdown-item" href="/funcionarios/apontamentos/">Apontamentos</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="/funcionarios/fechamentos/">Fechamentos Semanais</a></li>
+                <li><a class="dropdown-item" href="/funcionarios/fechamentos/auto/">⚡ Fechamento Automático</a></li>
+              </ul>
+            </li>
             <li class="nav-item"><a class="nav-link" href="/ferramentas/">Ferramentas</a></li>
             <li class="nav-item"><a class="nav-link" href="/analytics/">Analytics</a></li>
             <li class="nav-item dropdown">

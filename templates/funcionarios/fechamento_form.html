@@ -19,6 +19,23 @@
                 {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
               </div>
             {% endfor %}
+            <div class="row g-2 mb-3">
+              <div class="col-auto">
+                <label class="form-label">Total Dias</label>
+                <input type="number" readonly name="total_dias_display" id="id_total_dias_display" class="form-control form-control-sm" value="0">
+                <input type="hidden" name="total_dias" id="id_total_dias" value="0">
+              </div>
+              <div class="col-auto">
+                <label class="form-label">Total Valor (R$)</label>
+                <input type="text" readonly name="total_valor_display" id="id_total_valor_display" class="form-control form-control-sm" value="0.00">
+                <input type="hidden" name="total_valor" id="id_total_valor" value="0.00">
+              </div>
+            </div>
+            <div id="apontamentos_preview" class="mb-3" style="display:none">
+              <h5>Apontamentos encontrados</h5>
+              <div id="apontamentos_table_container"></div>
+              <div class="mt-2"><strong>Totais:</strong> <span id="totais_info"></span></div>
+            </div>
             <div class="d-flex gap-2">
               <button class="btn btn-primary">Salvar</button>
               <a href="{% url 'funcionarios:fechamento_list' %}" class="btn btn-secondary">Voltar</a>
@@ -29,4 +46,76 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function(){
+    const funcionarioEl = document.getElementById('id_funcionario');
+    const dataInicioEl = document.getElementById('id_data_inicio');
+    const preview = document.getElementById('apontamentos_preview');
+    const container = document.getElementById('apontamentos_table_container');
+    const totais = document.getElementById('totais_info');
+    const apiUrl = "{% url 'funcionarios:apontamentos_api' %}";
+
+    function formatDate(iso){
+      const d = new Date(iso);
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const yyyy = d.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    }
+
+    function formatTime(iso){
+      const d = new Date(iso);
+      const hh = String(d.getHours()).padStart(2,'0');
+      const mm = String(d.getMinutes()).padStart(2,'0');
+      return `${hh}:${mm}`;
+    }
+
+    async function fetchApontamentos(){
+      const func = funcionarioEl ? funcionarioEl.value : '';
+      const di = dataInicioEl ? dataInicioEl.value : '';
+      if(!func || !di) {
+        preview.style.display = 'none';
+        return;
+      }
+      const params = new URLSearchParams({funcionario: func, data_inicio: di});
+      const resp = await fetch(apiUrl + '?' + params.toString());
+      if(!resp.ok){
+        preview.style.display = 'none';
+        return;
+      }
+      const data = await resp.json();
+      renderApontamentos(data);
+    }
+
+    function renderApontamentos(data){
+      if(!data || !data.apontamentos) {
+        preview.style.display = 'none';
+        return;
+      }
+      const rows = data.apontamentos.map(a => {
+        return `<tr><td>${a.obra||''}</td><td>${formatDate(a.data)}</td><td>${formatTime(a.created_at)}</td><td>${a.valor_diaria}</td></tr>`;
+      }).join('');
+      container.innerHTML = `<table class="table table-sm table-striped"><thead><tr><th>Obra</th><th>Data</th><th>Hora</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table>`;
+      totais.textContent = `${data.totais.dias} dia(s) — R$ ${data.totais.valor}`;
+      // update visible and hidden fields
+      const td = document.getElementById('id_total_dias');
+      const td_disp = document.getElementById('id_total_dias_display');
+      const tv = document.getElementById('id_total_valor');
+      const tv_disp = document.getElementById('id_total_valor_display');
+      if(td) td.value = data.totais.dias;
+      if(td_disp) td_disp.value = data.totais.dias;
+      if(tv) tv.value = data.totais.valor;
+      if(tv_disp) tv_disp.value = data.totais.valor;
+      preview.style.display = 'block';
+    }
+
+    if(funcionarioEl) funcionarioEl.addEventListener('change', fetchApontamentos);
+    if(dataInicioEl) dataInicioEl.addEventListener('change', fetchApontamentos);
+    // try initial fetch if both present
+    document.addEventListener('DOMContentLoaded', function(){ fetchApontamentos(); });
+  })();
+</script>
 {% endblock %}

@@ -1,7 +1,7 @@
 from django.db import models
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
-from apps.obras.models import Obra
+from apps.obras.models import Obra, Etapa
 
 
 class Funcionario(models.Model):
@@ -102,7 +102,60 @@ class ApontamentoFuncionario(models.Model):
         verbose_name="Obra"
     )
     
+    etapa = models.ForeignKey(
+        Etapa,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='apontamentos',
+        verbose_name="Etapa/Fase"
+    )
+    
     data = models.DateField(verbose_name="Data")
+    
+    # Horas trabalhadas
+    horas_trabalhadas = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        default=Decimal('8.0'),
+        validators=[MinValueValidator(Decimal('0.5')), MaxValueValidator(Decimal('24.0'))],
+        verbose_name="Horas Trabalhadas"
+    )
+    
+    # Condições do dia
+    CLIMA_CHOICES = [
+        ('sol', 'Sol'),
+        ('chuva', 'Chuva'),
+        ('nublado', 'Nublado'),
+    ]
+    clima = models.CharField(
+        max_length=10,
+        choices=CLIMA_CHOICES,
+        default='sol',
+        verbose_name="Clima"
+    )
+    
+    # Ociosidade
+    houve_ociosidade = models.BooleanField(
+        default=False,
+        verbose_name="Houve Ociosidade"
+    )
+    observacao_ociosidade = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Justificativa da Ociosidade"
+    )
+    
+    # Retrabalho
+    houve_retrabalho = models.BooleanField(
+        default=False,
+        verbose_name="Houve Retrabalho"
+    )
+    motivo_retrabalho = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Motivo do Retrabalho"
+    )
     
     # Valores
     valor_diaria = models.DecimalField(
@@ -126,7 +179,8 @@ class ApontamentoFuncionario(models.Model):
         verbose_name = "Apontamento de Funcionário"
         verbose_name_plural = "Apontamentos de Funcionários"
         ordering = ['-data']
-        unique_together = ['funcionario', 'obra', 'data']
+        # Um funcionário não pode ser apontado em mais de uma obra no mesmo dia
+        unique_together = ['funcionario', 'data']
     
     def __str__(self):
         return f"{self.funcionario.nome_completo} - {self.obra.nome} - {self.data.strftime('%d/%m/%Y')}"
@@ -136,6 +190,13 @@ class ApontamentoFuncionario(models.Model):
         if not self.valor_diaria:
             self.valor_diaria = self.funcionario.valor_diaria
         super().save(*args, **kwargs)
+    
+    @property
+    def valor_proporcional(self):
+        """Calcula valor proporcional baseado nas horas trabalhadas (base 8h)"""
+        if self.horas_trabalhadas and self.valor_diaria:
+            return (self.valor_diaria * self.horas_trabalhadas / Decimal('8.0')).quantize(Decimal('0.01'))
+        return self.valor_diaria
 
 
 class FechamentoSemanal(models.Model):
@@ -153,12 +214,22 @@ class FechamentoSemanal(models.Model):
     
     # Totais
     total_dias = models.PositiveIntegerField(default=0, verbose_name="Total de Dias")
+    total_horas = models.DecimalField(
+        max_digits=6,
+        decimal_places=1,
+        default=Decimal('0.0'),
+        verbose_name="Total de Horas"
+    )
     total_valor = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=Decimal('0.00'),
         verbose_name="Total a Pagar (R$)"
     )
+    
+    # Indicadores
+    dias_ociosidade = models.PositiveIntegerField(default=0, verbose_name="Dias com Ociosidade")
+    dias_retrabalho = models.PositiveIntegerField(default=0, verbose_name="Dias com Retrabalho")
     
     # Status
     STATUS_CHOICES = [
@@ -207,10 +278,38 @@ class FechamentoSemanal(models.Model):
         )
         
         self.total_dias = apontamentos.count()
-        self.total_valor = sum(a.valor_diaria for a in apontamentos)
+        self.total_horas = sum(a.horas_trabalhadas for a in apontamentos) or Decimal('0.0')
+        self.total_valor = sum(a.valor_proporcional for a in apontamentos) or Decimal('0.00')
+        self.dias_ociosidade = apontamentos.filter(houve_ociosidade=True).count()
+        self.dias_retrabalho = apontamentos.filter(houve_retrabalho=True).count()
         self.save()
         
         return {
             'dias': self.total_dias,
-            'valor': self.total_valor
+            'horas': self.total_horas,
+            'valor': self.total_valor,
+            'dias_ociosidade': self.dias_ociosidade,
+            'dias_retrabalho': self.dias_retrabalho,
         }
+    
+    def get_apontamentos(self):
+        """Retorna apontamentos do período"""
+        return ApontamentoFuncionario.objects.filter(
+            funcionario=self.funcionario,
+            data__gte=self.data_inicio,
+            data__lte=self.data_fim
+        ).select_related('obra', 'etapa').order_by('data')
+    
+    def get_obras_etapas(self):
+        """Retorna obras e etapas em que o funcionário atuou na semana"""
+        apontamentos = self.get_apontamentos()
+        obras_etapas = {}
+        for a in apontamentos:
+            key = a.obra.nome
+            if key not in obras_etapas:
+                obras_etapas[key] = {'dias': 0, 'horas': Decimal('0.0'), 'etapas': set()}
+            obras_etapas[key]['dias'] += 1
+            obras_etapas[key]['horas'] += a.horas_trabalhadas
+            if a.etapa:
+                obras_etapas[key]['etapas'].add(a.etapa.get_numero_etapa_display())
+        return obras_etapas

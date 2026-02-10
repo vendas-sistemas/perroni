@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Fechamento {{ fechamento.id }}{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 
 {% block content %}
 <div class="container py-4">
@@ -8,26 +8,137 @@
     <div class="col-md-10">
       <div class="card">
         <div class="card-body">
-          <h4 class="card-title mb-3">Fechamento Semanal — {{ fechamento.inicio }} até {{ fechamento.fim }}</h4>
-          <p><strong>Responsável:</strong> {{ fechamento.usuario }}</p>
-          <p><strong>Total Horas:</strong> {{ fechamento.total_horas }}</p>
-          <hr>
-          <h5>Apontamentos</h5>
-          <ul class="list-group mb-3">
-            {% for a in fechamento.apontamentos.all %}
-              <li class="list-group-item">
-                <div class="d-flex justify-content-between">
-                  <div>
-                    <strong>{{ a.funcionario }}</strong> — {{ a.data }} — {{ a.horas }}h
-                    <div class="small text-muted">{{ a.descricao }}</div>
-                  </div>
-                </div>
-              </li>
-            {% empty %}
-              <li class="list-group-item">Nenhum apontamento nessa semana.</li>
-            {% endfor %}
-          </ul>
-          <a href="{% url 'funcionarios:fechamento_list' %}" class="btn btn-secondary">Voltar</a>
+          <h4 class="card-title mb-3">
+            Fechamento Semanal — {{ fechamento.data_inicio|date:"d/m/Y" }} a {{ fechamento.data_fim|date:"d/m/Y" }}
+          </h4>
+
+          <!-- Info -->
+          <div class="row g-2 mb-3">
+            <div class="col-6 col-md-3">
+              <strong>Funcionário:</strong><br>
+              <a href="{% url 'funcionarios:funcionario_historico' fechamento.funcionario.pk %}">{{ fechamento.funcionario.nome_completo }}</a>
+              <br><small class="text-muted">{{ fechamento.funcionario.get_funcao_display }}</small>
+            </div>
+            <div class="col-6 col-md-2">
+              <strong>Status:</strong><br>
+              <span class="badge {% if fechamento.status == 'pago' %}bg-success{% elif fechamento.status == 'fechado' %}bg-primary{% else %}bg-secondary{% endif %}">
+                {{ fechamento.get_status_display }}
+              </span>
+            </div>
+            <div class="col-4 col-md-2">
+              <strong>Dias:</strong><br>
+              <span class="h5">{{ fechamento.total_dias }}</span>
+            </div>
+            <div class="col-4 col-md-2">
+              <strong>Horas:</strong><br>
+              <span class="h5">{{ fechamento.total_horas }}h</span>
+            </div>
+            <div class="col-4 col-md-3">
+              <strong>Total a Pagar:</strong><br>
+              <span class="h4 text-success">R$ {{ fechamento.total_valor }}</span>
+            </div>
+          </div>
+
+          <!-- Indicators -->
+          {% if fechamento.dias_ociosidade or fechamento.dias_retrabalho %}
+          <div class="row g-2 mb-3">
+            {% if fechamento.dias_ociosidade %}
+            <div class="col-6">
+              <div class="alert alert-warning py-2 mb-0">
+                ⚠️ <strong>{{ fechamento.dias_ociosidade }}</strong> dia(s) com ociosidade
+              </div>
+            </div>
+            {% endif %}
+            {% if fechamento.dias_retrabalho %}
+            <div class="col-6">
+              <div class="alert alert-danger py-2 mb-0">
+                ⚠️ <strong>{{ fechamento.dias_retrabalho }}</strong> dia(s) com retrabalho
+              </div>
+            </div>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          <!-- Obras/Etapas -->
+          {% if obras_etapas %}
+          <h5>Obras e Etapas</h5>
+          <div class="table-responsive mb-3">
+            <table class="table table-sm table-bordered">
+              <thead class="table-light">
+                <tr><th>Obra</th><th>Dias</th><th>Horas</th><th>Etapas</th></tr>
+              </thead>
+              <tbody>
+                {% for obra_nome, info in obras_etapas.items %}
+                <tr>
+                  <td>{{ obra_nome }}</td>
+                  <td>{{ info.dias }}</td>
+                  <td>{{ info.horas }}h</td>
+                  <td>
+                    {% for etapa_name in info.etapas %}
+                      <span class="badge bg-info">{{ etapa_name }}</span>
+                    {% endfor %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% endif %}
+
+          <!-- Apontamentos detalhados -->
+          <h5>Apontamentos Detalhados</h5>
+          <div class="table-responsive">
+            <table class="table table-sm table-striped">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Obra</th>
+                  <th>Etapa</th>
+                  <th>Horas</th>
+                  <th>Clima</th>
+                  <th>Valor</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for a in apontamentos %}
+                <tr class="{% if a.houve_retrabalho %}table-danger{% elif a.houve_ociosidade %}table-warning{% endif %}">
+                  <td>{{ a.data|date:"d/m/Y" }}</td>
+                  <td>{{ a.obra.nome }}</td>
+                  <td>{{ a.etapa|default:"-" }}</td>
+                  <td>{{ a.horas_trabalhadas }}h</td>
+                  <td>{% if a.clima == 'sol' %}☀️{% elif a.clima == 'chuva' %}🌧️{% else %}☁️{% endif %}</td>
+                  <td>R$ {{ a.valor_diaria }}</td>
+                  <td>
+                    {% if a.houve_retrabalho %}<span class="badge bg-danger">Retrabalho</span>{% endif %}
+                    {% if a.houve_ociosidade %}<span class="badge bg-warning text-dark">Ocioso</span>{% endif %}
+                    {% if not a.houve_retrabalho and not a.houve_ociosidade %}<span class="badge bg-success">OK</span>{% endif %}
+                  </td>
+                </tr>
+                {% if a.houve_retrabalho %}
+                <tr class="table-danger"><td colspan="7"><small>🔴 Retrabalho: {{ a.motivo_retrabalho }}</small></td></tr>
+                {% endif %}
+                {% if a.houve_ociosidade %}
+                <tr class="table-warning"><td colspan="7"><small>🟡 Ociosidade: {{ a.observacao_ociosidade }}</small></td></tr>
+                {% endif %}
+                {% empty %}
+                <tr><td colspan="7">Nenhum apontamento nesta semana.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          {% if fechamento.observacoes %}
+          <div class="mt-2">
+            <strong>Observações:</strong>
+            <p>{{ fechamento.observacoes }}</p>
+          </div>
+          {% endif %}
+
+          <div class="d-flex gap-2 mt-3">
+            <a href="{% url 'funcionarios:fechamento_list' %}" class="btn btn-secondary">Voltar</a>
+            <a href="{% url 'funcionarios:funcionario_historico' fechamento.funcionario.pk %}" class="btn btn-outline-primary">Ver Calendário</a>
+          </div>
         </div>
       </div>
     </div>

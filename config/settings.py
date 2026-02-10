@@ -82,6 +82,8 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'django.template.context_processors.media',
+                # Recent obras for navbar quick access
+                'apps.obras.context_processors.recent_obras',
             ],
         },
     },

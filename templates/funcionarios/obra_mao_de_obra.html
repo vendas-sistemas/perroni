@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+    <h3>💰 Mão de Obra - {{ obra.nome }}</h3>
+    <a href="{% url 'funcionarios:apontamento_diario' %}?obra={{ obra.pk }}" class="btn btn-sm btn-success">📋 Novo Apontamento</a>
+  </div>
+
+  <!-- Summary -->
+  <div class="row g-2 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card text-center bg-primary text-white">
+        <div class="card-body p-3">
+          <div class="small">Custo Total</div>
+          <div class="h4 mb-0">R$ {{ custo_total }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center">
+        <div class="card-body p-3">
+          <div class="small text-muted">Status</div>
+          <div class="h5 mb-0">{{ obra.get_status_display }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center">
+        <div class="card-body p-3">
+          <div class="small text-muted">Progresso</div>
+          <div class="h5 mb-0">{{ obra.percentual_concluido }}%</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center">
+        <div class="card-body p-3">
+          <div class="small text-muted">Etapas</div>
+          <div class="h5 mb-0">{{ etapas|length }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cost per Etapa -->
+  <h4 class="mb-3">Custos por Etapa</h4>
+  {% for item in custo_por_etapa %}
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>{{ item.etapa.get_numero_etapa_display }}</strong>
+      <div>
+        <span class="badge bg-primary">R$ {{ item.total_valor }}</span>
+        <span class="badge bg-secondary">{{ item.total_dias }} dias</span>
+        <span class="badge bg-info">{{ item.total_horas }}h</span>
+      </div>
+    </div>
+    {% if item.funcionarios %}
+    <div class="card-body p-0">
+      <table class="table table-sm mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Funcionário</th>
+            <th>Função</th>
+            <th>Dias</th>
+            <th>Horas</th>
+            <th>Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in item.funcionarios %}
+          <tr>
+            <td>{{ f.funcionario__nome_completo }}</td>
+            <td><span class="badge bg-secondary">{{ f.funcionario__funcao }}</span></td>
+            <td>{{ f.dias }}</td>
+            <td>{{ f.horas }}h</td>
+            <td>R$ {{ f.valor }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card-body text-muted">Nenhum apontamento nesta etapa.</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <!-- Timeline -->
+  <h4 class="mb-3 mt-4">Timeline - Últimos 30 dias</h4>
+  {% if timeline %}
+  <div class="card">
+    <div class="card-body p-0">
+      {% for data_dia, aps in timeline %}
+      <div class="border-bottom p-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>{{ data_dia|date:"d/m/Y (l)" }}</strong>
+          <span class="badge bg-secondary">{{ aps|length }} funcionário(s)</span>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          {% for ap in aps %}
+          <div class="border rounded p-2 {% if ap.houve_retrabalho %}border-danger{% elif ap.houve_ociosidade %}border-warning{% else %}border-success{% endif %}" style="min-width: 200px;">
+            <div class="fw-bold">{{ ap.funcionario.nome_completo }}</div>
+            <small class="text-muted">{{ ap.funcionario.get_funcao_display }}</small>
+            <div class="small">
+              {% if ap.etapa %}{{ ap.etapa.get_numero_etapa_display }}{% endif %}
+              &middot; {{ ap.horas_trabalhadas }}h
+              &middot; R$ {{ ap.valor_diaria }}
+              {% if ap.clima == 'sol' %}☀️{% elif ap.clima == 'chuva' %}🌧️{% else %}☁️{% endif %}
+            </div>
+            {% if ap.houve_retrabalho %}<div class="small text-danger">⚠️ Retrabalho: {{ ap.motivo_retrabalho|truncatechars:50 }}</div>{% endif %}
+            {% if ap.houve_ociosidade %}<div class="small text-warning">⚠️ Ocioso: {{ ap.observacao_ociosidade|truncatechars:50 }}</div>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-info">Nenhum apontamento nos últimos 30 dias.</div>
+  {% endif %}
+</div>
+{% endblock %}
