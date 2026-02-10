@@ -9,9 +9,50 @@
   </div>
 
   <form class="mb-3" method="get" action="">
-    <div class="input-group">
-      <input type="search" name="q" class="form-control" placeholder="Buscar obras..." value="{{ request.GET.q }}">
-      <button class="btn btn-outline-secondary" type="submit">Buscar</button>
+    <div class="row g-2">
+      <div class="col-md-6">
+        <div class="input-group">
+          <input type="search" name="q" class="form-control" placeholder="Buscar obras pelo nome..." value="{{ filters.q }}">
+          <button class="btn btn-outline-secondary" type="submit">Buscar</button>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="input-group">
+          <input type="search" name="cliente" class="form-control" placeholder="Filtrar por nome do cliente..." value="{{ filters.cliente }}">
+          <input type="search" name="cpf" class="form-control ms-2" placeholder="Buscar por CPF (000.000.000-00)" value="{{ filters.cpf }}">
+          <a href="{% url 'obras:obra_list' %}" class="btn btn-outline-secondary">Limpar</a>
+        </div>
+      </div>
+    </div>
+    <div class="row g-2 mt-2">
+      <div class="col-md-3">
+        <label class="form-label small">Início (de)</label>
+        <input type="date" name="data_inicio_de" class="form-control" value="{{ filters.data_inicio_de }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">Início (até)</label>
+        <input type="date" name="data_inicio_ate" class="form-control" value="{{ filters.data_inicio_ate }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">Término (de)</label>
+        <input type="date" name="data_termino_de" class="form-control" value="{{ filters.data_termino_de }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">Término (até)</label>
+        <input type="date" name="data_termino_ate" class="form-control" value="{{ filters.data_termino_ate }}">
+      </div>
+    </div>
+    <div class="row mt-2">
+      <div class="col-12 d-flex justify-content-end gap-2">
+        <button type="submit" class="btn btn-primary d-flex align-items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search me-2" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <path d="M11 6a5 5 0 1 1-10 0 5 5 0 0 1 10 0z"/>
+            <path d="M12.344 11.742a6 6 0 1 0-1.414 1.414l3.85 3.85 1.414-1.414-3.85-3.85z"/>
+          </svg>
+          Filtrar
+        </button>
+        <a href="{% url 'obras:obra_list' %}" class="btn btn-outline-secondary">Limpar</a>
+      </div>
     </div>
   </form>
 
@@ -20,13 +61,18 @@
       <div class="col-12 col-md-6 col-lg-4">
         <div class="card h-100 shadow-sm">
           {% if obra.get_main_image_url %}
-            <img src="{{ obra.get_main_image_url }}" class="card-img-top" alt="{{ obra.titulo }}">
+            <img src="{{ obra.get_main_image_url }}" class="card-img-top" alt="{{ obra.nome }}">
           {% endif %}
           <div class="card-body d-flex flex-column">
-            <h5 class="card-title">{{ obra.titulo }}</h5>
-            <p class="card-text small text-muted mb-1"><strong>Cliente:</strong> {{ obra.cliente }}</p>
+            <h5 class="card-title">{{ obra.nome }}</h5>
+            <p class="card-text small text-muted mb-1">
+              <strong>Cliente:</strong> {{ obra.cliente_nome }}
+              {% if obra.cliente_cpf %}&middot; <strong>CPF:</strong> {{ obra.cliente_cpf }}{% endif %}
+              &middot; <strong>Obra:</strong> {{ obra.nome }}
+            </p>
             <p class="card-text text-muted mb-2">{{ obra.endereco }}</p>
-            <p class="mb-3 small text-truncate">{{ obra.descricao }}</p>
+            <p class="mb-1 small text-muted"><strong>Início:</strong> {{ obra.data_inicio|date:'d/m/Y' }}{% if obra.data_previsao_termino %} &middot; <strong>Previsão Término:</strong> {{ obra.data_previsao_termino|date:'d/m/Y' }}{% endif %}</p>
+            <p class="mb-3 small text-truncate">{% if obra.descricao %}{{ obra.descricao }}{% endif %}</p>
               <div class="mt-auto">
               <a href="{% url 'obras:obra_etapas' obra.pk %}" class="btn btn-sm btn-outline-primary">Ver etapas</a>
             </div>
@@ -44,13 +90,21 @@
     <nav class="mt-4" aria-label="Pagination">
       <ul class="pagination justify-content-center">
         {% if page_obj.has_previous %}
-          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">Anterior</a></li>
         {% else %}
           <li class="page-item disabled"><span class="page-link">Anterior</span></li>
         {% endif %}
-        <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+
+        {% for num in page_obj.paginator.page_range %}
+          {% if page_obj.number == num %}
+            <li class="page-item active" aria-current="page"><span class="page-link">{{ num }}</span></li>
+          {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item"><a class="page-link" href="?page={{ num }}{% if querystring %}&{{ querystring }}{% endif %}">{{ num }}</a></li>
+          {% endif %}
+        {% endfor %}
+
         {% if page_obj.has_next %}
-          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima</a></li>
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">Próxima</a></li>
         {% else %}
           <li class="page-item disabled"><span class="page-link">Próxima</span></li>
         {% endif %}

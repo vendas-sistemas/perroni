@@ -6,20 +6,60 @@
 <div class="container py-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h3>Ferramentas</h3>
-    <a href="{% url 'ferramentas:ferramenta_create' %}" class="btn btn-primary">Cadastrar Ferramenta</a>
+    <div class="d-flex gap-2">
+      <a href="{% url 'ferramentas:movimentacao_create' %}" class="btn btn-outline-primary">Movimentar Ferramenta</a>
+      <a href="{% url 'ferramentas:conferencia_list' %}" class="btn btn-outline-secondary">Conferências</a>
+      <a href="{% url 'ferramentas:ferramenta_create' %}" class="btn btn-primary">Cadastrar Ferramenta</a>
+    </div>
   </div>
 
   <div class="card">
     <div class="card-body p-0">
+      <div class="p-3">
+        <form method="get" class="row g-2 align-items-center">
+          <div class="col-sm-2">
+            <input name="codigo" value="{{ request.GET.codigo|default:'' }}" placeholder="Código" class="form-control form-control-sm" />
+          </div>
+          <div class="col-sm-3">
+            <input name="nome" value="{{ request.GET.nome|default:'' }}" placeholder="Nome" class="form-control form-control-sm" />
+          </div>
+          <div class="col-sm-2">
+            <select name="categoria" class="form-select form-select-sm">
+              <option value="">Todas Categorias</option>
+              {% for k,v in category_choices %}
+                <option value="{{ k }}" {% if request.GET.categoria == k %}selected{% endif %}>{{ v }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-sm-2">
+            <select name="status" class="form-select form-select-sm">
+              <option value="">Todos Status</option>
+              {% for k,v in status_choices %}
+                <option value="{{ k }}" {% if request.GET.status == k %}selected{% endif %}>{{ v }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-sm-2">
+            <input name="obra" value="{{ request.GET.obra|default:'' }}" placeholder="Obra Atual" class="form-control form-control-sm" />
+          </div>
+          <div class="col-sm-2">
+            <div class="d-flex justify-content-end">
+              <button class="btn btn-sm btn-primary me-2">Filtrar</button>
+              <a href="{{ request.path }}" class="btn btn-sm btn-outline-secondary">Limpar</a>
+            </div>
+          </div>
+        </form>
+      </div>
       <div class="table-responsive">
         <table class="table table-hover mb-0">
           <thead class="table-light">
             <tr>
-              <th>Código</th>
-              <th>Nome</th>
-              <th>Categoria</th>
-              <th>Status</th>
-              <th>Obra Atual</th>
+              {% comment %} build sort links using base_qs passed from view {% endcomment %}
+              <th><a href="?{% if base_qs %}{{ base_qs }}&{% endif %}order=codigo&dir={% if current_order == "codigo" and current_dir == "asc" %}desc{% else %}asc{% endif %}">Código</a></th>
+              <th><a href="?{% if base_qs %}{{ base_qs }}&{% endif %}order=nome&dir={% if current_order == "nome" and current_dir == "asc" %}desc{% else %}asc{% endif %}">Nome</a></th>
+              <th><a href="?{% if base_qs %}{{ base_qs }}&{% endif %}order=categoria&dir={% if current_order == "categoria" and current_dir == "asc" %}desc{% else %}asc{% endif %}">Categoria</a></th>
+              <th><a href="?{% if base_qs %}{{ base_qs }}&{% endif %}order=status&dir={% if current_order == "status" and current_dir == "asc" %}desc{% else %}asc{% endif %}">Status</a></th>
+              <th><a href="?{% if base_qs %}{{ base_qs }}&{% endif %}order=obra&dir={% if current_order == "obra" and current_dir == "asc" %}desc{% else %}asc{% endif %}">Obra Atual</a></th>
               <th class="text-end">Ações</th>
             </tr>
           </thead>
@@ -34,6 +74,7 @@
               <td class="text-end">
                 <a href="{% url 'ferramentas:ferramenta_detail' f.pk %}" class="btn btn-sm btn-outline-primary">Ver</a>
                 <a href="{% url 'ferramentas:ferramenta_update' f.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+                <a href="{% url 'ferramentas:movimentacao_create' %}?f={{ f.pk }}" class="btn btn-sm btn-outline-info">Movimentar</a>
               </td>
             </tr>
             {% empty %}
@@ -43,6 +84,27 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
+      <div class="card-footer">
+        <nav aria-label="pagination">
+          <ul class="pagination justify-content-center mb-0">
+            {% if ferramentas.has_previous %}
+              <li class="page-item"><a class="page-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ ferramentas.previous_page_number }}{% if current_order %}&order={{ current_order }}&dir={{ current_dir }}{% endif %}">Anterior</a></li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+            {% endif %}
+            {% for num in ferramentas.paginator.page_range %}
+              {% if num >= ferramentas.number|add:'-3' and num <= ferramentas.number|add:'3' %}
+                <li class="page-item {% if num == ferramentas.number %}active{% endif %}"><a class="page-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ num }}{% if current_order %}&order={{ current_order }}&dir={{ current_dir }}{% endif %}">{{ num }}</a></li>
+              {% endif %}
+            {% endfor %}
+            {% if ferramentas.has_next %}
+              <li class="page-item"><a class="page-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ ferramentas.next_page_number }}{% if current_order %}&order={{ current_order }}&dir={{ current_dir }}{% endif %}">Próxima</a></li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">Próxima</span></li>
+            {% endif %}
+          </ul>
+        </nav>
       </div>
     </div>
   </div>

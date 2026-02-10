@@ -228,7 +228,7 @@ class ConferenciaFerramenta(models.Model):
         verbose_name="Fiscal"
     )
     
-    data_conferencia = models.DateField(verbose_name="Data da Conferência")
+    data_conferencia = models.DateTimeField(verbose_name="Data e Hora da Conferência")
     
     # Controle
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")

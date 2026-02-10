@@ -20,7 +20,7 @@ class RegistroFiscalizacao(models.Model):
         verbose_name="Fiscal"
     )
     
-    data_fiscalizacao = models.DateField(verbose_name="Data da Fiscalização")
+    data_fiscalizacao = models.DateTimeField(verbose_name="Data da Fiscalização")
     
     # Condições da obra
     CLIMA_CHOICES = [
@@ -90,7 +90,6 @@ class RegistroFiscalizacao(models.Model):
         verbose_name = "Registro de Fiscalização"
         verbose_name_plural = "Registros de Fiscalização"
         ordering = ['-data_fiscalizacao', '-created_at']
-        unique_together = ['obra', 'data_fiscalizacao']
     
     def __str__(self):
         return f"{self.obra.nome} - {self.data_fiscalizacao.strftime('%d/%m/%Y')}"

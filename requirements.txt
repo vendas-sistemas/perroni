@@ -10,7 +10,7 @@ djangorestframework==3.14.0
 
 # Forms
 django-crispy-forms==2.1
-crispy-bootstrap5==2.0.0
+crispy-bootstrap5==2025.6
 
 # Images
 Pillow==10.2.0

@@ -14,5 +14,13 @@ class ClienteForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
-            if 'class' not in field.widget.attrs:
-                field.widget.attrs['class'] = 'form-control'
+            # Boolean fields (checkbox) should use Bootstrap checkbox class
+            if isinstance(field, forms.BooleanField):
+                field.widget.attrs.setdefault('class', 'form-check-input')
+            else:
+                field.widget.attrs.setdefault('class', 'form-control')
+
+        # Em formulários de criação, marcar 'ativo' como True por padrão
+        if not getattr(self.instance, 'pk', None):
+            if 'ativo' in self.fields:
+                self.fields['ativo'].initial = True

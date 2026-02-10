@@ -12,4 +12,6 @@ urlpatterns = [
     path('apontamentos/', views.apontamento_list, name='apontamento_list'),
     path('apontamentos/criar/', views.apontamento_create, name='apontamento_create'),
     path('fechamentos/', views.fechamento_list, name='fechamento_list'),
+    path('fechamentos/criar/', views.fechamento_create, name='fechamento_create'),
+    path('fechamentos/<int:pk>/', views.fechamento_detail, name='fechamento_detail'),
 ]

@@ -6,10 +6,10 @@
   <div class="mb-3 d-flex justify-content-between align-items-start">
     <div>
       <h1 class="h4">Fiscalização - {{ fiscalizacao.obra.nome }}</h1>
-      <p class="text-muted mb-0">{{ fiscalizacao.data_fiscalizacao }}</p>
+      <p class="text-muted mb-0">Criado em: {{ fiscalizacao.created_at|date:'d/m/Y H:i' }}</p>
     </div>
     <div>
-      <a href="{% url 'fiscalizacao:fiscalizacao_update' fiscalizacao.pk %}" class="btn btn-outline-secondary btn-sm">Editar</a>
+      <!-- Edit removed: editing is disabled from the UI -->
     </div>
   </div>
 
@@ -63,8 +63,7 @@
         <div class="card-body small text-muted">
           <p><strong>Obra:</strong> <a href="{% url 'obras:obra_detail' fiscalizacao.obra.pk %}">{{ fiscalizacao.obra.nome }}</a></p>
           <p><strong>Fiscal:</strong> {{ fiscalizacao.fiscal.get_full_name|default:fiscalizacao.fiscal.username }}</p>
-          <p><strong>Data:</strong> {{ fiscalizacao.data_fiscalizacao }}</p>
-          <p><strong>Criado em:</strong> {{ fiscalizacao.created_at }}</p>
+          <p><strong>Criado em:</strong> {{ fiscalizacao.created_at|date:'d/m/Y H:i' }}</p>
         </div>
       </div>
     </aside>

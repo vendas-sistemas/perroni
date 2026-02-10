@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Conferências{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Conferências</h3>
+    <a href="{% url 'ferramentas:conferencia_create' %}" class="btn btn-primary">Nova Conferência</a>
+  </div>
+  <div class="card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Obra</th>
+              <th>Cliente</th>
+              <th>Fiscal</th>
+              <th>Data</th>
+              <th class="text-end">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in conferencias %}
+            <tr>
+              <td>{{ c.obra.nome }}</td>
+              <td>{{ c.obra.cliente }}</td>
+              <td>{{ c.fiscal.get_full_name|default:c.fiscal.username }}</td>
+              <td><a href="{% url 'ferramentas:conferencia_detail' c.pk %}">{{ c.data_conferencia|date:"d/m/Y H:i" }}</a></td>
+              <td class="text-end">
+                <a href="{% url 'ferramentas:conferencia_detail' c.pk %}" class="btn btn-sm btn-outline-primary">Ver</a>
+                <a href="{% url 'ferramentas:itemconferencia_create' c.pk %}" class="btn btn-sm btn-outline-secondary ms-2">Editar Itens</a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="text-center">Nenhuma conferência encontrada.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

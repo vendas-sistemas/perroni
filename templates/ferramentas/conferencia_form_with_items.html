@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row">
+    <div class="col-md-10 offset-md-1">
+      <div class="card">
+        <div class="card-body">
+          <h4 class="card-title mb-3">{{ title }}</h4>
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+              {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+              {% endif %}
+              {% for field in form %}
+                <div class="mb-3">
+                  {{ field.label_tag }}
+                  {{ field }}
+                  {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                  {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                </div>
+              {% endfor %}
+            </div>
+
+            <hr />
+            <h5>Itens da Conferência</h5>
+            {{ formset.management_form }}
+            {% if formset.non_form_errors %}
+              <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+            {% endif %}
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Ferramenta</th>
+                    <th>Status</th>
+                    <th>Observações</th>
+                    <th>Excluir</th>
+                    <th>Erros</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for f in formset.forms %}
+                  <tr>
+                    <td>
+                      {% for h in f.hidden_fields %}{{ h }}{% endfor %}
+                      {% if f.ferramenta %}{{ f.ferramenta }}{% endif %}
+                    </td>
+                    <td>
+                      {% if f.status %}{{ f.status }}{% endif %}
+                    </td>
+                    <td>
+                      {% if f.observacoes %}{{ f.observacoes }}{% endif %}
+                    </td>
+                    <td>
+                      {% if f.DELETE %}{{ f.DELETE }}{% endif %}
+                    </td>
+                    <td>
+                      {% if f.errors %}
+                        <div class="text-danger small">{{ f.errors }}</div>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <div class="mb-3">
+              <button id="add-row" type="button" class="btn btn-sm btn-outline-success">Adicionar Linha</button>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary" type="submit">Salvar Tudo</button>
+              <a href="{% url 'ferramentas:conferencia_list' %}" class="btn btn-secondary">Voltar</a>
+            </div>
+          </form>
+
+          <!-- hidden template for empty form (use to clone new rows) -->
+          <table style="display:none">
+            <tbody id="empty-form-row">
+              <tr>
+                <td>
+                  {% for h in formset.empty_form.hidden_fields %}{{ h }}{% endfor %}
+                  {% for vf in formset.empty_form.visible_fields %}
+                    {% if vf.name == 'ferramenta' %}{{ vf }}{% endif %}
+                  {% endfor %}
+                </td>
+                <td>
+                  {% for vf in formset.empty_form.visible_fields %}
+                    {% if vf.name == 'status' %}{{ vf }}{% endif %}
+                  {% endfor %}
+                </td>
+                <td>
+                  {% for vf in formset.empty_form.visible_fields %}
+                    {% if vf.name == 'observacoes' %}{{ vf }}{% endif %}
+                  {% endfor %}
+                </td>
+                <td>{% for vf in formset.empty_form.visible_fields %}{% if vf.name == 'DELETE' %}{{ vf }}{% endif %}{% endfor %}</td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <script>
+            (function(){
+              const addBtn = document.getElementById('add-row');
+              if(!addBtn) return;
+              addBtn.addEventListener('click', function(){
+                const totalInput = document.querySelector("input[name$='TOTAL_FORMS']");
+                const total = parseInt(totalInput.value, 10);
+                const tmpl = document.getElementById('empty-form-row').innerHTML;
+                const newRowHtml = tmpl.replace(/__prefix__/g, total);
+                const tbody = document.querySelector('table.table-sm tbody');
+                tbody.insertAdjacentHTML('beforeend', newRowHtml);
+                totalInput.value = total + 1;
+              });
+            })();
+          </script>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -114,11 +114,11 @@ class ObraForm(forms.ModelForm):
     )
 
     def save(self, commit=True):
-        # Pop the cliente from cleaned_data to avoid ModelForm attempting to assign the Cliente instance
-        selected = self.cleaned_data.pop('cliente', None)
+        # Assign the selected Cliente instance to the Obra.cliente FK
+        selected = self.cleaned_data.get('cliente')
         instance = super().save(commit=False)
         if selected:
-            instance.cliente = selected.nome
+            instance.cliente = selected
         if commit:
             instance.save()
         return instance

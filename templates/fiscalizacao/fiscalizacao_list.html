@@ -21,11 +21,21 @@
         <div class="card h-100 shadow-sm">
           <div class="card-body d-flex flex-column">
             <h5 class="card-title">{{ f.obra.nome }}</h5>
-            <p class="card-text small text-muted">Fiscal: {{ f.fiscal.get_full_name|default:f.fiscal.username }} • {{ f.data_fiscalizacao }}</p>
+            <p class="card-text small text-muted mb-1">
+              <strong>Fiscal:</strong> {{ f.fiscal.get_full_name|default:f.fiscal.username }}
+            </p>
+            {% if f.obra.cliente %}
+              <p class="mb-1">
+                <strong>Cliente:</strong> {{ f.obra.cliente.nome }}
+                {% if f.obra.cliente.cpf %}
+                  <span class="badge bg-secondary ms-2 small">CPF: {{ f.obra.cliente.cpf }}</span>
+                {% endif %}
+              </p>
+            {% endif %}
+            <p class="card-text text-muted small">Criado em: {{ f.created_at|date:'d/m/Y H:i' }}</p>
             <p class="mb-3 text-truncate">{{ f.observacoes }}</p>
-            <div class="mt-auto d-flex gap-2">
+            <div class="mt-auto">
               <a href="{% url 'fiscalizacao:fiscalizacao_detail' f.pk %}" class="btn btn-sm btn-outline-primary">Ver</a>
-              <a href="{% url 'fiscalizacao:fiscalizacao_update' f.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
             </div>
           </div>
         </div>
@@ -41,13 +51,13 @@
     <nav class="mt-4" aria-label="Pagination">
       <ul class="pagination justify-content-center">
         {% if page_obj.has_previous %}
-          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">Anterior</a></li>
         {% else %}
           <li class="page-item disabled"><span class="page-link">Anterior</span></li>
         {% endif %}
         <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
         {% if page_obj.has_next %}
-          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima</a></li>
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">Próxima</a></li>
         {% else %}
           <li class="page-item disabled"><span class="page-link">Próxima</span></li>
         {% endif %}

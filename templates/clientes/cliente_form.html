@@ -12,12 +12,21 @@
           <form method="post">
             {% csrf_token %}
             {% for field in form %}
-              <div class="mb-3">
-                {{ field.label_tag }}
-                {{ field }}
-                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-                {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-              </div>
+              {% if field.name == 'ativo' %}
+                <div class="form-check mb-3">
+                  {{ field }}
+                  <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                  {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                  {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                </div>
+              {% else %}
+                <div class="mb-3">
+                  {{ field.label_tag }}
+                  {{ field }}
+                  {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                  {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                </div>
+              {% endif %}
             {% endfor %}
             <div class="d-flex gap-2">
               <button class="btn btn-primary" type="submit">Salvar</button>
@@ -29,4 +38,39 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Reuse same masks as cliente_list
+function maskCPF(v){
+  v=v.replace(/\D/g,'');
+  v=v.replace(/(\d{3})(\d)/,'$1.$2');
+  v=v.replace(/(\d{3})(\d)/,'$1.$2');
+  v=v.replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+  return v;
+}
+function maskPhone(v){
+  v=v.replace(/\D/g,'');
+  if(v.length>10){
+    v=v.replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3');
+  } else if(v.length>6){
+    v=v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');
+  } else if(v.length>2){
+    v=v.replace(/(\d{2})(\d+)/,'($1) $2');
+  }
+  return v;
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  var cpfInput = document.querySelector('input[name="cpf"]');
+  var telInput = document.querySelector('input[name="telefone"]');
+  if(cpfInput){
+    cpfInput.addEventListener('input', function(e){ this.value = maskCPF(this.value); });
+  }
+  if(telInput){
+    telInput.addEventListener('input', function(e){ this.value = maskPhone(this.value); });
+  }
+});
+</script>
 {% endblock %}

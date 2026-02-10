@@ -3,12 +3,57 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import Cliente
 from .forms import ClienteForm
+from django.core.paginator import Paginator
 
 
 @login_required
 def cliente_list(request):
-    clientes = Cliente.objects.filter(ativo=True).order_by('nome')
-    return render(request, 'clientes/cliente_list.html', {'clientes': clientes, 'title': 'Clientes'})
+    qs = Cliente.objects.filter(ativo=True)
+
+    # filters
+    nome = request.GET.get('nome')
+    cpf = request.GET.get('cpf')
+    telefone = request.GET.get('telefone')
+    email = request.GET.get('email')
+
+    if nome:
+        qs = qs.filter(nome__icontains=nome)
+    if cpf:
+        qs = qs.filter(cpf__icontains=cpf)
+    if telefone:
+        qs = qs.filter(telefone__icontains=telefone)
+    if email:
+        qs = qs.filter(email__icontains=email)
+
+    clientes_qs = qs.order_by('nome')
+
+    # pagination
+    per_page = 25
+    paginator = Paginator(clientes_qs, per_page)
+    page = request.GET.get('page')
+    page_obj = paginator.get_page(page)
+
+    # build querystring without page to preserve filters when paginating
+    params = request.GET.copy()
+    if 'page' in params:
+        params.pop('page')
+    querystring = params.urlencode()
+
+    context = {
+        'clientes': page_obj.object_list,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'paginator': paginator,
+        'querystring': querystring,
+        'title': 'Clientes',
+        'filters': {
+            'nome': nome or '',
+            'cpf': cpf or '',
+            'telefone': telefone or '',
+            'email': email or '',
+        }
+    }
+    return render(request, 'clientes/cliente_list.html', context)
 
 
 @login_required

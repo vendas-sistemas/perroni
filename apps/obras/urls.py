@@ -9,7 +9,6 @@ urlpatterns = [
     path('criar/', views.obra_create, name='obra_create'),
     path('<int:pk>/editar/', views.obra_update, name='obra_update'),
     path('<int:pk>/etapas/', views.obra_etapas, name='obra_etapas'),
-    path('<int:pk>/etapas/inicializar/', views.obra_inicializar_detalhes, name='obra_inicializar_detalhes'),
     path('etapa/<int:pk>/', views.etapa_detail, name='etapa_detail'),
     path('etapa/<int:pk>/fundacao/', views.etapa1_detail, name='etapa1_detail'),
     path('etapa/<int:pk>/estrutura/', views.etapa2_detail, name='etapa2_detail'),

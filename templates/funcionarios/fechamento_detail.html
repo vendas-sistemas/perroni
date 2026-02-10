@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Fechamento {{ fechamento.id }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-10">
+      <div class="card">
+        <div class="card-body">
+          <h4 class="card-title mb-3">Fechamento Semanal — {{ fechamento.inicio }} até {{ fechamento.fim }}</h4>
+          <p><strong>Responsável:</strong> {{ fechamento.usuario }}</p>
+          <p><strong>Total Horas:</strong> {{ fechamento.total_horas }}</p>
+          <hr>
+          <h5>Apontamentos</h5>
+          <ul class="list-group mb-3">
+            {% for a in fechamento.apontamentos.all %}
+              <li class="list-group-item">
+                <div class="d-flex justify-content-between">
+                  <div>
+                    <strong>{{ a.funcionario }}</strong> — {{ a.data }} — {{ a.horas }}h
+                    <div class="small text-muted">{{ a.descricao }}</div>
+                  </div>
+                </div>
+              </li>
+            {% empty %}
+              <li class="list-group-item">Nenhum apontamento nessa semana.</li>
+            {% endfor %}
+          </ul>
+          <a href="{% url 'funcionarios:fechamento_list' %}" class="btn btn-secondary">Voltar</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

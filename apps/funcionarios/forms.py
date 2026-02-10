@@ -1,5 +1,42 @@
 from django import forms
 from .models import Funcionario
+from .models import ApontamentoFuncionario, FechamentoSemanal
+import datetime
+
+
+class ApontamentoForm(forms.ModelForm):
+    class Meta:
+        model = ApontamentoFuncionario
+        fields = ['funcionario', 'obra', 'data', 'valor_diaria', 'observacoes']
+        widgets = {
+            'data': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'valor_diaria': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'funcionario': forms.Select(attrs={'class': 'form-select'}),
+            'obra': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # default date to today
+        if not self.instance.pk and not self.initial.get('data'):
+            self.fields['data'].initial = datetime.date.today()
+
+
+class FechamentoForm(forms.ModelForm):
+    class Meta:
+        model = FechamentoSemanal
+        fields = ['funcionario', 'data_inicio', 'observacoes']
+        widgets = {
+            'data_inicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'funcionario': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk and not self.initial.get('data_inicio'):
+            self.fields['data_inicio'].initial = datetime.date.today()
 
 
 class FuncionarioForm(forms.ModelForm):

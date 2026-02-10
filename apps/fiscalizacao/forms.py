@@ -2,6 +2,8 @@ from django import forms
 from django.forms.widgets import ClearableFileInput
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Field, Submit, Row, Column
+from django.utils import timezone
+import datetime
 
 from .models import RegistroFiscalizacao, FotoFiscalizacao
 
@@ -23,8 +25,8 @@ class RegistroFiscalizacaoForm(forms.ModelForm):
             'accept': 'image/*',
             'capture': 'environment'
         }),
-        required=True,
-        help_text='Envie pelo menos 6 fotos (até 10). Use a câmera do celular para fotos diretas.'
+        required=False,
+        help_text='(Opcional) Envie até 10 fotos. Use a câmera do celular para fotos diretas.'
     )
 
     class Meta:
@@ -75,9 +77,6 @@ class RegistroFiscalizacaoForm(forms.ModelForm):
             # Fallback: no files available
             files = []
 
-        if not files or len(files) < 6:
-            raise forms.ValidationError('É necessário enviar pelo menos 6 fotos.')
-
         # Optional: limit max files
         if len(files) > 10:
             raise forms.ValidationError('Envie no máximo 10 fotos.')
@@ -105,6 +104,18 @@ class RegistroFiscalizacaoForm(forms.ModelForm):
 
         - `files` optional list of uploaded files; if None, will use self.files.
         """
+        # Ensure data_fiscalizacao includes current time when user provided only a date
+        df = self.cleaned_data.get('data_fiscalizacao')
+        if df is not None:
+            # If a date was provided without time, combine with current time
+            if isinstance(df, datetime.date) and not isinstance(df, datetime.datetime):
+                now = timezone.localtime()
+                combined = datetime.datetime.combine(df, now.timetz())
+                # set timezone-aware datetime if settings use timezone
+                if timezone.is_naive(combined):
+                    combined = timezone.make_aware(combined, timezone.get_current_timezone())
+                self.instance.data_fiscalizacao = combined
+
         instance = super().save(commit=commit)
 
         # Determine files to save
@@ -121,5 +132,17 @@ class RegistroFiscalizacaoForm(forms.ModelForm):
                 foto=f,
                 ordem=idx + 1
             )
+
+        # Ensure data_fiscalizacao matches the created timestamp so multiple
+        # fiscalizações can exist for the same obra on the same day but at
+        # different times. `created_at` is set by auto_now_add on save, so
+        # after saving we copy it into `data_fiscalizacao` for exact match.
+        if commit:
+            try:
+                instance.data_fiscalizacao = instance.created_at
+                instance.save(update_fields=['data_fiscalizacao'])
+            except Exception:
+                # If for any reason copying fails, ignore and keep existing value
+                pass
 
         return instance

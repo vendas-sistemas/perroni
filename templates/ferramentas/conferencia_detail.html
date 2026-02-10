@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h3 class="mb-0">Conferência - {{ conferencia.obra.nome }}</h3>
+      <p class="small text-muted mb-0">Fiscal: {{ conferencia.fiscal.get_full_name|default:conferencia.fiscal.username }}</p>
+      <p class="small text-muted mb-0">Data/Hora: {{ conferencia.data_conferencia|date:"d/m/Y H:i" }}</p>
+    </div>
+    <div>
+      <a href="{% url 'ferramentas:conferencia_list' %}" class="btn btn-secondary">Voltar</a>
+      <a href="{% url 'ferramentas:itemconferencia_create' conferencia.pk %}" class="btn btn-sm btn-outline-primary ms-2">Editar Itens</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <h5>Itens da Conferência</h5>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Ferramenta</th>
+              <th>Status</th>
+              <th>Observações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for it in itens %}
+            <tr>
+              <td>{{ it.ferramenta }}</td>
+              <td>{{ it.get_status_display }}</td>
+              <td>{{ it.observacoes|default:'-' }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center">Nenhum item registrado.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

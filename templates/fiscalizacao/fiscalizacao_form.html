@@ -7,37 +7,57 @@
 {% block content %}
   <div class="mb-3">
     <h1 class="h4">{{ title }}</h1>
-    <p class="text-muted">Preencha os dados e tire fotos diretamente do celular se necessário.</p>
+    <p class="text-muted">Preencha os dados. As fotos são opcionais — envie até 10 imagens se desejar.</p>
   </div>
 
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
 
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger">
+        <ul class="mb-0">
+          {% for e in form.non_field_errors %}
+            <li>{{ e }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
     <div class="row g-3">
       <div class="col-12 col-md-6">{# obra #}
         <label class="form-label">Obra</label>
         {{ form.obra }}
-        {{ form.obra.errors }}
+        {% for e in form.obra.errors %}
+          <div class="invalid-feedback d-block">{{ e }}</div>
+        {% endfor %}
       </div>
       <div class="col-12 col-md-6">{# fiscal #}
         <label class="form-label">Fiscal</label>
         {{ form.fiscal }}
-        {{ form.fiscal.errors }}
+        {% for e in form.fiscal.errors %}
+          <div class="invalid-feedback d-block">{{ e }}</div>
+        {% endfor %}
       </div>
       <div class="col-12 col-md-4">
         <label class="form-label">Data</label>
         {{ form.data_fiscalizacao }}
-        {{ form.data_fiscalizacao.errors }}
+        {% for e in form.data_fiscalizacao.errors %}
+          <div class="invalid-feedback d-block">{{ e }}</div>
+        {% endfor %}
       </div>
       <div class="col-6 col-md-4">
         <label class="form-label">Clima</label>
         {{ form.clima }}
-        {{ form.clima.errors }}
+        {% for e in form.clima.errors %}
+          <div class="invalid-feedback d-block">{{ e }}</div>
+        {% endfor %}
       </div>
       <div class="col-6 col-md-4">
         <label class="form-label">Lixo</label>
         {{ form.lixo }}
-        {{ form.lixo.errors }}
+        {% for e in form.lixo.errors %}
+          <div class="invalid-feedback d-block">{{ e }}</div>
+        {% endfor %}
       </div>
 
       <div class="col-12">
@@ -50,24 +70,35 @@
           {{ form.houve_ociosidade }} <label class="form-check-label ms-2">Houve ociosidade</label>
         </div>
         {{ form.observacao_ociosidade }}
+        {% for e in form.observacao_ociosidade.errors %}
+          <div class="invalid-feedback d-block">{{ e }}</div>
+        {% endfor %}
       </div>
       <div class="col-12">
         <div class="form-check">
           {{ form.houve_retrabalho }} <label class="form-check-label ms-2">Houve retrabalho</label>
         </div>
         {{ form.motivo_retrabalho }}
+        {% for e in form.motivo_retrabalho.errors %}
+          <div class="invalid-feedback d-block">{{ e }}</div>
+        {% endfor %}
       </div>
 
       <div class="col-12">
         <label class="form-label">Observações</label>
         {{ form.observacoes }}
+        {% for e in form.observacoes.errors %}
+          <div class="invalid-feedback d-block">{{ e }}</div>
+        {% endfor %}
       </div>
 
       <div class="col-12">
-        <label class="form-label">Fotos (mínimo 6)</label>
+        <label class="form-label">Fotos (opcional)</label>
         {{ form.fotos }}
-        {{ form.fotos.errors }}
-        <div class="form-text">Use a câmera do celular para fotos diretas. Permita até 10 imagens.</div>
+        {% for e in form.fotos.errors %}
+          <div class="invalid-feedback d-block">{{ e }}</div>
+        {% endfor %}
+        <div class="form-text">(Opcional) Use a câmera do celular para fotos diretas. Envie no máximo 10 imagens.</div>
       </div>
 
       <div class="col-12">
@@ -76,19 +107,6 @@
     </div>
   </form>
 
-  <script>
-    // UI-side check for minimum photos (helps UX, server still validates)
-    (function(){
-      const fotosInput = document.querySelector('input[type=file][name="fotos"]');
-      if(!fotosInput) return;
-      const form = fotosInput.closest('form');
-      form.addEventListener('submit', function(e){
-        if(fotosInput.files.length < 6){
-          e.preventDefault();
-          alert('Por favor envie pelo menos 6 fotos.');
-        }
-      });
-    })();
-  </script>
+  <!-- fotos are optional now; client-side enforcement removed -->
 
 {% endblock %}

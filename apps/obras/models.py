@@ -9,7 +9,13 @@ class Obra(models.Model):
     # Informações básicas
     nome = models.CharField(max_length=200, verbose_name="Nome da Obra")
     endereco = models.TextField(verbose_name="Endereço")
-    cliente = models.CharField(max_length=200, verbose_name="Cliente")
+    cliente = models.ForeignKey(
+        'clientes.Cliente',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Cliente"
+    )
     data_inicio = models.DateField(verbose_name="Data de Início")
     data_previsao_termino = models.DateField(
         verbose_name="Previsão de Término",
