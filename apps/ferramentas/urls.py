@@ -1,0 +1,14 @@
+from django.urls import path
+from . import views
+
+app_name = 'ferramentas'
+
+urlpatterns = [
+    path('', views.ferramenta_list, name='ferramenta_list'),
+    path('<int:pk>/', views.ferramenta_detail, name='ferramenta_detail'),
+    path('<int:pk>/editar/', views.ferramenta_update, name='ferramenta_update'),
+    path('criar/', views.ferramenta_create, name='ferramenta_create'),
+    path('movimentar/', views.movimentacao_create, name='movimentacao_create'),
+    path('conferencia/', views.conferencia_list, name='conferencia_list'),
+    path('conferencia/criar/', views.conferencia_create, name='conferencia_create'),
+]

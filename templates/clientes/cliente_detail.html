@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ cliente.nome }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row">
+    <div class="col-md-8 offset-md-2">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="card-title">{{ cliente.nome }}</h4>
+            <div>
+              <a href="{% url 'clientes:cliente_list' %}" class="btn btn-sm btn-outline-secondary">Voltar</a>
+              <a href="{% url 'clientes:cliente_update' cliente.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>
+            </div>
+          </div>
+
+          <table class="table table-borderless">
+            <tbody>
+              <tr>
+                <th>CPF</th>
+                <td>{{ cliente.cpf }}</td>
+              </tr>
+              <tr>
+                <th>Endereço</th>
+                <td>{{ cliente.endereco|default:'-' }}</td>
+              </tr>
+              <tr>
+                <th>Data Nascimento</th>
+                <td>{{ cliente.data_nascimento|date:'d/m/Y'|default:'-' }}</td>
+              </tr>
+              <tr>
+                <th>Telefone</th>
+                <td>{{ cliente.telefone|default:'-' }}</td>
+              </tr>
+              <tr>
+                <th>E-mail</th>
+                <td>{{ cliente.email|default:'-' }}</td>
+              </tr>
+              <tr>
+                <th>Ativo</th>
+                <td>{% if cliente.ativo %}Sim{% else %}Não{% endif %}</td>
+              </tr>
+            </tbody>
+          </table>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

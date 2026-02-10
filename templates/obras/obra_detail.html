@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ obra.titulo }} — Obra{% endblock %}
+
+{% block content %}
+  <div class="mb-3 d-flex justify-content-between align-items-start">
+    <div>
+      <h1 class="h4">{{ obra.titulo }}</h1>
+      <p class="text-muted mb-0">{{ obra.endereco }}</p>
+    </div>
+    <div>
+      <a href="{% url 'obras:obra_update' obra.pk %}" class="btn btn-outline-secondary btn-sm">Editar</a>
+      <a href="{% url 'obras:obra_etapas' obra.pk %}" class="btn btn-outline-primary btn-sm ms-2">Etapas</a>
+    </div>
+  </div>
+
+  {% if obra.images.exists %}
+    <div id="obraCarousel" class="carousel slide mb-3" data-bs-ride="carousel">
+      <div class="carousel-inner">
+        {% for img in obra.images.all %}
+          <div class="carousel-item {% if forloop.first %}active{% endif %}">
+            <img src="{{ img.file.url }}" class="d-block w-100" alt="Foto {{ forloop.counter }}">
+          </div>
+        {% endfor %}
+      </div>
+      <button class="carousel-control-prev" type="button" data-bs-target="#obraCarousel" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Anterior</span>
+      </button>
+      <button class="carousel-control-next" type="button" data-bs-target="#obraCarousel" data-bs-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Próxima</span>
+      </button>
+    </div>
+  {% endif %}
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-8">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Descrição</h5>
+          <p class="card-text">{{ obra.descricao|linebreaks }}</p>
+        </div>
+      </div>
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Progresso</h5>
+          <div class="progress">
+            <div class="progress-bar" role="progressbar" style="width: {{ obra.percentual_concluido }}%;" aria-valuenow="{{ obra.percentual_concluido }}" aria-valuemin="0" aria-valuemax="100">{{ obra.percentual_concluido }}%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="col-12 col-lg-4">
+      <div class="card mb-3">
+        <div class="card-body small text-muted">
+          <p><strong>Cliente:</strong> {{ obra.cliente }}</p>
+          <p><strong>Status:</strong> {{ obra.get_status_display }}</p>
+          <p><strong>Início:</strong> {{ obra.data_inicio }}</p>
+          <p><strong>Término previsto:</strong> {{ obra.data_termino_previsto }}</p>
+        </div>
+      </div>
+      <a href="{% url 'fiscalizacao:fiscalizacao_create' %}?obra={{ obra.pk }}" class="btn btn-success w-100 mb-2">Registrar Fiscalização</a>
+    </aside>
+  </div>
+
+{% endblock %}

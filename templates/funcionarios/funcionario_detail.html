@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ funcionario.nome_completo }}{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+      <h1 class="h4">{{ funcionario.nome_completo }}</h1>
+      <p class="text-muted mb-0">{{ funcionario.get_funcao_display }}</p>
+    </div>
+    <div>
+      <a href="{% url 'funcionarios:funcionario_update' funcionario.pk %}" class="btn btn-outline-secondary btn-sm">Editar</a>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-4">
+      <div class="card">
+        <div class="card-body text-center">
+          {% if funcionario.foto %}
+            <img src="{{ funcionario.foto.url }}" class="img-fluid rounded mb-3" alt="Foto de {{ funcionario.nome_completo }}">
+          {% else %}
+            <div class="bg-light border rounded p-5 mb-3">Sem foto</div>
+          {% endif %}
+          <p class="mb-1"><strong>CPF:</strong> {{ funcionario.cpf }}</p>
+          <p class="mb-1"><strong>Telefone:</strong> {{ funcionario.telefone }}</p>
+          {% if funcionario.email %}<p class="mb-1"><strong>E-mail:</strong> {{ funcionario.email }}</p>{% endif %}
+          <p class="mb-1"><strong>Ativo:</strong> {{ funcionario.ativo|yesno:'Sim,Não' }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-8">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Dados Pessoais</h5>
+          <p><strong>Data de Nascimento:</strong> {{ funcionario.data_nascimento }}</p>
+          <p><strong>Endereço:</strong> {{ funcionario.endereco }}, {{ funcionario.cidade }} - {{ funcionario.estado }}, {{ funcionario.cep }}</p>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Contratação</h5>
+          <p><strong>Data de Admissão:</strong> {{ funcionario.data_admissao }}</p>
+          {% if funcionario.data_demissao %}
+            <p><strong>Data de Demissão:</strong> {{ funcionario.data_demissao }}</p>
+            <p><strong>Motivo:</strong> {{ funcionario.motivo_inativacao }}</p>
+          {% endif %}
+          <p><strong>Valor da Diária:</strong> R$ {{ funcionario.valor_diaria }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% endblock %}

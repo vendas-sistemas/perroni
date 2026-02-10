@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Funcionários{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3">Funcionários</h1>
+    <a href="{% url 'funcionarios:funcionario_create' %}" class="btn btn-primary">Novo Funcionário</a>
+  </div>
+
+  <div class="row g-3">
+    {% for f in funcionarios %}
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title">{{ f.nome_completo }}</h5>
+            <p class="card-text small text-muted">{{ f.get_funcao_display }} • CPF: {{ f.cpf }}</p>
+            <div class="mt-auto d-flex gap-2">
+              <a href="{% url 'funcionarios:funcionario_detail' f.pk %}" class="btn btn-sm btn-outline-primary">Ver</a>
+              <a href="{% url 'funcionarios:funcionario_update' f.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="col-12">
+        <div class="alert alert-info">Nenhum funcionário encontrado.</div>
+      </div>
+    {% endfor %}
+  </div>
+
+{% endblock %}

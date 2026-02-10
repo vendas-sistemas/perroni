@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title|default:'Cadastrar Funcionário' }}{% endblock %}
+
+{% block content %}
+  <div class="mb-3">
+    <h1 class="h4">{{ title|default:'Cadastrar Funcionário' }}</h1>
+    <p class="text-muted">Preencha os dados do funcionário.</p>
+  </div>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="row g-3">
+      <div class="col-12">
+        <label class="form-label">Nome Completo</label>
+        {{ form.nome_completo }}
+        {{ form.nome_completo.errors }}
+      </div>
+
+      <div class="col-6 col-md-4">
+        <label class="form-label">CPF</label>
+        {{ form.cpf }}
+        {{ form.cpf.errors }}
+      </div>
+      <div class="col-6 col-md-4">
+        <label class="form-label">RG</label>
+        {{ form.rg }}
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label">Data de Nascimento</label>
+        {{ form.data_nascimento }}
+      </div>
+
+      <div class="col-6 col-md-4">
+        <label class="form-label">Telefone</label>
+        {{ form.telefone }}
+      </div>
+      <div class="col-6 col-md-8">
+        <label class="form-label">E-mail</label>
+        {{ form.email }}
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">Endereço</label>
+        {{ form.endereco }}
+      </div>
+
+      <div class="col-6 col-md-4">
+        <label class="form-label">Cidade</label>
+        {{ form.cidade }}
+      </div>
+      <div class="col-3 col-md-2">
+        <label class="form-label">Estado</label>
+        {{ form.estado }}
+      </div>
+      <div class="col-3 col-md-2">
+        <label class="form-label">CEP</label>
+        {{ form.cep }}
+      </div>
+
+      <div class="col-6 col-md-4">
+        <label class="form-label">Função</label>
+        {{ form.funcao }}
+      </div>
+      <div class="col-6 col-md-4">
+        <label class="form-label">Valor da Diária (R$)</label>
+        {{ form.valor_diaria }}
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label">Foto</label>
+        {{ form.foto }}
+      </div>
+
+      <div class="col-6 col-md-4 d-flex align-items-center">
+        <div class="form-check">
+          {{ form.ativo }} <label class="form-check-label ms-2">Ativo</label>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-4">
+        <label class="form-label">Data de Admissão</label>
+        {{ form.data_admissao }}
+      </div>
+      <div class="col-6 col-md-4">
+        <label class="form-label">Data de Demissão</label>
+        {{ form.data_demissao }}
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">Motivo da Inativação</label>
+        {{ form.motivo_inativacao }}
+      </div>
+
+      <div class="col-12 d-flex gap-2 mt-3">
+        <button class="btn btn-primary">Salvar</button>
+        <a href="{% url 'funcionarios:funcionario_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+      </div>
+    </div>
+  </form>
+
+{% endblock %}

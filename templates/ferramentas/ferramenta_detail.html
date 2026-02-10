@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalhes da Ferramenta{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row">
+    <div class="col-md-8 offset-md-2">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="card-title">{{ ferramenta.nome }}</h4>
+            <div>
+              <a href="{% url 'ferramentas:ferramenta_list' %}" class="btn btn-sm btn-outline-secondary">Voltar</a>
+              <a href="{% url 'ferramentas:ferramenta_update' ferramenta.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>
+            </div>
+          </div>
+
+          {% if ferramenta.foto %}
+            <div class="mb-3 text-center">
+              <img src="{{ ferramenta.foto.url }}" class="img-fluid rounded" style="max-height:300px;" alt="Foto">
+            </div>
+          {% endif %}
+
+          <table class="table table-borderless">
+            <tbody>
+              <tr>
+                <th scope="row">Código</th>
+                <td>{{ ferramenta.codigo }}</td>
+              </tr>
+              <tr>
+                <th scope="row">Nome</th>
+                <td>{{ ferramenta.nome }}</td>
+              </tr>
+              <tr>
+                <th scope="row">Descrição</th>
+                <td>{{ ferramenta.descricao|default:'-' }}</td>
+              </tr>
+              <tr>
+                <th scope="row">Categoria</th>
+                <td>{{ ferramenta.get_categoria_display }}</td>
+              </tr>
+              <tr>
+                <th scope="row">Status</th>
+                <td>{{ ferramenta.get_status_display }}</td>
+              </tr>
+              <tr>
+                <th scope="row">Obra Atual</th>
+                <td>{% if ferramenta.obra_atual %}{{ ferramenta.obra_atual.nome }}{% else %}-{% endif %}</td>
+              </tr>
+              <tr>
+                <th scope="row">Data Aquisição</th>
+                <td>{{ ferramenta.data_aquisicao|date:'d/m/Y'|default:'-' }}</td>
+              </tr>
+              <tr>
+                <th scope="row">Valor Aquisição</th>
+                <td>{% if ferramenta.valor_aquisicao %}R$ {{ ferramenta.valor_aquisicao }}{% else %}-{% endif %}</td>
+              </tr>
+              <tr>
+                <th scope="row">Ativo</th>
+                <td>{% if ferramenta.ativo %}Sim{% else %}Não{% endif %}</td>
+              </tr>
+            </tbody>
+          </table>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

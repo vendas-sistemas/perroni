@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalhe da Etapa{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row">
+    <div class="col-md-8 offset-md-2">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h4 class="card-title">Etapa {{ etapa.numero_etapa }} — {{ etapa.obra.nome }}</h4>
+              <p class="small text-muted mb-0">Cliente: {{ etapa.obra.cliente }}</p>
+            </div>
+            <div>
+              <a href="{% url 'obras:obra_etapas' etapa.obra.pk %}" class="btn btn-sm btn-secondary">Voltar</a>
+              <a href="{% url 'obras:etapa_edit' etapa.pk %}" class="btn btn-sm btn-primary ms-2">Editar Etapa</a>
+            </div>
+          </div>
+
+          <table class="table table-borderless">
+            <tbody>
+              <tr>
+                <th>Obra</th>
+                <td>{{ etapa.obra.nome }}</td>
+              </tr>
+              <tr>
+                <th>Número da Etapa</th>
+                <td>{{ etapa.get_numero_etapa_display }}</td>
+              </tr>
+              <tr>
+                <th>Percentual</th>
+                <td>{{ etapa.percentual_valor }}%</td>
+              </tr>
+              <tr>
+                <th>Data Início</th>
+                <td>{{ etapa.data_inicio|default:'-' }}</td>
+              </tr>
+              <tr>
+                <th>Data Término</th>
+                <td>{{ etapa.data_termino|default:'-' }}</td>
+              </tr>
+              <tr>
+                <th>Concluída</th>
+                <td>{% if etapa.concluida %}Sim{% else %}Não{% endif %}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          {% if detalhe %}
+            <hr/>
+            <h5>Detalhes</h5>
+            <table class="table table-borderless">
+              <tbody>
+                {% if etapa.numero_etapa == 1 %}
+                  <tr><th>Limpeza do Terreno</th><td>{% if detalhe.limpeza_terreno %}Sim{% else %}Não{% endif %}</td></tr>
+                  <tr><th>Instalação Energia/Água</th><td>{% if detalhe.instalacao_energia_agua %}Sim{% else %}Não{% endif %}</td></tr>
+                  <tr><th>Marcação/Escavação (dias)</th><td>{{ detalhe.marcacao_escavacao_dias }}</td></tr>
+                  <tr><th>Locação Ferragem (dias)</th><td>{{ detalhe.locacao_ferragem_dias }}</td></tr>
+                  <tr><th>Alicerce (%)</th><td>{{ detalhe.alicerce_percentual }}%</td></tr>
+                {% elif etapa.numero_etapa == 2 %}
+                  <tr><th>Montagem da Laje (dias)</th><td>{{ detalhe.montagem_laje_dias }}</td></tr>
+                  <tr><th>Platibanda (blocos)</th><td>{{ detalhe.platibanda_blocos }}</td></tr>
+                  <tr><th>Cobertura (dias)</th><td>{{ detalhe.cobertura_dias }}</td></tr>
+                {% elif etapa.numero_etapa == 3 %}
+                  <tr><th>Reboco Externo (m²)</th><td>{{ detalhe.reboco_externo_m2 }}</td></tr>
+                  <tr><th>Reboco Interno (m²)</th><td>{{ detalhe.reboco_interno_m2 }}</td></tr>
+                  <tr><th>Instalação Portais</th><td>{% if detalhe.instalacao_portais %}Sim{% else %}Não{% endif %}</td></tr>
+                  <tr><th>Água Fria</th><td>{% if detalhe.agua_fria %}Sim{% else %}Não{% endif %}</td></tr>
+                {% elif etapa.numero_etapa == 4 %}
+                  <tr><th>Portas e Janelas</th><td>{% if detalhe.portas_janelas %}Sim{% else %}Não{% endif %}</td></tr>
+                  <tr><th>Pintura Externa 1ª Demão (dias)</th><td>{{ detalhe.pintura_externa_1demao_dias }}</td></tr>
+                  <tr><th>Assentamento de Piso (dias)</th><td>{{ detalhe.assentamento_piso_dias }}</td></tr>
+                {% elif etapa.numero_etapa == 5 %}
+                  <tr><th>Pintura Externa 2ª Demão (dias)</th><td>{{ detalhe.pintura_externa_2demao_dias }}</td></tr>
+                  <tr><th>Pintura Interna 2ª Demão (dias)</th><td>{{ detalhe.pintura_interna_2demao_dias }}</td></tr>
+                  <tr><th>Instalação Louças e Metais</th><td>{% if detalhe.loucas_metais %}Sim{% else %}Não{% endif %}</td></tr>
+                  <tr><th>Elétrica</th><td>{% if detalhe.eletrica %}Sim{% else %}Não{% endif %}</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          {% else %}
+            <div class="alert alert-info">Detalhes desta etapa ainda não foram inicializados. <a href="{% url 'obras:obra_inicializar_detalhes' etapa.obra.pk %}">Inicializar agora</a></div>
+          {% endif %}
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

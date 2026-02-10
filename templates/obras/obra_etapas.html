@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Etapas - {{ title|default:'' }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h3 class="mb-0">Etapas - {{ obra.nome }}</h3>
+      <p class="small text-muted mb-0">Cliente: {{ obra.cliente }}</p>
+    </div>
+    <div>
+      <a href="{% url 'obras:obra_detail' obra.pk %}" class="btn btn-secondary">Voltar</a>
+      <a href="{% url 'obras:obra_inicializar_detalhes' obra.pk %}" class="btn btn-sm btn-outline-primary ms-2">Inicializar detalhes</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-striped align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Percentual</th>
+              <th>Data Início</th>
+              <th>Data Término</th>
+              <th>Concluída</th>
+              <th class="text-end">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in etapas %}
+            <tr>
+              <td>{{ e.get_numero_etapa_display }}</td>
+              <td>{{ e.percentual_valor }}%</td>
+              <td>{{ e.data_inicio|default:'-' }}</td>
+              <td>{{ e.data_termino|default:'-' }}</td>
+              <td>{% if e.concluida %}<span class="badge bg-success">Sim</span>{% else %}<span class="badge bg-secondary">Não</span>{% endif %}</td>
+              <td class="text-end">
+                <a href="{% url 'obras:etapa_detail' e.pk %}" class="btn btn-sm btn-outline-primary">Ver</a>
+                {% if e.numero_etapa == 1 %}
+                  <a href="{% url 'obras:etapa1_detail' e.pk %}" class="btn btn-sm btn-outline-secondary">Detalhe</a>
+                {% elif e.numero_etapa == 2 %}
+                  <a href="{% url 'obras:etapa2_detail' e.pk %}" class="btn btn-sm btn-outline-secondary">Detalhe</a>
+                {% elif e.numero_etapa == 3 %}
+                  <a href="{% url 'obras:etapa3_detail' e.pk %}" class="btn btn-sm btn-outline-secondary">Detalhe</a>
+                {% elif e.numero_etapa == 4 %}
+                  <a href="{% url 'obras:etapa4_detail' e.pk %}" class="btn btn-sm btn-outline-secondary">Detalhe</a>
+                {% elif e.numero_etapa == 5 %}
+                  <a href="{% url 'obras:etapa5_detail' e.pk %}" class="btn btn-sm btn-outline-secondary">Detalhe</a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

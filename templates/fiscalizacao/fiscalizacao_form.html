@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+  <div class="mb-3">
+    <h1 class="h4">{{ title }}</h1>
+    <p class="text-muted">Preencha os dados e tire fotos diretamente do celular se necessário.</p>
+  </div>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="row g-3">
+      <div class="col-12 col-md-6">{# obra #}
+        <label class="form-label">Obra</label>
+        {{ form.obra }}
+        {{ form.obra.errors }}
+      </div>
+      <div class="col-12 col-md-6">{# fiscal #}
+        <label class="form-label">Fiscal</label>
+        {{ form.fiscal }}
+        {{ form.fiscal.errors }}
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label">Data</label>
+        {{ form.data_fiscalizacao }}
+        {{ form.data_fiscalizacao.errors }}
+      </div>
+      <div class="col-6 col-md-4">
+        <label class="form-label">Clima</label>
+        {{ form.clima }}
+        {{ form.clima.errors }}
+      </div>
+      <div class="col-6 col-md-4">
+        <label class="form-label">Lixo</label>
+        {{ form.lixo }}
+        {{ form.lixo.errors }}
+      </div>
+
+      <div class="col-12">
+        <div class="form-check">
+          {{ form.placa_instalada }} <label class="form-check-label ms-2">Placa instalada</label>
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="form-check">
+          {{ form.houve_ociosidade }} <label class="form-check-label ms-2">Houve ociosidade</label>
+        </div>
+        {{ form.observacao_ociosidade }}
+      </div>
+      <div class="col-12">
+        <div class="form-check">
+          {{ form.houve_retrabalho }} <label class="form-check-label ms-2">Houve retrabalho</label>
+        </div>
+        {{ form.motivo_retrabalho }}
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">Observações</label>
+        {{ form.observacoes }}
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">Fotos (mínimo 6)</label>
+        {{ form.fotos }}
+        {{ form.fotos.errors }}
+        <div class="form-text">Use a câmera do celular para fotos diretas. Permita até 10 imagens.</div>
+      </div>
+
+      <div class="col-12">
+        <button class="btn btn-primary">Salvar fiscalização</button>
+      </div>
+    </div>
+  </form>
+
+  <script>
+    // UI-side check for minimum photos (helps UX, server still validates)
+    (function(){
+      const fotosInput = document.querySelector('input[type=file][name="fotos"]');
+      if(!fotosInput) return;
+      const form = fotosInput.closest('form');
+      form.addEventListener('submit', function(e){
+        if(fotosInput.files.length < 6){
+          e.preventDefault();
+          alert('Por favor envie pelo menos 6 fotos.');
+        }
+      });
+    })();
+  </script>
+
+{% endblock %}

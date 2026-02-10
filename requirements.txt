@@ -1,0 +1,37 @@
+# Core Django
+Django==5.0.1
+python-decouple==3.8
+
+# Database
+#psycopg2-binary==2.9.9
+
+# REST API
+djangorestframework==3.14.0
+
+# Forms
+django-crispy-forms==2.1
+crispy-bootstrap5==2.0.0
+
+# Images
+Pillow==10.2.0
+
+# Excel/CSV Export
+openpyxl==3.1.2
+pandas==2.2.0
+
+# PDF Generation
+reportlab==4.0.9
+weasyprint==60.2
+
+# Development
+django-debug-toolbar==4.2.0
+
+# Authentication & Security
+django-allauth==0.60.1
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2024.1
+
+# File upload handling
+django-storages==1.14.2

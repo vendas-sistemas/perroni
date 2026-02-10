@@ -1,0 +1,47 @@
+[
+  {
+    "model": "clientes.cliente",
+    "pk": 1,
+    "fields": {
+      "nome": "João da Silva",
+      "cpf": "12345678901",
+      "endereco": "Rua das Flores, 100",
+      "data_nascimento": "1980-05-12",
+      "telefone": "(31) 91234-5678",
+      "email": "joao.silva@example.com",
+      "ativo": true,
+      "created_at": "2024-01-10T09:00:00Z",
+      "updated_at": "2024-01-10T09:00:00Z"
+    }
+  },
+  {
+    "model": "clientes.cliente",
+    "pk": 2,
+    "fields": {
+      "nome": "Mariana Costa",
+      "cpf": "23456789012",
+      "endereco": "Av. Brasil, 200",
+      "data_nascimento": "1992-11-02",
+      "telefone": "(11) 99876-5432",
+      "email": "mariana.costa@example.com",
+      "ativo": true,
+      "created_at": "2024-02-15T09:00:00Z",
+      "updated_at": "2024-02-15T09:00:00Z"
+    }
+  },
+  {
+    "model": "clientes.cliente",
+    "pk": 3,
+    "fields": {
+      "nome": "Carlos Pereira",
+      "cpf": "34567890123",
+      "endereco": "Praça Central, 50",
+      "data_nascimento": "1975-08-20",
+      "telefone": "(21) 93456-7890",
+      "email": "carlos.pereira@example.com",
+      "ativo": true,
+      "created_at": "2023-12-01T09:00:00Z",
+      "updated_at": "2023-12-01T09:00:00Z"
+    }
+  }
+]

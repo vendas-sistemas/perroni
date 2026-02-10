@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Fiscalização — {{ fiscalizacao.obra.nome }}{% endblock %}
+
+{% block content %}
+  <div class="mb-3 d-flex justify-content-between align-items-start">
+    <div>
+      <h1 class="h4">Fiscalização - {{ fiscalizacao.obra.nome }}</h1>
+      <p class="text-muted mb-0">{{ fiscalizacao.data_fiscalizacao }}</p>
+    </div>
+    <div>
+      <a href="{% url 'fiscalizacao:fiscalizacao_update' fiscalizacao.pk %}" class="btn btn-outline-secondary btn-sm">Editar</a>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-8">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Resumo</h5>
+          <p class="card-text">{{ fiscalizacao.observacoes|linebreaks }}</p>
+          <hr>
+          <p><strong>Clima:</strong> {{ fiscalizacao.get_clima_display }}</p>
+          <p><strong>Lixo:</strong> {{ fiscalizacao.get_lixo_display }}</p>
+
+          {% if fiscalizacao.houve_ociosidade %}
+            <div class="mt-2">
+              <p><strong>Ociosidade:</strong> Sim</p>
+              <p class="small text-muted">{{ fiscalizacao.observacao_ociosidade|linebreaks }}</p>
+            </div>
+          {% endif %}
+
+          {% if fiscalizacao.houve_retrabalho %}
+            <div class="mt-2">
+              <p><strong>Retrabalho:</strong> Sim</p>
+              <p class="small text-muted">{{ fiscalizacao.motivo_retrabalho|linebreaks }}</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if fiscalizacao.fotos.all %}
+        <div class="mb-3">
+          <h5 class="h6 mb-2">Fotos</h5>
+          <div class="row g-2">
+            {% for foto in fiscalizacao.fotos.all %}
+              <div class="col-6 col-md-4 col-lg-3">
+                <a href="{{ foto.foto.url }}" target="_blank" class="d-block border rounded overflow-hidden bg-white">
+                  <img src="{{ foto.foto.url }}" class="img-fluid" alt="Foto {{ forloop.counter }}">
+                </a>
+                {% if foto.descricao %}
+                  <small class="text-muted d-block mt-1">{{ foto.descricao }}</small>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <aside class="col-12 col-lg-4">
+      <div class="card mb-3">
+        <div class="card-body small text-muted">
+          <p><strong>Obra:</strong> <a href="{% url 'obras:obra_detail' fiscalizacao.obra.pk %}">{{ fiscalizacao.obra.nome }}</a></p>
+          <p><strong>Fiscal:</strong> {{ fiscalizacao.fiscal.get_full_name|default:fiscalizacao.fiscal.username }}</p>
+          <p><strong>Data:</strong> {{ fiscalizacao.data_fiscalizacao }}</p>
+          <p><strong>Criado em:</strong> {{ fiscalizacao.created_at }}</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+{% endblock %}

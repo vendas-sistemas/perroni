@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Fiscalização de Obras{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-" crossorigin="anonymous">
+    {% block extra_css %}{% endblock %}
+    <style>
+      /* Small helper to make touch targets larger on mobile */
+      .nav-link { padding: .75rem 1rem; }
+    </style>
+  </head>
+  <body class="bg-light">
+    {% url 'login' as login_url %}
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container-fluid">
+          {% if user.is_authenticated %}
+          <a class="navbar-brand" href="/">Fiscalização</a>
+          {% endif %}
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+          {% if user.is_authenticated %}
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item"><a class="nav-link" href="/obras/">Obras</a></li>
+            <li class="nav-item"><a class="nav-link" href="/fiscalizacao/">Fiscalização</a></li>
+            <li class="nav-item"><a class="nav-link" href="/funcionarios/">Funcionários</a></li>
+            <li class="nav-item"><a class="nav-link" href="/ferramentas/">Ferramentas</a></li>
+            <li class="nav-item"><a class="nav-link" href="/analytics/">Analytics</a></li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="clientesMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">Clientes</a>
+              <ul class="dropdown-menu" aria-labelledby="clientesMenu">
+                <li><a class="dropdown-item" href="{% url 'clientes:cliente_list' %}">Lista de Clientes</a></li>
+                <li><a class="dropdown-item" href="{% url 'clientes:cliente_create' %}">Cadastrar Cliente</a></li>
+              </ul>
+            </li>
+          </ul>
+          {% endif %}
+          {# Right-side nav: hide entirely if on login page to keep login screen clean #}
+          {% if request.path != login_url %}
+          <ul class="navbar-nav ms-auto">
+            {% if user.is_authenticated %}
+              <li class="nav-item"><a class="nav-link" href="/admin/">Admin</a></li>
+              <li class="nav-item">
+                <form method="post" action="{% url 'logout' %}" class="d-inline">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-link nav-link" style="text-decoration:none;">Logout</button>
+                </form>
+              </li>
+            {% else %}
+              <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Login</a></li>
+            {% endif %}
+          </ul>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+
+    <main class="container my-4">
+      {% if messages %}
+        <div class="mb-3">
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="" crossorigin="anonymous"></script>
+    {% block extra_js %}{% endblock %}
+  </body>
+</html>
