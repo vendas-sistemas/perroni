@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Funcionario, ApontamentoFuncionario, FechamentoSemanal
+from .models import Funcionario, ApontamentoFuncionario, FechamentoSemanal, UserProfile
 
 
 @admin.register(Funcionario)
@@ -107,3 +107,9 @@ class FechamentoSemanalAdmin(admin.ModelAdmin):
             fechamento.calcular_totais()
         self.message_user(request, f"{queryset.count()} fechamento(s) recalculado(s).")
     calcular_totais_selecionados.short_description = "Recalcular totais"
+
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ['user', 'theme_preference', 'theme_variant', 'updated_at']
+    search_fields = ['user__username', 'user__email']

@@ -6,16 +6,16 @@
 {% block content %}
 <div class="container-fluid py-4">
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-    <h3 class="mb-0">Apontamentos</h3>
+    <h3 class="mb-0">Diárias</h3>
     <div class="d-flex gap-2">
-      <a href="{% url 'funcionarios:apontamento_diario' %}" class="btn btn-sm btn-success">📋 Apontamento Diário</a>
+      <a href="{% url 'funcionarios:apontamento_diario' %}" class="btn btn-sm btn-success">📋 Registro Diário</a>
       <a href="{% url 'funcionarios:apontamento_create' %}" class="btn btn-sm btn-primary">+ Novo Individual</a>
     </div>
   </div>
 
   <!-- Summary cards -->
   {% if totais %}
-  <div class="row g-2 mb-3">
+  <div class="row g-2 mb-3 dashboard-summary">
     <div class="col-6 col-md-2">
       <div class="card text-center">
         <div class="card-body p-2">

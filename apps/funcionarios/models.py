@@ -179,8 +179,8 @@ class ApontamentoFuncionario(models.Model):
         verbose_name = "Apontamento de Funcionário"
         verbose_name_plural = "Apontamentos de Funcionários"
         ordering = ['-data']
-        # Um funcionário não pode ser apontado em mais de uma obra no mesmo dia
-        unique_together = ['funcionario', 'data']
+        # Nota: removido unique_together para permitir múltiplos apontamentos
+        # por funcionário na mesma data (mesma obra pode ter vários registros).
     
     def __str__(self):
         return f"{self.funcionario.nome_completo} - {self.obra.nome} - {self.data.strftime('%d/%m/%Y')}"
@@ -276,11 +276,13 @@ class FechamentoSemanal(models.Model):
             data__lte=self.data_fim
         )
         
-        self.total_dias = apontamentos.count()
+        # Count distinct days (one diária per date), not number of rows
+        self.total_dias = apontamentos.values('data').distinct().count()
         self.total_horas = sum(a.horas_trabalhadas for a in apontamentos) or Decimal('0.0')
         self.total_valor = sum(a.valor_proporcional for a in apontamentos) or Decimal('0.00')
-        self.dias_ociosidade = apontamentos.filter(houve_ociosidade=True).count()
-        self.dias_retrabalho = apontamentos.filter(houve_retrabalho=True).count()
+        # Count distinct dates where there was ociosidade / retrabalho
+        self.dias_ociosidade = apontamentos.filter(houve_ociosidade=True).values('data').distinct().count()
+        self.dias_retrabalho = apontamentos.filter(houve_retrabalho=True).values('data').distinct().count()
         self.save()
         
         return {
@@ -303,12 +305,53 @@ class FechamentoSemanal(models.Model):
         """Retorna obras e etapas em que o funcionário atuou na semana"""
         apontamentos = self.get_apontamentos()
         obras_etapas = {}
+        seen_days = set()  # track (obra, data) to count one diária per day
         for a in apontamentos:
             key = a.obra.nome
             if key not in obras_etapas:
                 obras_etapas[key] = {'dias': 0, 'horas': Decimal('0.0'), 'etapas': set()}
-            obras_etapas[key]['dias'] += 1
-            obras_etapas[key]['horas'] += a.horas_trabalhadas
+            day_key = (key, a.data)
+            if day_key not in seen_days:
+                obras_etapas[key]['dias'] += 1
+                obras_etapas[key]['horas'] += a.horas_trabalhadas
+                seen_days.add(day_key)
             if a.etapa:
                 obras_etapas[key]['etapas'].add(a.etapa.get_numero_etapa_display())
         return obras_etapas
+
+
+# ----------------- User profile for preferences -----------------
+from django.conf import settings
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+
+class UserProfile(models.Model):
+    """Per-user preferences (e.g., theme)."""
+    USER_THEME_CHOICES = [
+        ('light', 'Claro'),
+        ('dark', 'Escuro'),
+    ]
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
+    theme_preference = models.CharField(max_length=10, choices=USER_THEME_CHOICES, default='light')
+    # Theme variant provides alternate palettes for the dark theme
+    THEME_VARIANT_CHOICES = [
+        ('default', 'Padrão'),
+        ('soft', 'Suave'),
+        ('gray', 'Cinza'),
+        ('blue', 'Azulado'),
+    ]
+    theme_variant = models.CharField(max_length=20, choices=THEME_VARIANT_CHOICES, default='default')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Preferences for {self.user.username}"
+
+
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def ensure_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)

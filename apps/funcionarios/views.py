@@ -10,13 +10,162 @@ from django.utils import timezone
 from django.http import JsonResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from urllib.parse import urlencode
-from apps.obras.models import Obra, Etapa
+from apps.obras.models import (
+    Obra, Etapa,
+    Etapa1Fundacao, Etapa2Estrutura, Etapa3Instalacoes,
+    Etapa4Acabamentos, Etapa5Finalizacao,
+)
 from django.db import IntegrityError
 from django.db.models import Sum, Count, Q, Avg, F
 import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from collections import defaultdict
 import calendar
+
+
+# ==================== ETAPA ITEMS HELPERS ====================
+
+# Metadata for fields in each etapa detail model
+ETAPA_FIELDS_META = {
+    1: {
+        'related_name': 'fundacao',
+        'model_class': Etapa1Fundacao,
+        'fields': [
+            ('limpeza_terreno', 'boolean', 'Limpeza do Terreno'),
+            ('instalacao_energia_agua', 'boolean', 'Instalação de Energia e Água'),
+            ('marcacao_escavacao_dias', 'integer', 'Marcação e Escavação (dias)'),
+            ('locacao_ferragem_dias', 'integer', 'Locação de Ferragem (dias)'),
+            ('alicerce_percentual', 'decimal', 'Alicerce, Reboco e Impermeabilização (%)'),
+            ('aterro_contrapiso_dias', 'integer', 'Aterro e Contrapiso (dias)'),
+            ('parede_7fiadas_blocos', 'integer', 'Parede 7 Fiadas (blocos)'),
+            ('fiadas_respaldo_dias', 'integer', '8 Fiadas até Respaldo (dias)'),
+        ]
+    },
+    2: {
+        'related_name': 'estrutura',
+        'model_class': Etapa2Estrutura,
+        'fields': [
+            ('montagem_laje_dias', 'integer', 'Montagem da Laje (dias)'),
+            ('platibanda_blocos', 'integer', 'Platibanda (blocos)'),
+            ('cobertura_dias', 'integer', 'Cobertura Completa (dias)'),
+        ]
+    },
+    3: {
+        'related_name': 'instalacoes',
+        'model_class': Etapa3Instalacoes,
+        'fields': [
+            ('reboco_externo_m2', 'decimal', 'Reboco Externo (m²)'),
+            ('reboco_interno_m2', 'decimal', 'Reboco Interno (m²)'),
+            ('instalacao_portais', 'boolean', 'Instalação de Portais'),
+            ('agua_fria', 'boolean', 'Água Fria'),
+            ('esgoto', 'boolean', 'Esgoto'),
+            ('fluvial', 'boolean', 'Fluvial'),
+        ]
+    },
+    4: {
+        'related_name': 'acabamentos',
+        'model_class': Etapa4Acabamentos,
+        'fields': [
+            ('portas_janelas', 'boolean', 'Portas e Janelas'),
+            ('pintura_externa_1demao_dias', 'integer', 'Pintura Externa 1ª Demão (dias)'),
+            ('pintura_interna_1demao_dias', 'integer', 'Pintura Interna 1ª Demão (dias)'),
+            ('assentamento_piso_dias', 'integer', 'Assentamento de Piso (dias)'),
+        ]
+    },
+    5: {
+        'related_name': 'finalizacao',
+        'model_class': Etapa5Finalizacao,
+        'fields': [
+            ('pintura_externa_2demao_dias', 'integer', 'Pintura Externa 2ª Demão (dias)'),
+            ('pintura_interna_2demao_dias', 'integer', 'Pintura Interna 2ª Demão (dias)'),
+            ('loucas_metais', 'boolean', 'Louças e Metais'),
+            ('eletrica', 'boolean', 'Elétrica'),
+        ]
+    },
+}
+
+
+def _get_etapa_detail_obj(etapa, create=True):
+    """Get (or optionally create) the detail model instance for an etapa."""
+    meta = ETAPA_FIELDS_META.get(etapa.numero_etapa)
+    if not meta:
+        return None
+    model_class = meta['model_class']
+    related = meta['related_name']
+    try:
+        return getattr(etapa, related)
+    except model_class.DoesNotExist:
+        if create:
+            return model_class.objects.create(etapa=etapa)
+        return None
+
+
+def _get_etapa_items(etapa):
+    """Return a list of dicts with field metadata + current values for an etapa."""
+    meta = ETAPA_FIELDS_META.get(etapa.numero_etapa)
+    if not meta:
+        return []
+    detail_obj = _get_etapa_detail_obj(etapa, create=False)
+    items = []
+    for field_name, field_type, label in meta['fields']:
+        current_value = None
+        if detail_obj:
+            current_value = getattr(detail_obj, field_name, None)
+        if current_value is None:
+            current_value = False if field_type == 'boolean' else 0
+        items.append({
+            'name': field_name,
+            'type': field_type,
+            'label': label,
+            'value': str(current_value) if isinstance(current_value, Decimal) else current_value,
+        })
+    return items
+
+
+def _update_etapa_items_from_post(etapa, post_data):
+    """Update etapa detail model fields from POST data and recalculate obra progress."""
+    meta = ETAPA_FIELDS_META.get(etapa.numero_etapa)
+    if not meta:
+        return
+    detail_obj = _get_etapa_detail_obj(etapa, create=True)
+    if not detail_obj:
+        return
+
+    changed = False
+    for field_name, field_type, _ in meta['fields']:
+        key = f'item_{field_name}'
+        if field_type == 'boolean':
+            # Hidden "0" + checkbox "1" pattern
+            val = post_data.get(key, '0')
+            new_val = val in ('1', 'on', 'true', 'True')
+            if getattr(detail_obj, field_name) != new_val:
+                setattr(detail_obj, field_name, new_val)
+                changed = True
+        elif field_type == 'integer':
+            raw = post_data.get(key, '')
+            if raw != '':
+                try:
+                    new_val = int(raw)
+                    if getattr(detail_obj, field_name) != new_val:
+                        setattr(detail_obj, field_name, new_val)
+                        changed = True
+                except (ValueError, TypeError):
+                    pass
+        elif field_type == 'decimal':
+            raw = post_data.get(key, '')
+            if raw != '':
+                try:
+                    new_val = Decimal(raw)
+                    if getattr(detail_obj, field_name) != new_val:
+                        setattr(detail_obj, field_name, new_val)
+                        changed = True
+                except (ValueError, TypeError, InvalidOperation):
+                    pass
+
+    if changed:
+        detail_obj.save()
+        # Recalculate obra overall progress
+        etapa.obra.calcular_percentual()
 
 
 @login_required
@@ -156,13 +305,14 @@ def apontamento_list(request):
     if retrabalho == '1':
         qs = qs.filter(houve_retrabalho=True)
 
-    # Totals for current filter
+    # Totals for current filter (one diária per unique funcionario+date)
     totais = qs.aggregate(
         total_horas=Sum('horas_trabalhadas'),
         total_valor=Sum('valor_diaria'),
         total_registros=Count('id'),
-        total_ociosidade=Count('id', filter=Q(houve_ociosidade=True)),
-        total_retrabalho=Count('id', filter=Q(houve_retrabalho=True)),
+        total_diarias=Count('data', distinct=True),
+        total_ociosidade=Count('data', filter=Q(houve_ociosidade=True), distinct=True),
+        total_retrabalho=Count('data', filter=Q(houve_retrabalho=True), distinct=True),
     )
 
     # Pagination
@@ -203,7 +353,25 @@ def apontamento_create(request):
             ap = form.save(commit=False)
             if not ap.valor_diaria:
                 ap.valor_diaria = ap.funcionario.valor_diaria
-            ap.save()
+            # Update existing entry instead of creating duplicate for same (funcionario, data, obra)
+            existing = ApontamentoFuncionario.objects.filter(
+                funcionario=ap.funcionario, data=ap.data, obra=ap.obra
+            ).first()
+            if existing:
+                existing.etapa = ap.etapa
+                existing.horas_trabalhadas = ap.horas_trabalhadas
+                existing.clima = ap.clima
+                existing.valor_diaria = ap.valor_diaria
+                existing.houve_ociosidade = ap.houve_ociosidade
+                existing.observacao_ociosidade = ap.observacao_ociosidade
+                existing.houve_retrabalho = ap.houve_retrabalho
+                existing.motivo_retrabalho = ap.motivo_retrabalho
+                existing.observacoes = ap.observacoes
+                existing.save()
+                ap = existing
+                messages.info(request, f'Apontamento de {ap.funcionario.nome_completo} atualizado (já existia registro nesta data/obra).')
+            else:
+                ap.save()
             # Notificação de retrabalho/ociosidade
             if ap.houve_retrabalho:
                 messages.warning(request, f'⚠️ RETRABALHO registrado para {ap.funcionario.nome_completo}.')
@@ -223,7 +391,9 @@ def apontamento_diario(request):
     """
     Fluxo principal de apontamento diário:
     1. Fiscal seleciona obra + data + clima
-    2. Adiciona funcionários com etapa, horas, ociosidade, retrabalho
+    2. Sistema exibe etapas da obra com seus itens (progresso atual)
+    3. Fiscal adiciona funcionários com etapa, horas, itens trabalhados
+    4. Sistema atualiza automaticamente a obra com os dados informados
     """
     cab_form = ApontamentoDiarioCabecalhoForm(request.GET or None)
     obra = None
@@ -232,6 +402,7 @@ def apontamento_diario(request):
     apontamentos_existentes = []
     item_form = None
     etapas = []
+    etapas_overview = []
 
     # Step 1: Check if obra + data are set
     obra_id = request.GET.get('obra') or request.POST.get('obra')
@@ -251,6 +422,14 @@ def apontamento_diario(request):
         apontamentos_existentes = ApontamentoFuncionario.objects.filter(
             obra=obra, data=data
         ).select_related('funcionario', 'etapa')
+
+        # Build overview of all etapas with their items + current values
+        for etapa in etapas:
+            items = _get_etapa_items(etapa)
+            etapas_overview.append({
+                'etapa': etapa,
+                'items': items,
+            })
 
         # Already appointed funcionarios on this date (any obra)
         appointed_ids = ApontamentoFuncionario.objects.filter(
@@ -272,7 +451,32 @@ def apontamento_diario(request):
                 if not ap.valor_diaria:
                     ap.valor_diaria = ap.funcionario.valor_diaria
                 try:
-                    ap.save()
+                    # Update existing entry instead of creating duplicate for same (funcionario, data, obra)
+                    existing = ApontamentoFuncionario.objects.filter(
+                        funcionario=ap.funcionario, data=data, obra=obra
+                    ).first()
+                    if existing:
+                        existing.etapa = ap.etapa
+                        existing.horas_trabalhadas = ap.horas_trabalhadas
+                        existing.clima = ap.clima
+                        existing.valor_diaria = ap.valor_diaria
+                        existing.houve_ociosidade = ap.houve_ociosidade
+                        existing.observacao_ociosidade = ap.observacao_ociosidade
+                        existing.houve_retrabalho = ap.houve_retrabalho
+                        existing.motivo_retrabalho = ap.motivo_retrabalho
+                        existing.observacoes = ap.observacoes
+                        existing.save()
+                        ap = existing
+                        messages.info(request, f'Apontamento de {ap.funcionario.nome_completo} atualizado (já existia registro nesta data/obra).')
+                    else:
+                        ap.save()
+
+                    # ---- Auto-update obra: save etapa items from POST ----
+                    items_etapa_id = request.POST.get('items_etapa_id')
+                    if items_etapa_id and ap.etapa:
+                        _update_etapa_items_from_post(ap.etapa, request.POST)
+                        messages.info(request, f'📊 Progresso da etapa "{ap.etapa}" atualizado automaticamente.')
+
                     if ap.houve_retrabalho:
                         messages.warning(request, f'⚠️ RETRABALHO: {ap.funcionario.nome_completo} - {ap.motivo_retrabalho}')
                     if ap.houve_ociosidade:
@@ -280,7 +484,7 @@ def apontamento_diario(request):
                     messages.success(request, f'{ap.funcionario.nome_completo} apontado com sucesso.')
                     return redirect(f'{request.path}?obra={obra.pk}&data={data.isoformat()}&clima={clima}')
                 except IntegrityError:
-                    messages.error(request, 'Funcionário já apontado nesta data.')
+                    messages.error(request, 'Funcionário já apontado nesta data em outra obra. Remova ou edite o apontamento existente se necessário.')
             else:
                 messages.error(request, 'Corrija os erros abaixo.')
         else:
@@ -294,9 +498,10 @@ def apontamento_diario(request):
         'data': data,
         'clima': clima,
         'etapas': etapas,
+        'etapas_overview': etapas_overview,
         'apontamentos_existentes': apontamentos_existentes,
         'item_form': item_form,
-        'title': 'Apontamento Diário'
+        'title': 'Registro Diário'
     }
     return render(request, 'funcionarios/apontamento_diario.html', context)
 
@@ -356,6 +561,26 @@ def fechamento_list(request):
         'title': 'Fechamentos Semanais',
     }
     return render(request, 'funcionarios/fechamento_list.html', context)
+
+
+@login_required
+def set_theme(request):
+    """Endpoint to persist user's theme preference (light/dark)."""
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=400)
+    theme = request.POST.get('theme')
+    variant = request.POST.get('variant')
+    if theme not in ('light', 'dark'):
+        return JsonResponse({'status': 'error', 'message': 'Invalid theme'}, status=400)
+    profile = getattr(request.user, 'profile', None)
+    if not profile:
+        from .models import UserProfile
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    profile.theme_preference = theme
+    if variant in dict(getattr(profile, 'THEME_VARIANT_CHOICES', [])) or variant in ('default','soft','gray','blue'):
+        profile.theme_variant = variant
+    profile.save()
+    return JsonResponse({'status': 'ok', 'theme': theme})
 
 
 @login_required
@@ -606,12 +831,12 @@ def obra_mao_de_obra(request, pk):
         total = aps.aggregate(
             total_valor=Sum('valor_diaria'),
             total_horas=Sum('horas_trabalhadas'),
-            total_dias=Count('id'),
+            total_dias=Count('data', distinct=True),
         )
         funcionarios_etapa = aps.values(
             'funcionario__nome_completo', 'funcionario__funcao'
         ).annotate(
-            dias=Count('id'),
+            dias=Count('data', distinct=True),
             horas=Sum('horas_trabalhadas'),
             valor=Sum('valor_diaria'),
         ).order_by('-dias')
@@ -702,18 +927,18 @@ def funcionario_historico(request, pk):
                 })
         calendar_weeks.append(week_data)
 
-    # Stats for the month
+    # Stats for the month (one diária per unique date)
     stats = apontamentos_mes.aggregate(
-        total_dias=Count('id'),
+        total_dias=Count('data', distinct=True),
         total_horas=Sum('horas_trabalhadas'),
         total_valor=Sum('valor_diaria'),
-        dias_ociosidade=Count('id', filter=Q(houve_ociosidade=True)),
-        dias_retrabalho=Count('id', filter=Q(houve_retrabalho=True)),
+        dias_ociosidade=Count('data', filter=Q(houve_ociosidade=True), distinct=True),
+        dias_retrabalho=Count('data', filter=Q(houve_retrabalho=True), distinct=True),
     )
 
     # Obras trabalhadas no mês
     obras_mes = apontamentos_mes.values('obra__nome').annotate(
-        dias=Count('id'),
+        dias=Count('data', distinct=True),
         horas=Sum('horas_trabalhadas'),
     ).order_by('-dias')
 
@@ -722,6 +947,11 @@ def funcionario_historico(request, pk):
     next_month = datetime.date(ano, mes, 1) + datetime.timedelta(days=32)
     next_month = next_month.replace(day=1)
 
+    MESES_PT = [
+        '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+    ]
+
     context = {
         'funcionario': funcionario,
         'calendar_weeks': calendar_weeks,
@@ -729,7 +959,7 @@ def funcionario_historico(request, pk):
         'obras_mes': obras_mes,
         'ano': ano,
         'mes': mes,
-        'mes_nome': calendar.month_name[mes] if hasattr(calendar.month_name, '__getitem__') else '',
+        'mes_nome': MESES_PT[mes],
         'prev_month': f"{prev_month.year}-{prev_month.month:02d}",
         'next_month': f"{next_month.year}-{next_month.month:02d}",
         'current_month': f"{ano}-{mes:02d}",
@@ -772,6 +1002,7 @@ def apontamentos_api(request):
     apontamentos = []
     total_valor = Decimal('0.00')
     total_horas = Decimal('0.0')
+    seen_dates = set()
     for a in qs:
         apontamentos.append({
             'id': a.id,
@@ -785,13 +1016,16 @@ def apontamentos_api(request):
             'valor_diaria': str(a.valor_diaria),
             'created_at': a.created_at.isoformat(),
         })
-        total_valor += a.valor_diaria
-        total_horas += a.horas_trabalhadas
+        # Only count valor/horas once per unique date (one diária per day)
+        if a.data not in seen_dates:
+            total_valor += a.valor_diaria
+            total_horas += a.horas_trabalhadas
+            seen_dates.add(a.data)
 
     result = {
         'apontamentos': apontamentos,
         'totais': {
-            'dias': qs.count(),
+            'dias': len(seen_dates),
             'horas': str(total_horas),
             'valor': f"{total_valor:.2f}"
         }
@@ -809,3 +1043,44 @@ def etapas_por_obra_api(request):
     etapas = Etapa.objects.filter(obra_id=obra_id).order_by('numero_etapa')
     data = [{'id': e.id, 'label': e.get_numero_etapa_display()} for e in etapas]
     return JsonResponse({'etapas': data})
+
+
+@login_required
+def itens_etapa_api(request):
+    """API para retornar os itens/campos de uma etapa específica com valores atuais."""
+    etapa_id = request.GET.get('etapa_id')
+    if not etapa_id:
+        return JsonResponse({'items': []})
+    try:
+        etapa = Etapa.objects.get(pk=etapa_id)
+    except Etapa.DoesNotExist:
+        return JsonResponse({'items': []})
+
+    items = _get_etapa_items(etapa)
+    return JsonResponse({
+        'items': items,
+        'etapa_id': etapa.id,
+        'etapa_numero': etapa.numero_etapa,
+        'etapa_label': etapa.get_numero_etapa_display(),
+    })
+
+
+@login_required
+def itens_obra_api(request):
+    """API para retornar TODAS as etapas com seus itens para uma obra."""
+    obra_id = request.GET.get('obra_id')
+    if not obra_id:
+        return JsonResponse({'etapas': []})
+
+    etapas = Etapa.objects.filter(obra_id=obra_id).order_by('numero_etapa')
+    result = []
+    for etapa in etapas:
+        items = _get_etapa_items(etapa)
+        result.append({
+            'id': etapa.id,
+            'numero': etapa.numero_etapa,
+            'label': etapa.get_numero_etapa_display(),
+            'concluida': etapa.concluida,
+            'items': items,
+        })
+    return JsonResponse({'etapas': result})

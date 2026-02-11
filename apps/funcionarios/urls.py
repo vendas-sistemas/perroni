@@ -31,4 +31,7 @@ urlpatterns = [
     # APIs
     path('api/apontamentos/', views.apontamentos_api, name='apontamentos_api'),
     path('api/etapas-por-obra/', views.etapas_por_obra_api, name='etapas_por_obra_api'),
+    path('api/itens-etapa/', views.itens_etapa_api, name='itens_etapa_api'),
+    path('api/itens-obra/', views.itens_obra_api, name='itens_obra_api'),
+    path('set-theme/', views.set_theme, name='set_theme'),
 ]

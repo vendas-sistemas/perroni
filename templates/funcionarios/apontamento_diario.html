@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Apontamento Diário{% endblock %}
+{% block title %}Registro Diário{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -17,6 +17,11 @@
   /* Touch-friendly controls */
   .form-check-input { width: 1.5rem; height: 1.5rem; }
   .form-check-label { padding-left: .25rem; font-size: 1rem; }
+  /* Etapa overview styles */
+  .etapa-item-badge { font-size: .8rem; }
+  .etapa-overview-value { font-weight: 600; }
+  .etapa-items-form .form-label { font-size: .85rem; margin-bottom: .15rem; }
+  .etapa-items-form .form-control-sm { font-size: .85rem; }
   @media (max-width: 768px) {
     .table-responsive { font-size: .85rem; }
     .btn { padding: .5rem 1rem; }
@@ -26,12 +31,12 @@
 
 {% block content %}
 <div class="container-fluid py-3">
-  <h4 class="mb-3">📋 Apontamento Diário de Mão de Obra</h4>
+  <h4 class="mb-3">📋 Registro Diário de Mão de Obra</h4>
 
   <!-- Step Indicator -->
   <div class="step-indicator">
     <div class="step {% if obra %}done{% else %}active{% endif %}">1. Obra & Data</div>
-    <div class="step {% if obra %}active{% endif %}">2. Funcionários</div>
+    <div class="step {% if obra %}active{% endif %}">2. Etapas & Funcionários</div>
   </div>
 
   <!-- STEP 1: Select Obra, Date, Clima -->
@@ -66,9 +71,55 @@
       <span class="badge badge-clima-{{ clima }}">{{ clima|upper }}</span>
     </div>
     <div>
+      <span class="badge bg-primary">{{ obra.percentual_concluido }}% concluído</span>
       <strong>{{ apontamentos_existentes|length }}</strong> funcionário(s) apontado(s)
     </div>
   </div>
+
+  <!-- ========== ETAPAS OVERVIEW ========== -->
+  {% if etapas_overview %}
+  <div class="card mb-3">
+    <div class="card-header bg-dark text-white">
+      <strong>📊 Progresso da Obra - Etapas e Itens</strong>
+    </div>
+    <div class="card-body p-2">
+      {% for ed in etapas_overview %}
+      <div class="mb-3">
+        <h6 class="fw-bold mb-2 border-bottom pb-1">
+          {{ ed.etapa.get_numero_etapa_display }}
+          {% if ed.etapa.concluida %}
+            <span class="badge bg-success ms-1">✓ Concluída</span>
+          {% else %}
+            <span class="badge bg-warning text-dark ms-1">Em andamento</span>
+          {% endif %}
+        </h6>
+        {% if ed.items %}
+        <div class="row g-2">
+          {% for item in ed.items %}
+          <div class="col-6 col-md-4 col-lg-3">
+            <div class="border rounded p-2 h-100 {% if item.type == 'boolean' and item.value %}bg-success bg-opacity-10{% endif %}">
+              <small class="text-muted d-block">{{ item.label }}</small>
+              {% if item.type == 'boolean' %}
+                {% if item.value %}
+                  <span class="badge bg-success etapa-item-badge">✓ Concluído</span>
+                {% else %}
+                  <span class="badge bg-secondary etapa-item-badge">✗ Pendente</span>
+                {% endif %}
+              {% else %}
+                <span class="etapa-overview-value">{{ item.value }}</span>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">Nenhum item cadastrado.</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 
   <!-- List existing appointments for this day -->
   {% if apontamentos_existentes %}
@@ -161,6 +212,11 @@
           </div>
         </div>
 
+        <!-- ========== DYNAMIC ETAPA ITEMS ========== -->
+        <div id="etapa-items-container" class="mt-3">
+          <!-- Populated dynamically via JS when etapa is selected -->
+        </div>
+
         <div class="row g-2 mt-2">
           <div class="col-6 col-md-3">
             <div class="form-check">
@@ -202,7 +258,7 @@
 
         <div class="mt-3">
           <button type="submit" name="add_funcionario" value="1" class="btn btn-success btn-lg w-100">
-            ✓ Adicionar Funcionário
+            ✓ Adicionar Funcionário e Atualizar Obra
           </button>
         </div>
       </form>
@@ -214,8 +270,8 @@
 
 {% block extra_js %}
 <script>
-  // Show/hide ociosidade and retrabalho fields
   document.addEventListener('DOMContentLoaded', function() {
+    // === Show/hide ociosidade and retrabalho fields ===
     const ociosidadeCheck = document.getElementById('{{ item_form.houve_ociosidade.id_for_label }}');
     const ociosidadeContainer = document.getElementById('ociosidade-container');
     const retrabalhoCheck = document.getElementById('{{ item_form.houve_retrabalho.id_for_label }}');
@@ -233,29 +289,105 @@
     if (ociosidadeCheck) { ociosidadeCheck.addEventListener('change', toggleOciosidade); toggleOciosidade(); }
     if (retrabalhoCheck) { retrabalhoCheck.addEventListener('change', toggleRetrabalho); toggleRetrabalho(); }
 
-    // Auto-fill valor_diaria when funcionario changes
+    // === Auto-fill valor_diaria when funcionario changes ===
     const funcSelect = document.getElementById('{{ item_form.funcionario.id_for_label }}');
     const valorInput = document.querySelector('[name="valor_diaria"]');
     if (funcSelect && valorInput) {
       funcSelect.addEventListener('change', function() {
-        // We could do an AJAX call but for simplicity clear it to use auto
         valorInput.value = '';
         valorInput.placeholder = 'Automático';
       });
     }
 
-    // Dynamic etapa loading
-    const obraSelect = document.querySelector('[name="obra"]');
+    // === DYNAMIC ETAPA ITEMS LOADING ===
     const etapaSelect = document.getElementById('{{ item_form.etapa.id_for_label }}');
+    const itemsContainer = document.getElementById('etapa-items-container');
+
+    if (etapaSelect && itemsContainer) {
+      etapaSelect.addEventListener('change', function() {
+        const etapaId = this.value;
+        if (!etapaId) {
+          itemsContainer.innerHTML = '';
+          return;
+        }
+
+        // Show loading state
+        itemsContainer.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div> Carregando itens da etapa...</div>';
+
+        fetch('{% url "funcionarios:itens_etapa_api" %}?etapa_id=' + etapaId)
+          .then(r => r.json())
+          .then(data => {
+            if (!data.items || data.items.length === 0) {
+              itemsContainer.innerHTML = '<div class="alert alert-secondary py-2">Nenhum item cadastrado para esta etapa.</div>';
+              return;
+            }
+
+            let html = '';
+            html += '<div class="card border-info">';
+            html += '<div class="card-header bg-info text-white py-2">';
+            html += '<strong>📋 Itens da ' + data.etapa_label + '</strong>';
+            html += '<small class="ms-2">— Informe o progresso atual. Os dados serão salvos automaticamente na obra.</small>';
+            html += '</div>';
+            html += '<div class="card-body etapa-items-form">';
+            html += '<input type="hidden" name="items_etapa_id" value="' + data.etapa_id + '">';
+            html += '<div class="row g-2">';
+
+            data.items.forEach(function(item) {
+              if (item.type === 'boolean') {
+                const checked = item.value ? 'checked' : '';
+                html += '<div class="col-6 col-md-4 col-lg-3">';
+                html += '<div class="border rounded p-2 h-100">';
+                html += '<input type="hidden" name="item_' + item.name + '" value="0">';
+                html += '<div class="form-check">';
+                html += '<input type="checkbox" class="form-check-input" name="item_' + item.name + '" value="1" ' + checked + ' id="item_' + item.name + '">';
+                html += '<label class="form-check-label" for="item_' + item.name + '">' + item.label + '</label>';
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+              } else if (item.type === 'integer') {
+                html += '<div class="col-6 col-md-4 col-lg-3">';
+                html += '<div class="border rounded p-2 h-100">';
+                html += '<label class="form-label" for="item_' + item.name + '">' + item.label + '</label>';
+                html += '<input type="number" class="form-control form-control-sm" name="item_' + item.name + '" value="' + item.value + '" min="0" id="item_' + item.name + '">';
+                html += '</div>';
+                html += '</div>';
+              } else if (item.type === 'decimal') {
+                html += '<div class="col-6 col-md-4 col-lg-3">';
+                html += '<div class="border rounded p-2 h-100">';
+                html += '<label class="form-label" for="item_' + item.name + '">' + item.label + '</label>';
+                html += '<input type="number" class="form-control form-control-sm" name="item_' + item.name + '" value="' + item.value + '" min="0" step="0.01" id="item_' + item.name + '">';
+                html += '</div>';
+                html += '</div>';
+              }
+            });
+
+            html += '</div>'; // row
+            html += '</div>'; // card-body
+            html += '</div>'; // card
+            itemsContainer.innerHTML = html;
+          })
+          .catch(function(err) {
+            itemsContainer.innerHTML = '<div class="alert alert-danger py-2">Erro ao carregar itens: ' + err.message + '</div>';
+          });
+      });
+
+      // If etapa is already selected on page load (e.g. after form error), trigger loading
+      if (etapaSelect.value) {
+        etapaSelect.dispatchEvent(new Event('change'));
+      }
+    }
+
+    // === Dynamic etapa loading for cab_form (when obra changes in step 1) ===
+    const obraSelect = document.querySelector('[name="obra"]');
     if (obraSelect && etapaSelect) {
       obraSelect.addEventListener('change', function() {
         const obraId = this.value;
         if (!obraId) return;
-        fetch('/funcionarios/api/etapas-por-obra/?obra_id=' + obraId)
+        fetch('{% url "funcionarios:etapas_por_obra_api" %}?obra_id=' + obraId)
           .then(r => r.json())
           .then(data => {
             etapaSelect.innerHTML = '<option value="">---------</option>';
-            data.etapas.forEach(e => {
+            data.etapas.forEach(function(e) {
               const opt = document.createElement('option');
               opt.value = e.id;
               opt.textContent = e.label;

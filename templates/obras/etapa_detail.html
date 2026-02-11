@@ -127,8 +127,20 @@
             <span class="value">{{ detalhe.locacao_ferragem_dias }} dias</span>
           </div>
           <div class="detail-item d-flex justify-content-between">
-            <span class="label">Alicerce</span>
+            <span class="label">Alicerce, Reboco e Impermeabilização</span>
             <span class="value">{{ detalhe.alicerce_percentual }}%</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Aterro e Contrapiso</span>
+            <span class="value">{{ detalhe.aterro_contrapiso_dias }} dias</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Parede 7 Fiadas</span>
+            <span class="value">{{ detalhe.parede_7fiadas_blocos }} blocos</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">8 Fiadas até Respaldo</span>
+            <span class="value">{{ detalhe.fiadas_respaldo_dias }} dias</span>
           </div>
         {% elif etapa.numero_etapa == 2 %}
           <div class="detail-item d-flex justify-content-between">
@@ -160,6 +172,14 @@
             <span class="label">Água Fria</span>
             <span>{% if detalhe.agua_fria %}<span class="text-success"><i class="bi bi-check-circle-fill"></i> Sim</span>{% else %}<span class="text-danger"><i class="bi bi-x-circle"></i> Não</span>{% endif %}</span>
           </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Esgoto</span>
+            <span>{% if detalhe.esgoto %}<span class="text-success"><i class="bi bi-check-circle-fill"></i> Sim</span>{% else %}<span class="text-danger"><i class="bi bi-x-circle"></i> Não</span>{% endif %}</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Fluvial</span>
+            <span>{% if detalhe.fluvial %}<span class="text-success"><i class="bi bi-check-circle-fill"></i> Sim</span>{% else %}<span class="text-danger"><i class="bi bi-x-circle"></i> Não</span>{% endif %}</span>
+          </div>
         {% elif etapa.numero_etapa == 4 %}
           <div class="detail-item d-flex justify-content-between">
             <span class="label">Portas e Janelas</span>
@@ -168,6 +188,10 @@
           <div class="detail-item d-flex justify-content-between">
             <span class="label">Pintura Externa 1ª Demão</span>
             <span class="value">{{ detalhe.pintura_externa_1demao_dias }} dias</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Pintura Interna 1ª Demão</span>
+            <span class="value">{{ detalhe.pintura_interna_1demao_dias }} dias</span>
           </div>
           <div class="detail-item d-flex justify-content-between">
             <span class="label">Assentamento de Piso</span>

@@ -227,9 +227,79 @@
       /* ─── Global helpers ─── */
       body { min-height: 100vh; display: flex; flex-direction: column; }
       main  { flex: 1; }
+      /* Dark theme variables when body has .theme-dark (lighter/duller tone) */
+      body.theme-dark {
+        --nav-gradient-start: #0f2a44;
+        --nav-gradient-end: #123a5c;
+        --nav-hover: rgba(255,255,255,.06);
+        --nav-active: rgba(255,255,255,.10);
+        --accent: #82bfff;
+        background-color: #0d2233 !important;
+        color: #e6f0fb !important;
+      }
+      body.theme-dark .main-navbar .nav-link:hover,
+      body.theme-dark .main-navbar .nav-link:focus { background: rgba(255,255,255,.05); }
+      body.theme-dark .main-navbar .dropdown-item:hover { background: rgba(255,255,255,.04); }
+      body.theme-dark .user-pill { background: rgba(255,255,255,.08); color: #eaf4ff; }
+      body.theme-dark .main-footer { background: transparent; color: #b6d0e8; }
+      body.theme-dark .card { background-color: rgba(255,255,255,.06); color: #eaf4ff; border-color: rgba(255,255,255,.07); }
+      body.theme-dark table.table-striped tbody tr:nth-of-type(odd) { background-color: rgba(255,255,255,.04); }
+      body.theme-dark .table thead { background: rgba(255,255,255,.06); color: #d8e9fb; }
+      body.theme-dark .badge.bg-success { background-color: #198754 !important; }
+      body.theme-dark .badge.bg-warning { background-color: #ffc107 !important; color: #222 !important; }
+      body.theme-dark .badge.bg-danger { background-color: #dc3545 !important; }
+      body.theme-dark .alert { background-color: rgba(255,255,255,.05); color: #eaf4ff; border-color: rgba(255,255,255,.07); }
+      body.theme-dark .btn-outline-secondary { color: #e0efff; border-color: rgba(255,255,255,.08); }
+      body.theme-dark .btn-outline-light { color: #e0efff; border-color: rgba(255,255,255,.08); }
+
+      /* Variant: soft - slightly warmer, reduced contrast */
+      body.theme-dark.variant-soft {
+        --nav-gradient-start: #163244;
+        --nav-gradient-end: #1b4161;
+        --accent: #95c8ff;
+        background-color: #112733 !important;
+      }
+      body.theme-dark.variant-soft .card { background-color: rgba(255,255,255,.07); }
+
+      /* Variant: gray - desaturated, neutral grays */
+      body.theme-dark.variant-gray {
+        --nav-gradient-start: #2b2f33;
+        --nav-gradient-end: #1f2428;
+        --accent: #a8b3bf;
+        background-color: #16181a !important;
+      }
+      body.theme-dark.variant-gray .card { background-color: rgba(255,255,255,.04); }
+
+      /* Variant: blue - stronger blue accents */
+      body.theme-dark.variant-blue {
+        --nav-gradient-start: #08304b;
+        --nav-gradient-end: #0b4670;
+        --accent: #7cc0ff;
+        background-color: #071b2a !important;
+      }
+      body.theme-dark.variant-blue .card { background-color: rgba(255,255,255,.05); }
+
+      /* Dashboard summary tuning for better legibility */
+      .dashboard-summary .card { border-radius: .6rem; border: 1px solid rgba(0,0,0,.06); }
+      .dashboard-summary .card .small { color: rgba(255,255,255,.65); }
+      .dashboard-summary .card .h5 { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+      .dashboard-summary .card .text-muted { color: rgba(255,255,255,.55); }
+
+      /* Variants: tune dashboard card borders/background/text/badge saturation */
+      body.theme-dark.variant-soft .dashboard-summary .card { background-color: rgba(255,255,255,.06); border-color: rgba(255,255,255,.08); }
+      body.theme-dark.variant-soft .dashboard-summary .card .h5 { color: #bfe6ff; }
+      body.theme-dark.variant-soft .badge { opacity: 0.95; }
+
+      body.theme-dark.variant-gray .dashboard-summary .card { background-color: rgba(255,255,255,.045); border-color: rgba(255,255,255,.06); }
+      body.theme-dark.variant-gray .dashboard-summary .card .h5 { color: #dbe6ef; }
+      body.theme-dark.variant-gray .badge { filter: grayscale(.15) saturate(.7); }
+
+      body.theme-dark.variant-blue .dashboard-summary .card { background-color: rgba(10,40,60,.065); border-color: rgba(120,180,255,.06); }
+      body.theme-dark.variant-blue .dashboard-summary .card .h5 { color: #9fd6ff; }
+      body.theme-dark.variant-blue .badge { box-shadow: 0 0 10px rgba(124,192,255,.06); }
     </style>
   </head>
-  <body class="bg-light">
+  <body class="bg-light" {% if user.is_authenticated %}data-server-theme="{{ request.user.profile.theme_preference }}" data-server-variant="{{ request.user.profile.theme_variant }}"{% endif %}>
     {% url 'login' as login_url %}
 
     {# ═══════ DESKTOP NAVBAR (lg+) ═══════ #}
@@ -265,8 +335,8 @@
               <li><a class="dropdown-item" href="/funcionarios/"><i class="bi bi-person-lines-fill text-primary"></i> Lista de Funcionários</a></li>
               <li><hr class="dropdown-divider"></li>
               <li class="dropdown-section-label">Apontamentos</li>
-              <li><a class="dropdown-item" href="/funcionarios/apontamentos/diario/"><i class="bi bi-calendar-check text-success"></i> <strong>Apontamento Diário</strong></a></li>
-              <li><a class="dropdown-item" href="/funcionarios/apontamentos/"><i class="bi bi-list-check text-muted"></i> Todos os Apontamentos</a></li>
+              <li><a class="dropdown-item" href="/funcionarios/apontamentos/diario/"><i class="bi bi-calendar-check text-success"></i> <strong>Registro Diário</strong></a></li>
+              <li><a class="dropdown-item" href="/funcionarios/apontamentos/"><i class="bi bi-list-check text-muted"></i> Todos as dárias</a></li>
               <li><hr class="dropdown-divider"></li>
               <li class="dropdown-section-label">Fechamentos</li>
               <li><a class="dropdown-item" href="/funcionarios/fechamentos/"><i class="bi bi-calculator text-muted"></i> Fechamentos Semanais</a></li>
@@ -300,6 +370,38 @@
 
         <!-- Right side -->
         <div class="d-flex align-items-center gap-2">
+          <button id="themeToggle" type="button" class="btn btn-sm btn-outline-light" title="Alternar tema (claro/escuro)">
+            <i id="themeToggleIcon" class="bi bi-moon-fill"></i>
+          </button>
+          <!-- Theme selector popover -->
+          <div id="themePopover" class="card p-2" style="position:absolute; right:16px; top:56px; width:220px; display:none; z-index:1200;">
+            <div class="mb-2"><strong>Tema</strong></div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="site-theme" id="themeLight" value="light">
+              <label class="form-check-label" for="themeLight">Claro</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="site-theme" id="themeDark" value="dark">
+              <label class="form-check-label" for="themeDark">Escuro</label>
+            </div>
+            <hr class="my-2">
+            <div class="mb-1"><strong>Variante (escuro)</strong></div>
+            <select id="themeVariantSelect" class="form-select form-select-sm">
+              <option value="default">Padrão</option>
+              <option value="soft">Suave</option>
+              <option value="gray">Cinza</option>
+              <option value="blue">Azulado</option>
+            </select>
+            <div class="d-flex gap-2 mt-2 mb-1" style="flex-wrap:wrap;">
+              <button type="button" class="btn p-1 palette-swatch" data-variant="default" title="Padrão" style="width:36px;height:28px;border:1px solid rgba(0,0,0,.08);background:linear-gradient(90deg,#0f2a44,#123a5c);"></button>
+              <button type="button" class="btn p-1 palette-swatch" data-variant="soft" title="Suave" style="width:36px;height:28px;border:1px solid rgba(0,0,0,.08);background:linear-gradient(90deg,#163244,#1b4161);"></button>
+              <button type="button" class="btn p-1 palette-swatch" data-variant="gray" title="Cinza" style="width:36px;height:28px;border:1px solid rgba(0,0,0,.08);background:linear-gradient(90deg,#2b2f33,#1f2428);"></button>
+              <button type="button" class="btn p-1 palette-swatch" data-variant="blue" title="Azulado" style="width:36px;height:28px;border:1px solid rgba(0,0,0,.08);background:linear-gradient(90deg,#08304b,#0b4670);"></button>
+            </div>
+            <div class="d-flex justify-content-end mt-2">
+              <button id="themeApplyBtn" class="btn btn-sm btn-primary">Aplicar</button>
+            </div>
+          </div>
           <a href="/admin/" class="nav-link py-1 px-2" title="Admin" style="color:rgba(255,255,255,.7);">
             <i class="bi bi-gear"></i>
           </a>
@@ -372,8 +474,10 @@
             <ul class="dropdown-menu">
               <li><a class="dropdown-item" href="/funcionarios/"><i class="bi bi-person-lines-fill"></i> Lista</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="/funcionarios/apontamentos/diario/"><i class="bi bi-calendar-check"></i> <strong>Apontamento Diário</strong></a></li>
-              <li><a class="dropdown-item" href="/funcionarios/apontamentos/"><i class="bi bi-list-check"></i> Apontamentos</a></li>
+              <li><a class="dropdown-item" href="/funcionarios/apontamentos/diario/"><i class="bi bi-calendar-check"></i> <strong>Registro Diário</strong></a></li>
+              <li><a class="dropdown-item" href="/funcionarios/apontamentos/"><i class="bi bi-list-check"></i> Todos as dárias</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><button id="themeToggleMobile" class="dropdown-item" type="button"><i class="bi bi-moon-fill"></i> Tema Escuro</button></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="/funcionarios/fechamentos/"><i class="bi bi-calculator"></i> Fechamentos</a></li>
               <li><a class="dropdown-item" href="/funcionarios/fechamentos/auto/"><i class="bi bi-lightning-charge"></i> <strong>Fech. Automático</strong></a></li>
@@ -460,6 +564,134 @@
           var href = link.getAttribute('href');
           if(href && href !== '/' && path.startsWith(href)){
             link.classList.add('active');
+          }
+        });
+      })();
+    </script>
+    <script>
+      // Theme toggle: persist user's choice in localStorage and apply class
+      (function(){
+        var storageKey = 'site-theme';
+        var body = document.body;
+        var btn = document.getElementById('themeToggle');
+        var icon = document.getElementById('themeToggleIcon');
+        var btnMobile = document.getElementById('themeToggleMobile');
+
+        function applyTheme(theme){
+          if(theme === 'dark'){
+            body.classList.add('theme-dark');
+            if(icon) icon.className = 'bi bi-sun-fill';
+            if(btn) btn.title = 'Tema: Escuro (clicar para Alternar)';
+            if(btnMobile) btnMobile.innerHTML = '<i class="bi bi-sun-fill"></i> Tema Claro';
+          } else {
+            body.classList.remove('theme-dark');
+            // remove any variant classes
+            body.classList.remove('variant-soft','variant-gray','variant-blue');
+            if(icon) icon.className = 'bi bi-moon-fill';
+            if(btn) btn.title = 'Tema: Claro (clicar para Alternar)';
+            if(btnMobile) btnMobile.innerHTML = '<i class="bi bi-moon-fill"></i> Tema Escuro';
+          }
+        }
+
+        function applyVariant(variant){
+          // remove previous variant classes
+          body.classList.remove('variant-soft','variant-gray','variant-blue');
+          if(variant && variant !== 'default'){
+            body.classList.add('variant-' + variant);
+          }
+        }
+
+        function toggle(){
+          var current = localStorage.getItem(storageKey) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          var next = current === 'dark' ? 'light' : 'dark';
+          localStorage.setItem(storageKey, next);
+          applyTheme(next);
+        }
+
+        // initialize (server preference + variant override localStorage if available)
+        var serverTheme = body.getAttribute('data-server-theme');
+        var serverVariant = body.getAttribute('data-server-variant');
+        var saved = localStorage.getItem(storageKey);
+        var savedVariant = localStorage.getItem('site-variant');
+        if(serverTheme){
+          saved = serverTheme;
+          localStorage.setItem(storageKey, serverTheme);
+        }
+        if(serverVariant){
+          savedVariant = serverVariant;
+          localStorage.setItem('site-variant', serverVariant);
+        }
+        if(!saved){
+          saved = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+        }
+        applyTheme(saved);
+        applyVariant(savedVariant || 'default');
+
+        // populate popover UI
+        var pop = document.getElementById('themePopover');
+        var inputLight = document.getElementById('themeLight');
+        var inputDark = document.getElementById('themeDark');
+        var variantSelect = document.getElementById('themeVariantSelect');
+        var applyBtn = document.getElementById('themeApplyBtn');
+        if(inputLight) inputLight.checked = (saved === 'light');
+        if(inputDark) inputDark.checked = (saved === 'dark');
+        if(variantSelect && (savedVariant || serverVariant)) variantSelect.value = (savedVariant || serverVariant || 'default');
+
+        // swatches click handlers
+        document.querySelectorAll('.palette-swatch').forEach(function(btn){
+          btn.addEventListener('click', function(){
+            var v = btn.getAttribute('data-variant');
+            if(variantSelect) variantSelect.value = v;
+            // preview immediately
+            applyTheme('dark');
+            applyVariant(v);
+            // mark visually (border)
+            document.querySelectorAll('.palette-swatch').forEach(function(s){ s.style.outline = 'none'; });
+            btn.style.outline = '2px solid rgba(255,255,255,.18)';
+          });
+        });
+
+        function openPopover(){ pop.style.display = 'block'; }
+        function closePopover(){ pop.style.display = 'none'; }
+
+        btn.addEventListener('click', function(e){
+          e.stopPropagation();
+          if(pop.style.display === 'block') closePopover(); else openPopover();
+        });
+        document.addEventListener('click', function(){ closePopover(); });
+        pop.addEventListener('click', function(e){ e.stopPropagation(); });
+
+        // apply selection and persist both theme and variant
+        applyBtn.addEventListener('click', function(){
+          var chosenTheme = document.querySelector('input[name="site-theme"]:checked').value;
+          var chosenVariant = variantSelect.value;
+          localStorage.setItem(storageKey, chosenTheme);
+          localStorage.setItem('site-variant', chosenVariant);
+          applyTheme(chosenTheme);
+          applyVariant(chosenVariant);
+          closePopover();
+          // send to server if logged in
+          if(window.fetch && document.cookie.indexOf('sessionid') !== -1){
+            fetch('{% url "funcionarios:set_theme" %}', {
+              method: 'POST',
+              headers: {
+                'X-CSRFToken': (function(){ var m=document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)'); return m?m.pop():'' })(),
+              },
+              body: new URLSearchParams({theme: chosenTheme, variant: chosenVariant})
+            }).catch(function(){/* ignore */});
+          }
+        });
+
+        if(btnMobile) btnMobile.addEventListener('click', function(){
+          // toggle between dark and light quickly on mobile
+          var current = localStorage.getItem(storageKey) || 'light';
+          var next = current === 'dark' ? 'light' : 'dark';
+          localStorage.setItem(storageKey, next);
+          applyTheme(next);
+          // if switching to dark and no variant chosen, use savedVariant
+          applyVariant(localStorage.getItem('site-variant') || 'default');
+          if(window.fetch && document.cookie.indexOf('sessionid') !== -1){
+            fetch('{% url "funcionarios:set_theme" %}', { method: 'POST', headers: {'X-CSRFToken': (function(){ var m=document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)'); return m?m.pop():'' })()}, body: new URLSearchParams({theme: next, variant: localStorage.getItem('site-variant') || 'default'}) }).catch(function(){});
           }
         });
       })();

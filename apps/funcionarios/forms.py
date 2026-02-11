@@ -56,14 +56,18 @@ class ApontamentoForm(forms.ModelForm):
         obra = cleaned.get('obra')
 
         if funcionario and data:
-            # Validate: same funcionario cannot be in 2 obras on same day
+            # Validate: same funcionario should not be pointed in TWO DIFFERENT obras on same day.
             qs = ApontamentoFuncionario.objects.filter(funcionario=funcionario, data=data)
             if self.instance and self.instance.pk:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
-                existing = qs.first()
-                existing_obra = existing.obra.nome if existing.obra else '(sem obra)'
-                raise ValidationError(f"Funcionário já está apontado em {existing_obra} na data {data.strftime('%d/%m/%Y')}. Remova ou edite o apontamento existente.")
+                # If any existing apontamento is for a different obra than the one being saved, block.
+                different_obras = [a for a in qs if (obra and a.obra_id != obra.id)] if obra else [a for a in qs if a.obra_id is not None]
+                if different_obras:
+                    existing = qs.first()
+                    existing_obra = existing.obra.nome if existing.obra else '(sem obra)'
+                    raise ValidationError(f"Funcionário já está apontado em {existing_obra} na data {data.strftime('%d/%m/%Y')}. Remova ou edite o apontamento existente ou mova-o para outra obra.")
+                # else: all existing apontamentos (if any) are for the same obra - allow multiple records for updates/extra entries.
         
         # Validate conditional required fields
         if cleaned.get('houve_ociosidade') and not cleaned.get('observacao_ociosidade'):

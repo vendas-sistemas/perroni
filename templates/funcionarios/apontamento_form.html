@@ -9,7 +9,7 @@
       <div class="card">
         <div class="card-body">
           <h4 class="card-title mb-3">{{ title }}</h4>
-          <p class="text-muted">Para apontar múltiplos funcionários de uma vez, use o <a href="{% url 'funcionarios:apontamento_diario' %}">Apontamento Diário</a>.</p>
+          <p class="text-muted">Para apontar múltiplos funcionários de uma vez, use o <a href="{% url 'funcionarios:apontamento_diario' %}">Registro Diário</a>.</p>
           <form method="post">
             {% csrf_token %}
             {% if form.non_field_errors %}
