@@ -159,7 +159,7 @@ class AnalyticsService:
         Calcula o rendimento individual de um pedreiro com métricas avançadas
         """
         try:
-            pedreiro = Funcionario.objects.get(id=pedreiro_id, funcao='pedreiro')
+            pedreiro = Funcionario.objects.get(id=pedreiro_id)
         except Funcionario.DoesNotExist:
             return None
         

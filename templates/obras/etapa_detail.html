@@ -1,107 +1,218 @@
 {% extends 'base.html' %}
 
-{% block title %}Detalhe da Etapa{% endblock %}
+{% block title %}Etapa {{ etapa.numero_etapa }} - {{ etapa.obra.nome }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+  .detail-card { border: none; border-radius: .75rem; }
+  .detail-header { border-radius: .75rem .75rem 0 0; padding: .6rem 1rem; }
+  .detail-item { padding: .5rem 0; border-bottom: 1px solid #f0f0f0; }
+  .detail-item:last-child { border-bottom: none; }
+  .detail-item .label { font-size: .82rem; color: #6c757d; font-weight: 600; }
+  .detail-item .value { font-weight: 500; }
+  .etapa-number-lg {
+    width: 56px; height: 56px;
+    border-radius: .75rem;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; font-weight: 700;
+  }
+  .progress-lg { height: 10px; border-radius: 5px; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-  <div class="row">
-    <div class="col-md-8 offset-md-2">
-      <div class="card">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-              <h4 class="card-title">Etapa {{ etapa.numero_etapa }} — {{ etapa.obra.nome }}</h4>
-              <p class="small text-muted mb-0">Cliente: {{ etapa.obra.cliente }}</p>
-            </div>
-            <div>
-              <a href="{% url 'obras:obra_etapas' etapa.obra.pk %}" class="btn btn-sm btn-secondary">Voltar</a>
-              <a href="{% url 'obras:etapa_edit' etapa.pk %}" class="btn btn-sm btn-primary ms-2">Editar Etapa</a>
-            </div>
+
+<!-- Header -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <div class="d-flex align-items-center gap-3">
+    <div class="etapa-number-lg {% if etapa.concluida %}bg-success text-white{% else %}bg-primary bg-opacity-10 text-primary{% endif %}">
+      {% if etapa.concluida %}<i class="bi bi-check-lg"></i>{% else %}{{ etapa.numero_etapa }}{% endif %}
+    </div>
+    <div>
+      <h1 class="h3 mb-0">
+        {% if etapa.numero_etapa == 1 %}<i class="bi bi-bricks text-primary"></i> Fundação
+        {% elif etapa.numero_etapa == 2 %}<i class="bi bi-building-up text-primary"></i> Estrutura
+        {% elif etapa.numero_etapa == 3 %}<i class="bi bi-plug text-primary"></i> Revestimentos e Instalações
+        {% elif etapa.numero_etapa == 4 %}<i class="bi bi-paint-bucket text-primary"></i> Acabamentos
+        {% elif etapa.numero_etapa == 5 %}<i class="bi bi-flag text-primary"></i> Finalização
+        {% endif %}
+      </h1>
+      <div class="text-muted small">
+        <i class="bi bi-building"></i> {{ etapa.obra.nome }}
+        {% if etapa.obra.cliente %}<span class="ms-2"><i class="bi bi-person"></i> {{ etapa.obra.cliente.nome }}</span>{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'obras:etapa_edit' etapa.pk %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-pencil"></i> Editar
+    </a>
+    <a href="{% url 'obras:obra_etapas' etapa.obra.pk %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Left: Info geral -->
+  <div class="col-lg-6">
+    <div class="card detail-card shadow-sm">
+      <div class="detail-header bg-primary bg-opacity-10">
+        <h6 class="mb-0 text-primary"><i class="bi bi-info-circle"></i> Informações Gerais</h6>
+      </div>
+      <div class="card-body">
+        <div class="detail-item d-flex justify-content-between">
+          <span class="label"><i class="bi bi-layers"></i> Etapa</span>
+          <span class="value">{{ etapa.get_numero_etapa_display }}</span>
+        </div>
+        <div class="detail-item d-flex justify-content-between">
+          <span class="label"><i class="bi bi-percent"></i> Percentual</span>
+          <span class="value fw-bold">{{ etapa.percentual_valor }}%</span>
+        </div>
+        <div class="detail-item d-flex justify-content-between">
+          <span class="label"><i class="bi bi-calendar-event"></i> Data Início</span>
+          <span class="value">{% if etapa.data_inicio %}{{ etapa.data_inicio|date:"d/m/Y" }}{% else %}<span class="text-muted">—</span>{% endif %}</span>
+        </div>
+        <div class="detail-item d-flex justify-content-between">
+          <span class="label"><i class="bi bi-calendar-check"></i> Data Término</span>
+          <span class="value">{% if etapa.data_termino %}{{ etapa.data_termino|date:"d/m/Y" }}{% else %}<span class="text-muted">—</span>{% endif %}</span>
+        </div>
+        <div class="detail-item d-flex justify-content-between">
+          <span class="label"><i class="bi bi-check-circle"></i> Status</span>
+          <span class="value">
+            {% if etapa.concluida %}
+              <span class="badge bg-success"><i class="bi bi-check-lg"></i> Concluída</span>
+            {% elif etapa.data_inicio %}
+              <span class="badge bg-primary"><i class="bi bi-play-circle"></i> Em andamento</span>
+            {% else %}
+              <span class="badge bg-secondary">Pendente</span>
+            {% endif %}
+          </span>
+        </div>
+        <!-- Progress bar -->
+        <div class="mt-3">
+          <div class="progress progress-lg">
+            <div class="progress-bar {% if etapa.concluida %}bg-success{% elif etapa.data_inicio %}bg-primary{% else %}bg-secondary opacity-25{% endif %}"
+                 style="width: {% if etapa.concluida %}100{% elif etapa.data_inicio %}50{% else %}5{% endif %}%;"></div>
           </div>
-
-          <table class="table table-borderless">
-            <tbody>
-              <tr>
-                <th>Obra</th>
-                <td>{{ etapa.obra.nome }}</td>
-              </tr>
-              <tr>
-                <th>Número da Etapa</th>
-                <td>{{ etapa.get_numero_etapa_display }}</td>
-              </tr>
-              <tr>
-                <th>Percentual</th>
-                <td>{{ etapa.percentual_valor }}%</td>
-              </tr>
-              <tr>
-                <th>Data Início</th>
-                <td>{{ etapa.data_inicio|default:'-' }}</td>
-              </tr>
-              <tr>
-                <th>Data Término</th>
-                <td>{{ etapa.data_termino|default:'-' }}</td>
-              </tr>
-              <tr>
-                <th>Concluída</th>
-                <td>{% if etapa.concluida %}Sim{% else %}Não{% endif %}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          {% if detalhe %}
-            <hr/>
-            <h5>Detalhes</h5>
-            <table class="table table-borderless">
-              <tbody>
-                {% if etapa.numero_etapa == 1 %}
-                  <tr><th>Limpeza do Terreno</th><td>{% if detalhe.limpeza_terreno %}Sim{% else %}Não{% endif %}</td></tr>
-                  <tr><th>Instalação Energia/Água</th><td>{% if detalhe.instalacao_energia_agua %}Sim{% else %}Não{% endif %}</td></tr>
-                  <tr><th>Marcação/Escavação (dias)</th><td>{{ detalhe.marcacao_escavacao_dias }}</td></tr>
-                  <tr><th>Locação Ferragem (dias)</th><td>{{ detalhe.locacao_ferragem_dias }}</td></tr>
-                  <tr><th>Alicerce (%)</th><td>{{ detalhe.alicerce_percentual }}%</td></tr>
-                {% elif etapa.numero_etapa == 2 %}
-                  <tr><th>Montagem da Laje (dias)</th><td>{{ detalhe.montagem_laje_dias }}</td></tr>
-                  <tr><th>Platibanda (blocos)</th><td>{{ detalhe.platibanda_blocos }}</td></tr>
-                  <tr><th>Cobertura (dias)</th><td>{{ detalhe.cobertura_dias }}</td></tr>
-                {% elif etapa.numero_etapa == 3 %}
-                  <tr><th>Reboco Externo (m²)</th><td>{{ detalhe.reboco_externo_m2 }}</td></tr>
-                  <tr><th>Reboco Interno (m²)</th><td>{{ detalhe.reboco_interno_m2 }}</td></tr>
-                  <tr><th>Instalação Portais</th><td>{% if detalhe.instalacao_portais %}Sim{% else %}Não{% endif %}</td></tr>
-                  <tr><th>Água Fria</th><td>{% if detalhe.agua_fria %}Sim{% else %}Não{% endif %}</td></tr>
-                {% elif etapa.numero_etapa == 4 %}
-                  <tr><th>Portas e Janelas</th><td>{% if detalhe.portas_janelas %}Sim{% else %}Não{% endif %}</td></tr>
-                  <tr><th>Pintura Externa 1ª Demão (dias)</th><td>{{ detalhe.pintura_externa_1demao_dias }}</td></tr>
-                  <tr><th>Assentamento de Piso (dias)</th><td>{{ detalhe.assentamento_piso_dias }}</td></tr>
-                {% elif etapa.numero_etapa == 5 %}
-                  <tr><th>Pintura Externa 2ª Demão (dias)</th><td>{{ detalhe.pintura_externa_2demao_dias }}</td></tr>
-                  <tr><th>Pintura Interna 2ª Demão (dias)</th><td>{{ detalhe.pintura_interna_2demao_dias }}</td></tr>
-                  <tr><th>Instalação Louças e Metais</th><td>{% if detalhe.loucas_metais %}Sim{% else %}Não{% endif %}</td></tr>
-                  <tr><th>Elétrica</th><td>{% if detalhe.eletrica %}Sim{% else %}Não{% endif %}</td></tr>
-                {% endif %}
-              </tbody>
-            </table>
-          {% else %}
-            <div class="alert alert-info">
-              Detalhes desta etapa ainda não foram inicializados.
-              {% if etapa.numero_etapa == 1 %}
-                <a href="{% url 'obras:etapa1_detail' etapa.pk %}">Inicializar agora</a>
-              {% elif etapa.numero_etapa == 2 %}
-                <a href="{% url 'obras:etapa2_detail' etapa.pk %}">Inicializar agora</a>
-              {% elif etapa.numero_etapa == 3 %}
-                <a href="{% url 'obras:etapa3_detail' etapa.pk %}">Inicializar agora</a>
-              {% elif etapa.numero_etapa == 4 %}
-                <a href="{% url 'obras:etapa4_detail' etapa.pk %}">Inicializar agora</a>
-              {% elif etapa.numero_etapa == 5 %}
-                <a href="{% url 'obras:etapa5_detail' etapa.pk %}">Inicializar agora</a>
-              {% else %}
-                <a href="{% url 'obras:etapa_edit' etapa.pk %}">Editar etapa</a>
-              {% endif %}
-            </div>
-          {% endif %}
-
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Right: Detalhes -->
+  <div class="col-lg-6">
+    {% if detalhe %}
+    <div class="card detail-card shadow-sm">
+      <div class="detail-header" style="background: rgba(25,135,84,.1);">
+        <h6 class="mb-0 text-success"><i class="bi bi-clipboard-data"></i> Detalhes Específicos</h6>
+      </div>
+      <div class="card-body">
+        {% if etapa.numero_etapa == 1 %}
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Limpeza do Terreno</span>
+            <span>{% if detalhe.limpeza_terreno %}<span class="text-success"><i class="bi bi-check-circle-fill"></i> Sim</span>{% else %}<span class="text-danger"><i class="bi bi-x-circle"></i> Não</span>{% endif %}</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Instalação Energia/Água</span>
+            <span>{% if detalhe.instalacao_energia_agua %}<span class="text-success"><i class="bi bi-check-circle-fill"></i> Sim</span>{% else %}<span class="text-danger"><i class="bi bi-x-circle"></i> Não</span>{% endif %}</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Marcação/Escavação</span>
+            <span class="value">{{ detalhe.marcacao_escavacao_dias }} dias</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Locação Ferragem</span>
+            <span class="value">{{ detalhe.locacao_ferragem_dias }} dias</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Alicerce</span>
+            <span class="value">{{ detalhe.alicerce_percentual }}%</span>
+          </div>
+        {% elif etapa.numero_etapa == 2 %}
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Montagem da Laje</span>
+            <span class="value">{{ detalhe.montagem_laje_dias }} dias</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Platibanda</span>
+            <span class="value">{{ detalhe.platibanda_blocos }} blocos</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Cobertura</span>
+            <span class="value">{{ detalhe.cobertura_dias }} dias</span>
+          </div>
+        {% elif etapa.numero_etapa == 3 %}
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Reboco Externo</span>
+            <span class="value">{{ detalhe.reboco_externo_m2 }} m²</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Reboco Interno</span>
+            <span class="value">{{ detalhe.reboco_interno_m2 }} m²</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Instalação Portais</span>
+            <span>{% if detalhe.instalacao_portais %}<span class="text-success"><i class="bi bi-check-circle-fill"></i> Sim</span>{% else %}<span class="text-danger"><i class="bi bi-x-circle"></i> Não</span>{% endif %}</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Água Fria</span>
+            <span>{% if detalhe.agua_fria %}<span class="text-success"><i class="bi bi-check-circle-fill"></i> Sim</span>{% else %}<span class="text-danger"><i class="bi bi-x-circle"></i> Não</span>{% endif %}</span>
+          </div>
+        {% elif etapa.numero_etapa == 4 %}
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Portas e Janelas</span>
+            <span>{% if detalhe.portas_janelas %}<span class="text-success"><i class="bi bi-check-circle-fill"></i> Sim</span>{% else %}<span class="text-danger"><i class="bi bi-x-circle"></i> Não</span>{% endif %}</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Pintura Externa 1ª Demão</span>
+            <span class="value">{{ detalhe.pintura_externa_1demao_dias }} dias</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Assentamento de Piso</span>
+            <span class="value">{{ detalhe.assentamento_piso_dias }} dias</span>
+          </div>
+        {% elif etapa.numero_etapa == 5 %}
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Pintura Externa 2ª Demão</span>
+            <span class="value">{{ detalhe.pintura_externa_2demao_dias }} dias</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Pintura Interna 2ª Demão</span>
+            <span class="value">{{ detalhe.pintura_interna_2demao_dias }} dias</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Louças e Metais</span>
+            <span>{% if detalhe.loucas_metais %}<span class="text-success"><i class="bi bi-check-circle-fill"></i> Sim</span>{% else %}<span class="text-danger"><i class="bi bi-x-circle"></i> Não</span>{% endif %}</span>
+          </div>
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">Elétrica</span>
+            <span>{% if detalhe.eletrica %}<span class="text-success"><i class="bi bi-check-circle-fill"></i> Sim</span>{% else %}<span class="text-danger"><i class="bi bi-x-circle"></i> Não</span>{% endif %}</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div class="card detail-card shadow-sm">
+      <div class="card-body text-center py-5">
+        <i class="bi bi-clipboard-plus fs-1 text-muted"></i>
+        <p class="mt-2 mb-3 text-muted">Detalhes desta etapa ainda não foram preenchidos.</p>
+        {% if etapa.numero_etapa == 1 %}
+          <a href="{% url 'obras:etapa1_detail' etapa.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-circle"></i> Preencher agora</a>
+        {% elif etapa.numero_etapa == 2 %}
+          <a href="{% url 'obras:etapa2_detail' etapa.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-circle"></i> Preencher agora</a>
+        {% elif etapa.numero_etapa == 3 %}
+          <a href="{% url 'obras:etapa3_detail' etapa.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-circle"></i> Preencher agora</a>
+        {% elif etapa.numero_etapa == 4 %}
+          <a href="{% url 'obras:etapa4_detail' etapa.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-circle"></i> Preencher agora</a>
+        {% elif etapa.numero_etapa == 5 %}
+          <a href="{% url 'obras:etapa5_detail' etapa.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-circle"></i> Preencher agora</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
 </div>
+
 {% endblock %}

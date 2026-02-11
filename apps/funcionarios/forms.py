@@ -176,6 +176,21 @@ class FuncionarioForm(forms.ModelForm):
             'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Enhance widgets with placeholders and sizes for better layout
+        self.fields['nome_completo'].widget = forms.TextInput(attrs={'class': 'form-control form-control-lg', 'placeholder': 'Nome completo'})
+        self.fields['cpf'].widget.attrs.update({'placeholder': '000.000.000-00', 'maxlength': '14'})
+        self.fields['rg'].widget.attrs.update({'placeholder': 'RG'})
+        self.fields['telefone'].widget.attrs.update({'placeholder': '(11) 9xxxx-xxxx'})
+        self.fields['email'].widget.attrs.update({'placeholder': 'email@exemplo.com'})
+        self.fields['endereco'].widget.attrs.update({'placeholder': 'Rua, número, complemento'})
+        self.fields['cidade'].widget.attrs.update({'placeholder': 'Cidade'})
+        self.fields['estado'].widget.attrs.update({'placeholder': 'SP'})
+        self.fields['cep'].widget.attrs.update({'placeholder': '00000-000', 'maxlength': '9'})
+        # file input
+        self.fields['foto'].widget = forms.ClearableFileInput(attrs={'class': 'form-control'})
+
     def clean_cpf(self):
         cpf = self.cleaned_data.get('cpf')
         # Basic cleanup: keep digits only

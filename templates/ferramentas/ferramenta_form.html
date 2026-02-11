@@ -2,44 +2,184 @@
 
 {% block title %}{% if ferramenta %}Editar Ferramenta{% else %}Cadastrar Ferramenta{% endif %}{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+  .form-section .card { border: none; border-radius: .75rem; }
+  .form-section .card-header { border-radius: .75rem .75rem 0 0; }
+  .section-icon { font-size: 1.1rem; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-4">
-  <div class="row">
-    <div class="col-md-8 offset-md-2">
-      <div class="card">
+
+<!-- Header -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <h1 class="h3 mb-0">
+    {% if ferramenta %}
+      <i class="bi bi-pencil-square text-primary"></i> Editar Ferramenta
+    {% else %}
+      <i class="bi bi-plus-circle-fill text-primary"></i> Cadastrar Ferramenta
+    {% endif %}
+  </h1>
+  <a href="{% url 'ferramentas:ferramenta_list' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+    <i class="bi bi-arrow-left"></i> Voltar
+  </a>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger d-flex align-items-center gap-2">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    {{ form.non_field_errors }}
+  </div>
+  {% endif %}
+
+  <div class="row g-3 form-section">
+
+    <!-- Col Esquerda -->
+    <div class="col-12 col-lg-7">
+
+      <!-- Identificação -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header bg-primary bg-opacity-10 py-2">
+          <h6 class="mb-0"><i class="bi bi-tag section-icon text-primary me-1"></i> Identificação</h6>
+        </div>
         <div class="card-body">
-          <h4 class="card-title mb-3">{% if ferramenta %}Editar{% else %}Cadastrar{% endif %} Ferramenta</h4>
-
-          <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-            {% if form.non_field_errors %}
-              <div class="alert alert-danger">
-                {{ form.non_field_errors }}
-              </div>
-            {% endif %}
-
-            {% for field in form %}
-              <div class="mb-3">
-                {{ field.label_tag }}
-                {{ field }}
-                {% if field.help_text %}
-                  <div class="form-text">{{ field.help_text }}</div>
-                {% endif %}
-                {% for error in field.errors %}
-                  <div class="invalid-feedback d-block">{{ error }}</div>
-                {% endfor %}
-              </div>
-            {% endfor %}
-
-            <div class="d-flex gap-2">
-              <button type="submit" class="btn btn-primary">Salvar</button>
-              <a href="{% url 'ferramentas:ferramenta_list' %}" class="btn btn-secondary">Voltar</a>
+          <div class="row g-3">
+            <div class="col-12 col-sm-4">
+              <label for="{{ form.codigo.id_for_label }}" class="form-label small fw-semibold">
+                <i class="bi bi-upc-scan text-muted"></i> {{ form.codigo.label }}
+              </label>
+              {{ form.codigo }}
+              {% for error in form.codigo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
             </div>
-          </form>
-
+            <div class="col-12 col-sm-8">
+              <label for="{{ form.nome.id_for_label }}" class="form-label small fw-semibold">
+                <i class="bi bi-wrench text-muted"></i> {{ form.nome.label }}
+              </label>
+              {{ form.nome }}
+              {% for error in form.nome.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-12">
+              <label for="{{ form.descricao.id_for_label }}" class="form-label small fw-semibold">
+                <i class="bi bi-card-text text-muted"></i> {{ form.descricao.label }}
+              </label>
+              {{ form.descricao }}
+              {% for error in form.descricao.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+          </div>
         </div>
       </div>
+
+      <!-- Classificação e Status -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header bg-primary bg-opacity-10 py-2">
+          <h6 class="mb-0"><i class="bi bi-diagram-3 section-icon text-primary me-1"></i> Classificação e Status</h6>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12 col-sm-6">
+              <label for="{{ form.categoria.id_for_label }}" class="form-label small fw-semibold">
+                <i class="bi bi-bookmark text-muted"></i> {{ form.categoria.label }}
+              </label>
+              {{ form.categoria }}
+              {% for error in form.categoria.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-12 col-sm-6">
+              <label for="{{ form.status.id_for_label }}" class="form-label small fw-semibold">
+                <i class="bi bi-flag text-muted"></i> {{ form.status.label }}
+              </label>
+              {{ form.status }}
+              {% for error in form.status.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-12">
+              <label for="{{ form.obra_atual.id_for_label }}" class="form-label small fw-semibold">
+                <i class="bi bi-building text-muted"></i> {{ form.obra_atual.label }}
+              </label>
+              {{ form.obra_atual }}
+              {% if form.obra_atual.help_text %}<div class="form-text">{{ form.obra_atual.help_text }}</div>{% endif %}
+              {% for error in form.obra_atual.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Col Direita -->
+    <div class="col-12 col-lg-5">
+
+      <!-- Aquisição -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header bg-primary bg-opacity-10 py-2">
+          <h6 class="mb-0"><i class="bi bi-cash-stack section-icon text-primary me-1"></i> Aquisição</h6>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12 col-sm-6">
+              <label for="{{ form.data_aquisicao.id_for_label }}" class="form-label small fw-semibold">
+                <i class="bi bi-calendar-event text-muted"></i> {{ form.data_aquisicao.label }}
+              </label>
+              {{ form.data_aquisicao }}
+              {% for error in form.data_aquisicao.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-12 col-sm-6">
+              <label for="{{ form.valor_aquisicao.id_for_label }}" class="form-label small fw-semibold">
+                <i class="bi bi-currency-dollar text-muted"></i> {{ form.valor_aquisicao.label }}
+              </label>
+              <div class="input-group">
+                <span class="input-group-text">R$</span>
+                {{ form.valor_aquisicao }}
+              </div>
+              {% for error in form.valor_aquisicao.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Foto -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header bg-primary bg-opacity-10 py-2">
+          <h6 class="mb-0"><i class="bi bi-camera section-icon text-primary me-1"></i> Foto</h6>
+        </div>
+        <div class="card-body">
+          {{ form.foto }}
+          {% if form.foto.help_text %}<div class="form-text">{{ form.foto.help_text }}</div>{% endif %}
+          {% for error in form.foto.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+      </div>
+
+      <!-- Controle -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header bg-primary bg-opacity-10 py-2">
+          <h6 class="mb-0"><i class="bi bi-toggles section-icon text-primary me-1"></i> Controle</h6>
+        </div>
+        <div class="card-body">
+          <div class="form-check form-switch">
+            {{ form.ativo }}
+            <label class="form-check-label" for="{{ form.ativo.id_for_label }}">
+              <i class="bi bi-check-circle text-success"></i> Ferramenta ativa
+            </label>
+          </div>
+          {% for error in form.ativo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+      </div>
+
     </div>
   </div>
-</div>
+
+  <!-- Submit -->
+  <div class="d-flex justify-content-end gap-2 mt-2 mb-4">
+    <a href="{% url 'ferramentas:ferramenta_list' %}" class="btn btn-outline-secondary d-flex align-items-center gap-1">
+      <i class="bi bi-x-lg"></i> Cancelar
+    </a>
+    <button type="submit" class="btn btn-primary d-flex align-items-center gap-1">
+      <i class="bi bi-check-lg"></i> Salvar
+    </button>
+  </div>
+</form>
+
 {% endblock %}

@@ -3,83 +3,259 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Entrar - Perroni Construtora</title>
+    <title>Entrar — Perroni Construtora</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-      body { background: linear-gradient(180deg,#f8f9fa,#eef2f6); }
-      .login-card-inputs input[type="text"],
-      .login-card-inputs input[type="password"],
-      .login-card-inputs input[type="email"] {
-        display:block; width:100%; padding:.375rem .75rem; font-size:1rem; line-height:1.5;
-        color:#212529; background-color:#fff; background-clip:padding-box; border:1px solid #ced4da; border-radius:.25rem;
+      *{box-sizing:border-box}
+      html,body{height:100%;margin:0}
+      body{
+        font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+        background:#f0f2f5;
+        display:flex;flex-direction:column;
       }
-      .login-left { background: linear-gradient(180deg,#0d6efd,#0b5ed7); }
-      .brand { font-weight:700; color:#0b5ed7; }
-      footer.fixed-bottom { background:#fff; }
+
+      /* ---------- Left panel ---------- */
+      .login-left{
+        background:linear-gradient(160deg,#0d1b4a 0%,#1a237e 40%,#283593 100%);
+        color:#fff;
+        display:flex;flex-direction:column;justify-content:center;align-items:center;
+        padding:3rem 2rem;position:relative;overflow:hidden;
+        border-radius:1rem 0 0 1rem;
+      }
+      .login-left::before{
+        content:'';position:absolute;width:280px;height:280px;
+        border-radius:50%;background:rgba(255,255,255,.04);
+        top:-60px;right:-80px;
+      }
+      .login-left::after{
+        content:'';position:absolute;width:200px;height:200px;
+        border-radius:50%;background:rgba(255,255,255,.03);
+        bottom:-50px;left:-60px;
+      }
+      .login-left .brand-icon{
+        width:80px;height:80px;border-radius:50%;
+        background:rgba(255,255,255,.12);
+        display:flex;align-items:center;justify-content:center;
+        font-size:2.4rem;margin-bottom:1.2rem;
+        border:2px solid rgba(255,255,255,.2);
+        backdrop-filter:blur(4px);
+      }
+      .login-left h2{font-weight:800;font-size:1.6rem;letter-spacing:.5px;text-align:center;line-height:1.3}
+      .login-left .tagline{
+        margin-top:.6rem;font-size:.85rem;opacity:.7;text-align:center;
+        max-width:220px;line-height:1.5;
+      }
+      .login-left .features{
+        margin-top:2rem;list-style:none;padding:0;
+        font-size:.8rem;opacity:.75;
+      }
+      .login-left .features li{
+        padding:.25rem 0;display:flex;align-items:center;gap:.5rem;
+      }
+
+      /* ---------- Right panel ---------- */
+      .login-right{
+        display:flex;flex-direction:column;justify-content:center;
+        padding:2.5rem 2.2rem;
+      }
+      .login-right .welcome{
+        font-size:1.5rem;font-weight:700;color:#1a237e;margin-bottom:.15rem;
+      }
+      .login-right .subtitle{font-size:.88rem;color:#6c757d;margin-bottom:1.6rem}
+
+      /* Input groups */
+      .input-group-icon{position:relative}
+      .input-group-icon .icon{
+        position:absolute;top:50%;left:.85rem;transform:translateY(-50%);
+        color:#9ca3af;font-size:1.05rem;z-index:2;pointer-events:none;
+      }
+      .input-group-icon input{
+        display:block;width:100%;padding:.65rem .75rem .65rem 2.6rem;
+        font-size:.95rem;color:#212529;background:#f8f9fb;
+        border:1.5px solid #dee2e6;border-radius:.6rem;
+        transition:border-color .2s,box-shadow .2s,background .2s;
+      }
+      .input-group-icon input:focus{
+        outline:none;border-color:#4f6df5;
+        box-shadow:0 0 0 3px rgba(79,109,245,.15);
+        background:#fff;
+      }
+      .toggle-pw{
+        position:absolute;top:50%;right:.85rem;transform:translateY(-50%);
+        background:none;border:none;color:#9ca3af;cursor:pointer;font-size:1.05rem;
+        z-index:2;padding:0;
+      }
+      .toggle-pw:hover{color:#495057}
+
+      /* Button */
+      .btn-login{
+        background:linear-gradient(135deg,#1a237e,#3949ab);
+        border:none;color:#fff;font-weight:600;
+        padding:.7rem;border-radius:.6rem;font-size:.95rem;
+        transition:all .25s;width:100%;
+        display:flex;align-items:center;justify-content:center;gap:.5rem;
+      }
+      .btn-login:hover{
+        background:linear-gradient(135deg,#0d1b4a,#283593);
+        transform:translateY(-1px);box-shadow:0 4px 14px rgba(26,35,126,.35);
+        color:#fff;
+      }
+      .btn-login:active{transform:translateY(0)}
+
+      /* Card shell */
+      .login-card{
+        background:#fff;border-radius:1rem;overflow:hidden;
+        box-shadow:0 10px 40px rgba(0,0,0,.08);
+        max-width:860px;width:100%;
+      }
+
+      /* Alert */
+      .alert-login{
+        background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;
+        border-radius:.5rem;padding:.6rem .9rem;font-size:.85rem;
+      }
+
+      /* Footer */
+      .login-footer{
+        text-align:center;padding:.8rem;font-size:.78rem;color:#9ca3af;
+        margin-top:auto;
+      }
+      .login-footer a{color:#6366f1;text-decoration:none}
+      .login-footer a:hover{text-decoration:underline}
+
+      /* ---------- Mobile ---------- */
+      @media(max-width:767.98px){
+        .login-left{
+          border-radius:1rem 1rem 0 0;
+          padding:2rem 1.5rem;
+        }
+        .login-left .brand-icon{width:60px;height:60px;font-size:1.8rem;margin-bottom:.8rem}
+        .login-left h2{font-size:1.3rem}
+        .login-left .features{display:none}
+        .login-right{padding:1.8rem 1.5rem}
+        .login-card{margin:1rem}
+      }
     </style>
   </head>
+
   <body>
-    <main class="container my-5">
-      <div class="row justify-content-center align-items-center" style="min-height:60vh;">
-        <div class="col-12 col-md-8 col-lg-6">
-          <div class="card shadow-sm">
-            <div class="row g-0">
-              <div class="col-md-5 d-none d-md-flex login-left text-white flex-column justify-content-center align-items-center" style="padding:2rem;">
-                <h3 class="fw-bold">Perroni<br>Construtora</h3>
-                <p class="small mt-2 opacity-75">Sistema de Fiscalização de Obras</p>
-              </div>
-              <div class="col-md-7 col-12">
-                <div class="card-body p-4">
-                  <h4 class="card-title mb-1">Entrar</h4>
-                  <p class="text-muted small mb-3">Use suas credenciais para acessar o sistema.</p>
 
-                  <form method="post" novalidate class="login-card-inputs">
-                    {% csrf_token %}
-                    {% if form.non_field_errors %}
-                      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
-                    {% endif %}
+    <!-- ===== Main ===== -->
+    <main class="d-flex flex-grow-1 align-items-center justify-content-center px-3 py-4">
+      <div class="login-card">
+        <div class="row g-0">
 
-                    <div class="mb-3">
-                      <label for="id_username" class="form-label">Usuário</label>
-                      {{ form.username }}
-                      {% if form.username.errors %}
-                        <div class="text-danger small">{{ form.username.errors }}</div>
-                      {% endif %}
-                    </div>
+          <!-- Left brand panel -->
+          <div class="col-md-5 login-left">
+            <div class="brand-icon">
+              <i class="bi bi-buildings"></i>
+            </div>
+            <h2>Perroni<br>Construtora</h2>
+            <p class="tagline">Sistema de Gestão e Fiscalização de Obras</p>
 
-                    <div class="mb-3">
-                      <label for="id_password" class="form-label">Senha</label>
-                      {{ form.password }}
-                      {% if form.password.errors %}
-                        <div class="text-danger small">{{ form.password.errors }}</div>
-                      {% endif %}
-                    </div>
+            <ul class="features">
+              <li><i class="bi bi-check-circle-fill"></i> Controle de obras</li>
+              <li><i class="bi bi-check-circle-fill"></i> Gestão de funcionários</li>
+              <li><i class="bi bi-check-circle-fill"></i> Ferramentas e materiais</li>
+              <li><i class="bi bi-check-circle-fill"></i> Relatórios e analytics</li>
+            </ul>
+          </div>
 
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                      <div>
-                        <button type="submit" class="btn btn-primary">Entrar</button>
-                        <a href="/" class="btn btn-outline-secondary ms-2">Cancelar</a>
-                      </div>
-                    </div>
-                  </form>
+          <!-- Right form panel -->
+          <div class="col-md-7 login-right">
 
-                  <hr>
-                  <p class="small text-muted">Se você esqueceu a senha, peça ao administrador do sistema para resetar.</p>
-                </div>
+            <!-- Mobile brand (shown only on xs) -->
+            <div class="d-md-none text-center mb-3">
+              <i class="bi bi-buildings" style="font-size:2rem;color:#1a237e"></i>
+              <div class="fw-bold" style="font-size:1.1rem;color:#1a237e">Perroni Construtora</div>
+            </div>
+
+            <div class="welcome">Bem-vindo</div>
+            <p class="subtitle">Faça login para acessar sua conta</p>
+
+            {% if form.non_field_errors %}
+            <div class="alert-login mb-3 d-flex align-items-start gap-2">
+              <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+              <div>
+                {% for error in form.non_field_errors %}
+                  <div>{{ error }}</div>
+                {% endfor %}
               </div>
             </div>
+            {% endif %}
+
+            <form method="post" novalidate>
+              {% csrf_token %}
+
+              <!-- Username -->
+              <div class="mb-3">
+                <label for="id_username" class="form-label fw-semibold small mb-1">
+                  <i class="bi bi-person-fill text-muted"></i> Usuário
+                </label>
+                <div class="input-group-icon">
+                  <i class="bi bi-person icon"></i>
+                  <input type="text" name="username" id="id_username"
+                         value="{{ form.username.value|default:'' }}"
+                         placeholder="Digite seu usuário"
+                         autofocus autocomplete="username"
+                         class="{% if form.username.errors %}border-danger{% endif %}">
+                </div>
+                {% if form.username.errors %}
+                  <div class="text-danger small mt-1"><i class="bi bi-x-circle"></i> {{ form.username.errors|striptags }}</div>
+                {% endif %}
+              </div>
+
+              <!-- Password -->
+              <div class="mb-4">
+                <label for="id_password" class="form-label fw-semibold small mb-1">
+                  <i class="bi bi-lock-fill text-muted"></i> Senha
+                </label>
+                <div class="input-group-icon">
+                  <i class="bi bi-lock icon"></i>
+                  <input type="password" name="password" id="id_password"
+                         placeholder="Digite sua senha"
+                         autocomplete="current-password"
+                         class="{% if form.password.errors %}border-danger{% endif %}">
+                  <button type="button" class="toggle-pw" onclick="togglePassword()" aria-label="Mostrar/ocultar senha">
+                    <i class="bi bi-eye" id="pw-icon"></i>
+                  </button>
+                </div>
+                {% if form.password.errors %}
+                  <div class="text-danger small mt-1"><i class="bi bi-x-circle"></i> {{ form.password.errors|striptags }}</div>
+                {% endif %}
+              </div>
+
+              <button type="submit" class="btn-login">
+                <i class="bi bi-box-arrow-in-right"></i> Entrar
+              </button>
+            </form>
+
+            <div class="text-center mt-3">
+              <small class="text-muted">
+                <i class="bi bi-shield-lock"></i> Esqueceu a senha? Contate o administrador.
+              </small>
+            </div>
           </div>
+
         </div>
       </div>
     </main>
 
-    <footer class="bg-light border-top fixed-bottom">
-      <div class="container py-2 d-flex justify-content-between small">
-        <div>&copy; {% now "Y" %} Perroni Construtora</div>
-        <div>Desenvolvido por <a href="https://palmersistemas.com.br/" target="_blank" rel="noopener">https://palmersistemas.com.br/</a></div>
-      </div>
+    <!-- ===== Footer ===== -->
+    <footer class="login-footer">
+      &copy; {% now "Y" %} Perroni Construtora &middot;
+      Desenvolvido por <a href="https://palmersistemas.com.br/" target="_blank" rel="noopener">Palmer Sistemas</a>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script>
+      function togglePassword(){
+        const inp=document.getElementById('id_password');
+        const ico=document.getElementById('pw-icon');
+        if(inp.type==='password'){inp.type='text';ico.classList.replace('bi-eye','bi-eye-slash')}
+        else{inp.type='password';ico.classList.replace('bi-eye-slash','bi-eye')}
+      }
+    </script>
   </body>
 </html>

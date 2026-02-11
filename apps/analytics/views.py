@@ -76,8 +76,8 @@ def rankings(request):
 
 @login_required
 def pedreiro_rendimento(request, pk):
-    """Análise de rendimento individual de um pedreiro"""
-    pedreiro = get_object_or_404(Funcionario, pk=pk, funcao='pedreiro')
+    """Análise de rendimento individual de um funcionário"""
+    pedreiro = get_object_or_404(Funcionario, pk=pk)
     analytics = AnalyticsService()
     
     rendimento = analytics.rendimento_individual_pedreiro(pk)

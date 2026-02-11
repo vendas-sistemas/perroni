@@ -2,47 +2,163 @@
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+  .section-card { border: none; border-radius: .75rem; }
+  .section-header { border-radius: .75rem .75rem 0 0; padding: .6rem 1rem; }
+  .field-icon { width: 18px; text-align: center; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-4">
-  <div class="row">
-    <div class="col-md-8 offset-md-2">
-      <div class="card">
+
+<!-- Header -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <h1 class="h3 mb-0">
+    {% if cliente %}
+      <i class="bi bi-pencil-square text-primary"></i> Editar Cliente
+    {% else %}
+      <i class="bi bi-person-plus-fill text-primary"></i> Novo Cliente
+    {% endif %}
+  </h1>
+  <a href="{% url 'clientes:cliente_list' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+    <i class="bi bi-arrow-left"></i> Voltar
+  </a>
+</div>
+
+<form method="post" novalidate>
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger alert-sm mb-3">
+    {% for error in form.non_field_errors %}
+    <div><i class="bi bi-exclamation-triangle-fill"></i> {{ error }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="row g-3">
+    <!-- Left Column: Dados Pessoais -->
+    <div class="col-lg-7">
+      <div class="card section-card shadow-sm">
+        <div class="section-header bg-primary bg-opacity-10">
+          <h6 class="mb-0 text-primary"><i class="bi bi-person-vcard"></i> Dados Pessoais</h6>
+        </div>
         <div class="card-body">
-          <h4 class="card-title mb-3">{{ title }}</h4>
-          <form method="post">
-            {% csrf_token %}
-            {% for field in form %}
-              {% if field.name == 'ativo' %}
-                <div class="form-check mb-3">
-                  {{ field }}
-                  <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                  {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-                  {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-                </div>
-              {% else %}
-                <div class="mb-3">
-                  {{ field.label_tag }}
-                  {{ field }}
-                  {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-                  {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-                </div>
-              {% endif %}
-            {% endfor %}
-            <div class="d-flex gap-2">
-              <button class="btn btn-primary" type="submit">Salvar</button>
-              <a href="{% url 'clientes:cliente_list' %}" class="btn btn-secondary">Voltar</a>
-            </div>
-          </form>
+          <!-- Nome -->
+          <div class="mb-3">
+            <label for="{{ form.nome.id_for_label }}" class="form-label fw-semibold small">
+              <i class="bi bi-person field-icon text-primary"></i> {{ form.nome.label }}
+            </label>
+            {{ form.nome }}
+            {% if form.nome.help_text %}<div class="form-text">{{ form.nome.help_text }}</div>{% endif %}
+            {% for error in form.nome.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+
+          <!-- CPF -->
+          <div class="mb-3">
+            <label for="{{ form.cpf.id_for_label }}" class="form-label fw-semibold small">
+              <i class="bi bi-card-text field-icon text-primary"></i> {{ form.cpf.label }}
+            </label>
+            {{ form.cpf }}
+            {% if form.cpf.help_text %}<div class="form-text">{{ form.cpf.help_text }}</div>{% endif %}
+            {% for error in form.cpf.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+
+          <!-- Data de Nascimento -->
+          <div class="mb-3">
+            <label for="{{ form.data_nascimento.id_for_label }}" class="form-label fw-semibold small">
+              <i class="bi bi-calendar-event field-icon text-primary"></i> {{ form.data_nascimento.label }}
+            </label>
+            {{ form.data_nascimento }}
+            {% if form.data_nascimento.help_text %}<div class="form-text">{{ form.data_nascimento.help_text }}</div>{% endif %}
+            {% for error in form.data_nascimento.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+
+          <!-- Endereço -->
+          <div class="mb-0">
+            <label for="{{ form.endereco.id_for_label }}" class="form-label fw-semibold small">
+              <i class="bi bi-geo-alt field-icon text-primary"></i> {{ form.endereco.label }}
+            </label>
+            {{ form.endereco }}
+            {% if form.endereco.help_text %}<div class="form-text">{{ form.endereco.help_text }}</div>{% endif %}
+            {% for error in form.endereco.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Contato + Controle -->
+    <div class="col-lg-5">
+      <!-- Contato -->
+      <div class="card section-card shadow-sm mb-3">
+        <div class="section-header" style="background-color: rgba(25,135,84,.1);">
+          <h6 class="mb-0 text-success"><i class="bi bi-chat-dots"></i> Contato</h6>
+        </div>
+        <div class="card-body">
+          <!-- Telefone -->
+          <div class="mb-3">
+            <label for="{{ form.telefone.id_for_label }}" class="form-label fw-semibold small">
+              <i class="bi bi-telephone field-icon text-success"></i> {{ form.telefone.label }}
+            </label>
+            {{ form.telefone }}
+            {% if form.telefone.help_text %}<div class="form-text">{{ form.telefone.help_text }}</div>{% endif %}
+            {% for error in form.telefone.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+
+          <!-- E-mail -->
+          <div class="mb-0">
+            <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold small">
+              <i class="bi bi-envelope field-icon text-success"></i> {{ form.email.label }}
+            </label>
+            {{ form.email }}
+            {% if form.email.help_text %}<div class="form-text">{{ form.email.help_text }}</div>{% endif %}
+            {% for error in form.email.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Controle -->
+      <div class="card section-card shadow-sm">
+        <div class="section-header" style="background-color: rgba(108,117,125,.1);">
+          <h6 class="mb-0 text-secondary"><i class="bi bi-gear"></i> Controle</h6>
+        </div>
+        <div class="card-body">
+          <div class="form-check form-switch">
+            {{ form.ativo }}
+            <label class="form-check-label fw-semibold small" for="{{ form.ativo.id_for_label }}">
+              Cliente Ativo
+            </label>
+          </div>
+          {% for error in form.ativo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+
+          {% if cliente %}
+          <div class="mt-3 small text-muted">
+            <div><i class="bi bi-clock"></i> Criado em: {{ cliente.created_at|date:"d/m/Y H:i" }}</div>
+            <div><i class="bi bi-arrow-clockwise"></i> Atualizado em: {{ cliente.updated_at|date:"d/m/Y H:i" }}</div>
+          </div>
+          {% endif %}
         </div>
       </div>
     </div>
   </div>
-</div>
+
+  <!-- Actions -->
+  <div class="d-flex gap-2 mt-3">
+    <button type="submit" class="btn btn-primary d-flex align-items-center gap-1">
+      <i class="bi bi-check-lg"></i> Salvar
+    </button>
+    <a href="{% url 'clientes:cliente_list' %}" class="btn btn-outline-secondary d-flex align-items-center gap-1">
+      <i class="bi bi-x-lg"></i> Cancelar
+    </a>
+  </div>
+</form>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Reuse same masks as cliente_list
 function maskCPF(v){
   v=v.replace(/\D/g,'');
   v=v.replace(/(\d{3})(\d)/,'$1.$2');
@@ -61,16 +177,11 @@ function maskPhone(v){
   }
   return v;
 }
-
 document.addEventListener('DOMContentLoaded', function(){
   var cpfInput = document.querySelector('input[name="cpf"]');
   var telInput = document.querySelector('input[name="telefone"]');
-  if(cpfInput){
-    cpfInput.addEventListener('input', function(e){ this.value = maskCPF(this.value); });
-  }
-  if(telInput){
-    telInput.addEventListener('input', function(e){ this.value = maskPhone(this.value); });
-  }
+  if(cpfInput){ cpfInput.addEventListener('input', function(){ this.value = maskCPF(this.value); }); }
+  if(telInput){ telInput.addEventListener('input', function(){ this.value = maskPhone(this.value); }); }
 });
 </script>
 {% endblock %}

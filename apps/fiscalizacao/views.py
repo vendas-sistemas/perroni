@@ -15,16 +15,38 @@ def fiscalizacao_list(request):
     qs = RegistroFiscalizacao.objects.all().select_related('obra', 'fiscal', 'obra__cliente')
 
     # optional search by obra name or fiscal username
-    q = request.GET.get('q')
+    q = request.GET.get('q', '').strip()
     if q:
         qs = qs.filter(
             Q(obra__nome__icontains=q) | Q(fiscal__username__icontains=q) | Q(fiscal__first_name__icontains=q) | Q(fiscal__last_name__icontains=q)
         )
 
+    # Filtro por clima
+    clima_filter = request.GET.get('clima', '')
+    if clima_filter in ('sol', 'chuva', 'nublado'):
+        qs = qs.filter(clima=clima_filter)
+
+    # Filtro por ociosidade / retrabalho
+    flag_filter = request.GET.get('flag', '')
+    if flag_filter == 'ociosidade':
+        qs = qs.filter(houve_ociosidade=True)
+    elif flag_filter == 'retrabalho':
+        qs = qs.filter(houve_retrabalho=True)
+
     qs = qs.order_by('-data_fiscalizacao', '-created_at')
 
+    # Contadores
+    all_qs = RegistroFiscalizacao.objects.all()
+    total_fiscalizacoes = all_qs.count()
+    total_ociosidade = all_qs.filter(houve_ociosidade=True).count()
+    total_retrabalho = all_qs.filter(houve_retrabalho=True).count()
+    total_resultado = qs.count()
+
     # pagination
-    per_page = 12
+    per_page_param = request.GET.get('per_page', '15')
+    if per_page_param not in ('10', '15', '20'):
+        per_page_param = '15'
+    per_page = int(per_page_param)
     paginator = Paginator(qs, per_page)
     page = request.GET.get('page')
     page_obj = paginator.get_page(page)
@@ -40,7 +62,15 @@ def fiscalizacao_list(request):
         'is_paginated': page_obj.has_other_pages(),
         'paginator': paginator,
         'querystring': querystring,
-        'title': 'Fiscalizações'
+        'per_page': per_page,
+        'title': 'Fiscalizações',
+        'busca': q,
+        'clima_filter': clima_filter,
+        'flag_filter': flag_filter,
+        'total_fiscalizacoes': total_fiscalizacoes,
+        'total_ociosidade': total_ociosidade,
+        'total_retrabalho': total_retrabalho,
+        'total_resultado': total_resultado,
     }
     return render(request, 'fiscalizacao/fiscalizacao_list.html', context)
 

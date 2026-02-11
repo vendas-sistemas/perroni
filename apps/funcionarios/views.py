@@ -23,9 +23,48 @@ import calendar
 def funcionario_list(request):
     """Lista funcionários"""
     funcionarios = Funcionario.objects.filter(ativo=True).order_by('nome_completo')
+
+    # Filtro por função
+    funcao_filter = request.GET.get('funcao', '')
+    if funcao_filter in ('pedreiro', 'servente'):
+        funcionarios = funcionarios.filter(funcao=funcao_filter)
+
+    # Busca por nome
+    busca = request.GET.get('q', '').strip()
+    if busca:
+        funcionarios = funcionarios.filter(nome_completo__icontains=busca)
+
+    # Contadores
+    total_ativos = Funcionario.objects.filter(ativo=True).count()
+    total_pedreiros = Funcionario.objects.filter(ativo=True, funcao='pedreiro').count()
+    total_serventes = Funcionario.objects.filter(ativo=True, funcao='servente').count()
+    total_resultado = funcionarios.count()
+
+    # Paginação
+    per_page = request.GET.get('per_page', '15')
+    if per_page not in ('10', '15', '20'):
+        per_page = '15'
+    per_page = int(per_page)
+    paginator = Paginator(funcionarios, per_page)
+    page = request.GET.get('page')
+    try:
+        funcionarios_page = paginator.page(page)
+    except PageNotAnInteger:
+        funcionarios_page = paginator.page(1)
+    except EmptyPage:
+        funcionarios_page = paginator.page(paginator.num_pages)
+
     context = {
-        'funcionarios': funcionarios,
-        'title': 'Funcionários'
+        'funcionarios': funcionarios_page,
+        'page_obj': funcionarios_page,
+        'title': 'Funcionários',
+        'busca': busca,
+        'funcao_filter': funcao_filter,
+        'total_ativos': total_ativos,
+        'total_pedreiros': total_pedreiros,
+        'total_serventes': total_serventes,
+        'total_resultado': total_resultado,
+        'per_page': per_page,
     }
     return render(request, 'funcionarios/funcionario_list.html', context)
 
@@ -282,13 +321,168 @@ def apontamento_delete(request, pk):
 
 @login_required
 def fechamento_list(request):
-    """Lista fechamentos semanais"""
-    fechamentos = FechamentoSemanal.objects.all().select_related('funcionario')
+    """Lista fechamentos agrupados por semana"""
+    from django.db.models import Sum, Count, Q, Min, Max
+
+    # Agrupar por semana (data_inicio, data_fim)
+    semanas_qs = (
+        FechamentoSemanal.objects
+        .values('data_inicio', 'data_fim')
+        .annotate(
+            total_funcionarios=Count('id'),
+            total_dias=Sum('total_dias'),
+            total_valor=Sum('total_valor'),
+            total_ociosidade=Sum('dias_ociosidade'),
+            total_retrabalho=Sum('dias_retrabalho'),
+            qtd_fechados=Count('id', filter=Q(status='fechado')),
+            qtd_pagos=Count('id', filter=Q(status='pago')),
+        )
+        .order_by('-data_inicio')
+    )
+
+    semanas = list(semanas_qs)
+
+    # Calcular status geral de cada semana
+    for s in semanas:
+        if s['qtd_pagos'] == s['total_funcionarios']:
+            s['status_geral'] = 'pago'
+        elif s['qtd_pagos'] > 0:
+            s['status_geral'] = 'parcial'
+        else:
+            s['status_geral'] = 'fechado'
+
     context = {
-        'fechamentos': fechamentos,
-        'title': 'Fechamentos Semanais'
+        'semanas': semanas,
+        'title': 'Fechamentos Semanais',
     }
     return render(request, 'funcionarios/fechamento_list.html', context)
+
+
+@login_required
+def fechamento_semana_detail(request, data_inicio):
+    """Detalhe de uma semana: lista todos os funcionários e seus fechamentos."""
+    try:
+        dt_inicio = datetime.date.fromisoformat(data_inicio)
+    except ValueError:
+        messages.error(request, 'Data inválida.')
+        return redirect('funcionarios:fechamento_list')
+
+    dt_fim = dt_inicio + datetime.timedelta(days=5)  # seg a sáb
+
+    fechamentos = (
+        FechamentoSemanal.objects
+        .filter(data_inicio=dt_inicio)
+        .select_related('funcionario')
+        .order_by('funcionario__nome_completo')
+    )
+
+    if not fechamentos.exists():
+        messages.warning(request, 'Nenhum fechamento encontrado para esta semana.')
+        return redirect('funcionarios:fechamento_list')
+
+    dt_fim_real = fechamentos.first().data_fim
+
+    # Totais da semana
+    from django.db.models import Sum, Count, Q
+    totais = fechamentos.aggregate(
+        total_funcionarios=Count('id'),
+        total_dias=Sum('total_dias'),
+        total_valor=Sum('total_valor'),
+        total_ociosidade=Sum('dias_ociosidade'),
+        total_retrabalho=Sum('dias_retrabalho'),
+        qtd_fechados=Count('id', filter=Q(status='fechado')),
+        qtd_pagos=Count('id', filter=Q(status='pago')),
+    )
+
+    # Filtro por status
+    status_filter = request.GET.get('status')
+    if status_filter in ('fechado', 'pago'):
+        fechamentos = fechamentos.filter(status=status_filter)
+
+    # Busca por nome
+    busca = request.GET.get('q', '').strip()
+    if busca:
+        fechamentos = fechamentos.filter(funcionario__nome_completo__icontains=busca)
+
+    # Filtro por dia específico ou intervalo de datas (filtra via apontamentos)
+    dia_filter = request.GET.get('dia', '').strip()
+    dia_inicio_filter = request.GET.get('dia_inicio', '').strip()
+    dia_fim_filter = request.GET.get('dia_fim', '').strip()
+
+    if dia_filter:
+        # Dia específico: só mostra funcionários que trabalharam nesse dia
+        try:
+            dt_dia = datetime.date.fromisoformat(dia_filter)
+            func_ids = ApontamentoFuncionario.objects.filter(
+                data=dt_dia,
+                data__gte=dt_inicio,
+                data__lte=dt_fim_real,
+            ).values_list('funcionario_id', flat=True)
+            fechamentos = fechamentos.filter(funcionario_id__in=func_ids)
+        except ValueError:
+            pass
+    elif dia_inicio_filter or dia_fim_filter:
+        # Intervalo de datas dentro da semana
+        try:
+            dt_di = datetime.date.fromisoformat(dia_inicio_filter) if dia_inicio_filter else dt_inicio
+            dt_df = datetime.date.fromisoformat(dia_fim_filter) if dia_fim_filter else dt_fim_real
+            # Limitar ao intervalo da semana
+            dt_di = max(dt_di, dt_inicio)
+            dt_df = min(dt_df, dt_fim_real)
+            func_ids = ApontamentoFuncionario.objects.filter(
+                data__gte=dt_di,
+                data__lte=dt_df,
+            ).values_list('funcionario_id', flat=True)
+            fechamentos = fechamentos.filter(funcionario_id__in=func_ids)
+        except ValueError:
+            pass
+
+    # Gerar lista de dias da semana para os filtros rápidos
+    dias_semana = []
+    DIAS_NOMES = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+    d = dt_inicio
+    while d <= dt_fim_real:
+        dias_semana.append({
+            'data': d,
+            'nome': DIAS_NOMES[d.weekday()],
+            'iso': d.isoformat(),
+        })
+        d += datetime.timedelta(days=1)
+
+    # Buscar apontamentos da semana para mostrar dia/obra por funcionário
+    apontamentos_semana = (
+        ApontamentoFuncionario.objects
+        .filter(data__gte=dt_inicio, data__lte=dt_fim_real)
+        .select_related('obra')
+        .order_by('data')
+    )
+    # Agrupar por funcionário: lista de {data, obra_nome}
+    apts_por_func = defaultdict(list)
+    for apt in apontamentos_semana:
+        apts_por_func[apt.funcionario_id].append({
+            'data': apt.data,
+            'obra': apt.obra.nome if apt.obra else '—',
+        })
+
+    # Converter fechamentos para lista para poder anotar
+    fechamentos_list = list(fechamentos)
+    for f in fechamentos_list:
+        f.apontamentos_semana = apts_por_func.get(f.funcionario_id, [])
+
+    context = {
+        'fechamentos': fechamentos_list,
+        'data_inicio': dt_inicio,
+        'data_fim': dt_fim_real,
+        'totais': totais,
+        'status_filter': status_filter or '',
+        'busca': busca,
+        'dia_filter': dia_filter,
+        'dia_inicio_filter': dia_inicio_filter,
+        'dia_fim_filter': dia_fim_filter,
+        'dias_semana': dias_semana,
+        'title': f'Semana {dt_inicio.strftime("%d/%m/%Y")} a {dt_fim_real.strftime("%d/%m/%Y")}',
+    }
+    return render(request, 'funcionarios/fechamento_semana_detail.html', context)
 
 
 @login_required
@@ -298,8 +492,8 @@ def fechamento_create(request):
         form = FechamentoForm(request.POST)
         if form.is_valid():
             f = form.save(commit=False)
-            f.data_fim = f.data_inicio + datetime.timedelta(days=6)
-            f.status = 'aberto'
+            f.data_fim = f.data_inicio + datetime.timedelta(days=5)
+            f.status = 'fechado'
             # Check duplicate
             existing = FechamentoSemanal.objects.filter(
                 funcionario=f.funcionario,
@@ -380,7 +574,7 @@ def fechamento_auto(request):
                     funcionario=func,
                     data_inicio=data_inicio,
                     data_fim=data_fim,
-                    status='aberto'
+                    status='fechado'
                 )
                 f.save()
                 f.calcular_totais()

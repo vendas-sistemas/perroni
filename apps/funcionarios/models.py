@@ -233,14 +233,13 @@ class FechamentoSemanal(models.Model):
     
     # Status
     STATUS_CHOICES = [
-        ('aberto', 'Aberto'),
         ('fechado', 'Fechado'),
         ('pago', 'Pago'),
     ]
     status = models.CharField(
         max_length=10,
         choices=STATUS_CHOICES,
-        default='aberto',
+        default='fechado',
         verbose_name="Status"
     )
     

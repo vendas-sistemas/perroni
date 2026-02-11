@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+{% load obras_extras %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <!-- Header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+    <div>
+      <a href="{% url 'funcionarios:fechamento_list' %}" class="text-decoration-none text-muted">
+        <i class="bi bi-arrow-left"></i> Fechamentos Semanais
+      </a>
+      <h3 class="mb-0 mt-1">
+        <i class="bi bi-calendar-week"></i>
+        Semana {{ data_inicio|date:'d/m/Y' }} — {{ data_fim|date:'d/m/Y' }}
+      </h3>
+    </div>
+  </div>
+
+  <!-- Cards de resumo -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-2">
+      <div class="card text-center border-0 shadow-sm">
+        <div class="card-body py-3">
+          <div class="text-muted small"><i class="bi bi-people"></i> Funcionários</div>
+          <div class="h4 mb-0 fw-bold">{{ totais.total_funcionarios }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card text-center border-0 shadow-sm">
+        <div class="card-body py-3">
+          <div class="text-muted small"><i class="bi bi-calendar-check"></i> Diárias</div>
+          <div class="h4 mb-0 fw-bold">{{ totais.total_dias }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card text-center border-0 shadow-sm bg-success bg-opacity-10">
+        <div class="card-body py-3">
+          <div class="text-muted small"><i class="bi bi-cash-stack"></i> Valor Total</div>
+          <div class="h4 mb-0 fw-bold text-success">{{ totais.total_valor|brl }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card text-center border-0 shadow-sm">
+        <div class="card-body py-3">
+          <div class="text-muted small"><i class="bi bi-pause-circle"></i> Ociosidade</div>
+          <div class="h4 mb-0 fw-bold text-warning">{{ totais.total_ociosidade|default:"0" }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card text-center border-0 shadow-sm">
+        <div class="card-body py-3">
+          <div class="text-muted small"><i class="bi bi-arrow-repeat"></i> Retrabalho</div>
+          <div class="h4 mb-0 fw-bold text-danger">{{ totais.total_retrabalho|default:"0" }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body py-3">
+      <div class="row g-2 align-items-end">
+        <!-- Filtro por dia rápido -->
+        <div class="col-12 col-lg-5">
+          <label class="form-label small text-muted mb-1"><i class="bi bi-calendar-day"></i> Filtrar por dia</label>
+          <div class="d-flex flex-wrap gap-1">
+            <a href="?{% if status_filter %}status={{ status_filter }}&{% endif %}{% if busca %}q={{ busca }}&{% endif %}"
+               class="btn btn-sm {% if not dia_filter and not dia_inicio_filter %}btn-dark{% else %}btn-outline-secondary{% endif %}">
+              Todos
+            </a>
+            {% for d in dias_semana %}
+            <a href="?dia={{ d.iso }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if busca %}&q={{ busca }}{% endif %}"
+               class="btn btn-sm {% if dia_filter == d.iso %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+              {{ d.nome }} {{ d.data|date:'d' }}
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Filtro por intervalo de datas -->
+        <div class="col-6 col-lg-2">
+          <label class="form-label small text-muted mb-1"><i class="bi bi-calendar-range"></i> De</label>
+          <input type="date" id="filtro_dia_inicio" class="form-control form-control-sm"
+                 value="{{ dia_inicio_filter }}"
+                 min="{{ data_inicio|date:'Y-m-d' }}" max="{{ data_fim|date:'Y-m-d' }}">
+        </div>
+        <div class="col-6 col-lg-2">
+          <label class="form-label small text-muted mb-1">Até</label>
+          <input type="date" id="filtro_dia_fim" class="form-control form-control-sm"
+                 value="{{ dia_fim_filter }}"
+                 min="{{ data_inicio|date:'Y-m-d' }}" max="{{ data_fim|date:'Y-m-d' }}">
+        </div>
+
+        <!-- Busca por nome -->
+        <div class="col-12 col-lg-3">
+          <label class="form-label small text-muted mb-1"><i class="bi bi-search"></i> Funcionário</label>
+          <div class="d-flex gap-1">
+            <input type="text" id="filtro_nome" class="form-control form-control-sm"
+                   value="{{ busca }}" placeholder="Buscar por nome...">
+            <button type="button" id="btn_filtrar" class="btn btn-sm btn-primary">
+              <i class="bi bi-funnel"></i>
+            </button>
+            {% if busca or dia_filter or dia_inicio_filter or dia_fim_filter or status_filter %}
+            <a href="." class="btn btn-sm btn-outline-danger" title="Limpar filtros">
+              <i class="bi bi-x-lg"></i>
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="d-flex flex-wrap gap-2 mt-3 align-items-center">
+        <span class="text-muted small me-1">Status:</span>
+        <a href="?{% if busca %}q={{ busca }}&{% endif %}{% if dia_filter %}dia={{ dia_filter }}&{% endif %}{% if dia_inicio_filter %}dia_inicio={{ dia_inicio_filter }}&{% endif %}{% if dia_fim_filter %}dia_fim={{ dia_fim_filter }}&{% endif %}"
+           class="badge text-decoration-none {% if not status_filter %}bg-dark{% else %}bg-light text-dark border{% endif %} px-3 py-2">
+          Todos ({{ totais.total_funcionarios }})
+        </a>
+        <a href="?status=fechado{% if busca %}&q={{ busca }}{% endif %}{% if dia_filter %}&dia={{ dia_filter }}{% endif %}{% if dia_inicio_filter %}&dia_inicio={{ dia_inicio_filter }}{% endif %}{% if dia_fim_filter %}&dia_fim={{ dia_fim_filter }}{% endif %}"
+           class="badge text-decoration-none {% if status_filter == 'fechado' %}bg-primary{% else %}bg-light text-dark border{% endif %} px-3 py-2">
+          <i class="bi bi-lock"></i> Fechados ({{ totais.qtd_fechados }})
+        </a>
+        <a href="?status=pago{% if busca %}&q={{ busca }}{% endif %}{% if dia_filter %}&dia={{ dia_filter }}{% endif %}{% if dia_inicio_filter %}&dia_inicio={{ dia_inicio_filter }}{% endif %}{% if dia_fim_filter %}&dia_fim={{ dia_fim_filter }}{% endif %}"
+           class="badge text-decoration-none {% if status_filter == 'pago' %}bg-success{% else %}bg-light text-dark border{% endif %} px-3 py-2">
+          <i class="bi bi-check-circle"></i> Pagos ({{ totais.qtd_pagos }})
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabela de funcionários -->
+  <div class="card shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 28%;">Funcionário</th>
+            <th class="text-center" style="width: 6%;">Dias</th>
+            <th style="width: 30%;">Dia / Obra</th>
+            <th class="text-end" style="width: 12%;">Valor</th>
+            <th class="text-center" style="width: 6%;">Ocios.</th>
+            <th class="text-center" style="width: 6%;">Retrab.</th>
+            <th class="text-center" style="width: 8%;">Status</th>
+            <th class="text-center" style="width: 4%;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in fechamentos %}
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; min-width: 36px;">
+                  <i class="bi bi-person-fill"></i>
+                </div>
+                <div>
+                  <div class="fw-semibold">{{ f.funcionario.nome_completo }}</div>
+                  <small class="text-muted">{{ f.funcionario.get_funcao_display }} · {{ f.funcionario.valor_diaria|brl }}/dia</small>
+                </div>
+              </div>
+            </td>
+            <td class="text-center fw-semibold">{{ f.total_dias }}</td>
+            <td>
+              {% for apt in f.apontamentos_semana %}
+              <div class="d-flex align-items-center gap-1 {% if not forloop.last %}mb-1{% endif %}" style="font-size: 0.82rem;">
+                <span class="badge bg-light text-dark border" style="min-width: 55px;">{{ apt.data|date:'D d' }}</span>
+                <span class="text-muted">{{ apt.obra }}</span>
+              </div>
+              {% empty %}
+              <span class="text-muted">—</span>
+              {% endfor %}
+            </td>
+            <td class="text-end fw-semibold text-success">{{ f.total_valor|brl }}</td>
+            <td class="text-center">
+              {% if f.dias_ociosidade %}
+                <span class="badge bg-warning text-dark">{{ f.dias_ociosidade }}</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              {% if f.dias_retrabalho %}
+                <span class="badge bg-danger">{{ f.dias_retrabalho }}</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              {% if f.status == 'pago' %}
+                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Pago</span>
+              {% else %}
+                <span class="badge bg-primary"><i class="bi bi-lock"></i> Fechado</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <a href="{% url 'funcionarios:fechamento_detail' f.pk %}" class="btn btn-sm btn-outline-secondary" title="Ver detalhes">
+                <i class="bi bi-eye"></i>
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="text-center py-4 text-muted">
+              Nenhum funcionário encontrado{% if busca %} para "<strong>{{ busca }}</strong>"{% endif %}{% if status_filter %} com status "<strong>{{ status_filter }}</strong>"{% endif %}.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function aplicarFiltros() {
+    const params = new URLSearchParams();
+    const nome = document.getElementById('filtro_nome').value.trim();
+    const diaInicio = document.getElementById('filtro_dia_inicio').value;
+    const diaFim = document.getElementById('filtro_dia_fim').value;
+    const statusAtual = '{{ status_filter }}';
+
+    if (nome) params.set('q', nome);
+    if (diaInicio) params.set('dia_inicio', diaInicio);
+    if (diaFim) params.set('dia_fim', diaFim);
+    if (statusAtual) params.set('status', statusAtual);
+
+    const qs = params.toString();
+    window.location.href = window.location.pathname + (qs ? '?' + qs : '');
+  }
+
+  document.getElementById('btn_filtrar').addEventListener('click', aplicarFiltros);
+
+  // Enter nos campos de filtro
+  ['filtro_nome', 'filtro_dia_inicio', 'filtro_dia_fim'].forEach(function(id) {
+    document.getElementById(id).addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); aplicarFiltros(); }
+    });
+  });
+
+  // Auto-filtrar ao mudar as datas
+  ['filtro_dia_inicio', 'filtro_dia_fim'].forEach(function(id) {
+    document.getElementById(id).addEventListener('change', aplicarFiltros);
+  });
+</script>
+{% endblock %}

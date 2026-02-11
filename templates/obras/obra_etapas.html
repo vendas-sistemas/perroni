@@ -1,61 +1,198 @@
 {% extends 'base.html' %}
 
-{% block title %}Etapas - {{ title|default:'' }}{% endblock %}
+{% block title %}Etapas - {{ obra.nome }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+  .etapa-card {
+    border: none;
+    border-radius: .75rem;
+    overflow: hidden;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .etapa-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.12) !important;
+  }
+  .etapa-number {
+    width: 48px; height: 48px;
+    border-radius: .75rem;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; font-weight: 700;
+  }
+  .etapa-progress-wrap {
+    height: 6px;
+    border-radius: 3px;
+    background: #e9ecef;
+    overflow: hidden;
+  }
+  .etapa-progress-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width .5s ease;
+  }
+  .timeline-connector {
+    width: 2px;
+    background: #dee2e6;
+    margin: 0 auto;
+    height: 24px;
+  }
+  .timeline-connector.done { background: #198754; }
+  .badge-etapa { font-size: .7rem; padding: .3rem .55rem; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-      <h3 class="mb-0">Etapas - {{ obra.nome }}</h3>
-      <p class="small text-muted mb-0">Cliente: {{ obra.cliente }}</p>
-    </div>
-    <div>
-      <a href="{% url 'obras:obra_detail' obra.pk %}" class="btn btn-secondary">Voltar</a>
+
+<!-- Header -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <div>
+    <h1 class="h3 mb-0"><i class="bi bi-layers text-primary"></i> Etapas da Obra</h1>
+    <div class="text-muted small mt-1">
+      <i class="bi bi-building"></i> {{ obra.nome }}
+      {% if obra.cliente %}<span class="ms-2"><i class="bi bi-person"></i> {{ obra.cliente.nome }}</span>{% endif %}
     </div>
   </div>
+  <a href="{% url 'obras:obra_detail' obra.pk %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+    <i class="bi bi-arrow-left"></i> Voltar à Obra
+  </a>
+</div>
 
-  <div class="card">
-    <div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-striped align-middle">
-          <thead class="table-light">
-            <tr>
-              <th>#</th>
-              <th>Percentual</th>
-              <th>Data Início</th>
-              <th>Data Término</th>
-              <th>Concluída</th>
-              <th class="text-end">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for e in etapas %}
-            <tr>
-              <td>{{ e.get_numero_etapa_display }}</td>
-              <td>{{ e.percentual_valor }}%</td>
-              <td>{{ e.data_inicio|default:'-' }}</td>
-              <td>{{ e.data_termino|default:'-' }}</td>
-              <td>{% if e.concluida %}<span class="badge bg-success">Sim</span>{% else %}<span class="badge bg-secondary">Não</span>{% endif %}</td>
-              <td class="text-end">
-                <a href="{% url 'obras:etapa_detail' e.pk %}" class="btn btn-sm btn-outline-primary">Ver</a>
-                {% if e.numero_etapa == 1 %}
-                  <a href="{% url 'obras:etapa1_detail' e.pk %}" class="btn btn-sm btn-outline-secondary">Detalhe</a>
-                {% elif e.numero_etapa == 2 %}
-                  <a href="{% url 'obras:etapa2_detail' e.pk %}" class="btn btn-sm btn-outline-secondary">Detalhe</a>
-                {% elif e.numero_etapa == 3 %}
-                  <a href="{% url 'obras:etapa3_detail' e.pk %}" class="btn btn-sm btn-outline-secondary">Detalhe</a>
-                {% elif e.numero_etapa == 4 %}
-                  <a href="{% url 'obras:etapa4_detail' e.pk %}" class="btn btn-sm btn-outline-secondary">Detalhe</a>
-                {% elif e.numero_etapa == 5 %}
-                  <a href="{% url 'obras:etapa5_detail' e.pk %}" class="btn btn-sm btn-outline-secondary">Detalhe</a>
-                {% endif %}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+<!-- Progress overview -->
+{% with total=etapas.count %}
+{% with concluidas=0 %}
+<div class="card border-0 shadow-sm mb-4" style="border-radius:.75rem;">
+  <div class="card-body py-3 px-3">
+    <div class="d-flex align-items-center gap-3">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-pie-chart text-primary fs-5"></i>
+        <div>
+          <div class="text-muted small">Progresso Geral</div>
+          <div class="fw-bold">{{ obra.percentual_concluido|floatformat:1 }}%</div>
+        </div>
       </div>
+      <div class="flex-grow-1">
+        <div class="etapa-progress-wrap" style="height:10px;">
+          <div class="etapa-progress-bar {% if obra.percentual_concluido >= 80 %}bg-success{% elif obra.percentual_concluido >= 40 %}bg-primary{% else %}bg-warning{% endif %}"
+               style="width: {{ obra.percentual_concluido }}%;"></div>
+        </div>
+      </div>
+      <div class="text-muted small">{{ obra.status|title }}</div>
     </div>
   </div>
 </div>
+{% endwith %}
+{% endwith %}
+
+<!-- Etapas Timeline -->
+<div class="row g-3">
+  {% for e in etapas %}
+  <div class="col-12">
+    <div class="card etapa-card shadow-sm">
+      <div class="card-body py-3 px-3">
+        <div class="row align-items-center g-3">
+          <!-- Number + Icon -->
+          <div class="col-auto">
+            <div class="etapa-number {% if e.concluida %}bg-success text-white{% else %}bg-primary bg-opacity-10 text-primary{% endif %}">
+              {% if e.concluida %}
+                <i class="bi bi-check-lg"></i>
+              {% else %}
+                {{ e.numero_etapa }}
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Info -->
+          <div class="col">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+              <h6 class="mb-0 fw-bold">
+                {% if e.numero_etapa == 1 %}
+                  <i class="bi bi-bricks text-muted"></i> Fundação
+                {% elif e.numero_etapa == 2 %}
+                  <i class="bi bi-building-up text-muted"></i> Estrutura
+                {% elif e.numero_etapa == 3 %}
+                  <i class="bi bi-plug text-muted"></i> Revestimentos e Instalações
+                {% elif e.numero_etapa == 4 %}
+                  <i class="bi bi-paint-bucket text-muted"></i> Acabamentos
+                {% elif e.numero_etapa == 5 %}
+                  <i class="bi bi-flag text-muted"></i> Finalização
+                {% endif %}
+              </h6>
+              {% if e.concluida %}
+                <span class="badge bg-success badge-etapa"><i class="bi bi-check-circle"></i> Concluída</span>
+              {% else %}
+                {% if e.data_inicio %}
+                  <span class="badge bg-primary badge-etapa"><i class="bi bi-play-circle"></i> Em andamento</span>
+                {% else %}
+                  <span class="badge bg-light text-muted border badge-etapa">Pendente</span>
+                {% endif %}
+              {% endif %}
+              <span class="badge bg-light text-dark border badge-etapa">{{ e.percentual_valor }}%</span>
+            </div>
+
+            <div class="d-flex flex-wrap gap-3 small text-muted">
+              <span><i class="bi bi-calendar-event"></i> Início: {% if e.data_inicio %}{{ e.data_inicio|date:"d/m/Y" }}{% else %}—{% endif %}</span>
+              <span><i class="bi bi-calendar-check"></i> Término: {% if e.data_termino %}{{ e.data_termino|date:"d/m/Y" }}{% else %}—{% endif %}</span>
+            </div>
+
+            <!-- Mini progress bar -->
+            <div class="etapa-progress-wrap mt-2" style="max-width: 300px;">
+              <div class="etapa-progress-bar {% if e.concluida %}bg-success{% elif e.data_inicio %}bg-primary{% else %}bg-secondary opacity-25{% endif %}"
+                   style="width: {% if e.concluida %}100{% elif e.data_inicio %}50{% else %}0{% endif %}%;"></div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="col-auto">
+            <div class="d-flex gap-1">
+              <a href="{% url 'obras:etapa_detail' e.pk %}" class="btn btn-sm btn-outline-primary" title="Ver etapa">
+                <i class="bi bi-eye"></i>
+              </a>
+              {% if e.numero_etapa == 1 %}
+                <a href="{% url 'obras:etapa1_detail' e.pk %}" class="btn btn-sm btn-outline-secondary" title="Detalhes Fundação">
+                  <i class="bi bi-pencil-square"></i>
+                </a>
+              {% elif e.numero_etapa == 2 %}
+                <a href="{% url 'obras:etapa2_detail' e.pk %}" class="btn btn-sm btn-outline-secondary" title="Detalhes Estrutura">
+                  <i class="bi bi-pencil-square"></i>
+                </a>
+              {% elif e.numero_etapa == 3 %}
+                <a href="{% url 'obras:etapa3_detail' e.pk %}" class="btn btn-sm btn-outline-secondary" title="Detalhes Instalações">
+                  <i class="bi bi-pencil-square"></i>
+                </a>
+              {% elif e.numero_etapa == 4 %}
+                <a href="{% url 'obras:etapa4_detail' e.pk %}" class="btn btn-sm btn-outline-secondary" title="Detalhes Acabamentos">
+                  <i class="bi bi-pencil-square"></i>
+                </a>
+              {% elif e.numero_etapa == 5 %}
+                <a href="{% url 'obras:etapa5_detail' e.pk %}" class="btn btn-sm btn-outline-secondary" title="Detalhes Finalização">
+                  <i class="bi bi-pencil-square"></i>
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if not forloop.last %}
+  <div class="col-12 d-flex justify-content-center py-0" style="margin: -8px 0;">
+    <div class="timeline-connector {% if e.concluida %}done{% endif %}"></div>
+  </div>
+  {% endif %}
+
+  {% empty %}
+  <div class="col-12">
+    <div class="card border-0 shadow-sm" style="border-radius:.75rem;">
+      <div class="card-body text-center py-5 text-muted">
+        <i class="bi bi-layers fs-1"></i>
+        <p class="mt-2 mb-0">Nenhuma etapa cadastrada para esta obra.</p>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
 {% endblock %}

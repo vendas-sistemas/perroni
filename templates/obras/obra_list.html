@@ -1,115 +1,375 @@
 {% extends 'base.html' %}
+{% load obras_extras %}
 
 {% block title %}Obras — Fiscalização{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+  .obra-row:nth-child(odd)  { background-color: #f8f9fa; }
+  .obra-row:nth-child(even) { background-color: #ffffff; }
+  .obra-row:hover { background-color: #e9ecef; transition: background-color .15s; }
+  .obra-row td { vertical-align: middle; }
+  .summary-card { border: none; border-radius: .75rem; }
+  .summary-card .card-body { padding: 1rem 1.25rem; }
+  .summary-icon { font-size: 1.5rem; opacity: .7; }
+  .search-box { max-width: 300px; }
+  .badge-planejamento { background-color: #6c757d; }
+  .badge-em_andamento { background-color: #0d6efd; }
+  .badge-pausada { background-color: #ffc107; color: #000; }
+  .badge-concluida { background-color: #198754; }
+  .badge-cancelada { background-color: #dc3545; }
+  .progress { height: 6px; border-radius: 3px; }
+  .filter-section { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
+  .filter-section.show { max-height: 300px; }
+  @media (max-width: 767.98px) {
+    .obra-table { display: none; }
+    .obra-mobile { display: block !important; }
+  }
+  @media (min-width: 768px) {
+    .obra-mobile { display: none !important; }
+  }
+  .mobile-card:nth-child(odd)  { background-color: #f8f9fa; }
+  .mobile-card:nth-child(even) { background-color: #ffffff; }
+</style>
+{% endblock %}
+
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3">Obras</h1>
-    <a href="{% url 'obras:obra_create' %}" class="btn btn-primary">Nova Obra</a>
+
+<!-- Header -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <h1 class="h3 mb-0"><i class="bi bi-building text-primary"></i> Obras</h1>
+  <a href="{% url 'obras:obra_create' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+    <i class="bi bi-plus-circle-fill"></i> Nova Obra
+  </a>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-2 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="card summary-card bg-primary bg-opacity-10">
+      <div class="card-body d-flex align-items-center justify-content-between py-2">
+        <div>
+          <div class="text-muted small">Total</div>
+          <div class="fw-bold fs-4">{{ total_obras }}</div>
+        </div>
+        <i class="bi bi-buildings summary-icon text-primary"></i>
+      </div>
+    </div>
   </div>
-
-  <form class="mb-3" method="get" action="">
-    <div class="row g-2">
-      <div class="col-md-6">
-        <div class="input-group">
-          <input type="search" name="q" class="form-control" placeholder="Buscar obras pelo nome..." value="{{ filters.q }}">
-          <button class="btn btn-outline-secondary" type="submit">Buscar</button>
+  <div class="col-6 col-md-3">
+    <div class="card summary-card" style="background-color: rgba(13,110,253,.1);">
+      <div class="card-body d-flex align-items-center justify-content-between py-2">
+        <div>
+          <div class="text-muted small">Em Andamento</div>
+          <div class="fw-bold fs-4">{{ total_em_andamento }}</div>
         </div>
+        <i class="bi bi-gear-wide-connected summary-icon text-primary"></i>
       </div>
-      <div class="col-md-6">
-        <div class="input-group">
-          <input type="search" name="cliente" class="form-control" placeholder="Filtrar por nome do cliente..." value="{{ filters.cliente }}">
-          <input type="search" name="cpf" class="form-control ms-2" placeholder="Buscar por CPF (000.000.000-00)" value="{{ filters.cpf }}">
-          <a href="{% url 'obras:obra_list' %}" class="btn btn-outline-secondary">Limpar</a>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card summary-card" style="background-color: rgba(108,117,125,.1);">
+      <div class="card-body d-flex align-items-center justify-content-between py-2">
+        <div>
+          <div class="text-muted small">Planejamento</div>
+          <div class="fw-bold fs-4">{{ total_planejamento }}</div>
         </div>
+        <i class="bi bi-clipboard-data summary-icon text-secondary"></i>
       </div>
     </div>
-    <div class="row g-2 mt-2">
-      <div class="col-md-3">
-        <label class="form-label small">Início (de)</label>
-        <input type="date" name="data_inicio_de" class="form-control" value="{{ filters.data_inicio_de }}">
-      </div>
-      <div class="col-md-3">
-        <label class="form-label small">Início (até)</label>
-        <input type="date" name="data_inicio_ate" class="form-control" value="{{ filters.data_inicio_ate }}">
-      </div>
-      <div class="col-md-3">
-        <label class="form-label small">Término (de)</label>
-        <input type="date" name="data_termino_de" class="form-control" value="{{ filters.data_termino_de }}">
-      </div>
-      <div class="col-md-3">
-        <label class="form-label small">Término (até)</label>
-        <input type="date" name="data_termino_ate" class="form-control" value="{{ filters.data_termino_ate }}">
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card summary-card" style="background-color: rgba(25,135,84,.1);">
+      <div class="card-body d-flex align-items-center justify-content-between py-2">
+        <div>
+          <div class="text-muted small">Concluídas</div>
+          <div class="fw-bold fs-4">{{ total_concluida }}</div>
+        </div>
+        <i class="bi bi-check-circle summary-icon text-success"></i>
       </div>
     </div>
-    <div class="row mt-2">
-      <div class="col-12 d-flex justify-content-end gap-2">
-        <button type="submit" class="btn btn-primary d-flex align-items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search me-2" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-            <path d="M11 6a5 5 0 1 1-10 0 5 5 0 0 1 10 0z"/>
-            <path d="M12.344 11.742a6 6 0 1 0-1.414 1.414l3.85 3.85 1.414-1.414-3.85-3.85z"/>
-          </svg>
-          Filtrar
-        </button>
-        <a href="{% url 'obras:obra_list' %}" class="btn btn-outline-secondary">Limpar</a>
-      </div>
-    </div>
-  </form>
+  </div>
+</div>
 
-  <div class="row g-3">
-    {% for obra in obras %}
-      <div class="col-12 col-md-6 col-lg-4">
-        <div class="card h-100 shadow-sm">
-          {% if obra.get_main_image_url %}
-            <img src="{{ obra.get_main_image_url }}" class="card-img-top" alt="{{ obra.nome }}">
+<!-- Filters Card -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2 px-3">
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      <!-- Search -->
+      <form method="get" class="d-flex search-box flex-grow-1" action="">
+        {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+        {% if filters.per_page %}<input type="hidden" name="per_page" value="{{ per_page }}">{% endif %}
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+          <input type="text" name="q" value="{{ filters.q }}" class="form-control border-start-0"
+                 placeholder="Buscar obra ou cliente...">
+          {% if filters.q %}
+          <a href="?{% if status_filter %}status={{ status_filter }}&{% endif %}per_page={{ per_page }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-x-lg"></i>
+          </a>
           {% endif %}
-          <div class="card-body d-flex flex-column">
-            <h5 class="card-title">{{ obra.nome }}</h5>
-            <p class="card-text small text-muted mb-1">
-              <strong>Cliente:</strong> {{ obra.cliente_nome }}
-              {% if obra.cliente_cpf %}&middot; <strong>CPF:</strong> {{ obra.cliente_cpf }}{% endif %}
-              &middot; <strong>Obra:</strong> {{ obra.nome }}
-            </p>
-            <p class="card-text text-muted mb-2">{{ obra.endereco }}</p>
-            <p class="mb-1 small text-muted"><strong>Início:</strong> {{ obra.data_inicio|date:'d/m/Y' }}{% if obra.data_previsao_termino %} &middot; <strong>Previsão Término:</strong> {{ obra.data_previsao_termino|date:'d/m/Y' }}{% endif %}</p>
-            <p class="mb-3 small text-truncate">{% if obra.descricao %}{{ obra.descricao }}{% endif %}</p>
-              <div class="mt-auto">
-              <a href="{% url 'obras:obra_etapas' obra.pk %}" class="btn btn-sm btn-outline-primary">Ver etapas</a>
+        </div>
+      </form>
+      <!-- Status filter -->
+      <div class="d-flex flex-wrap gap-1 align-items-center">
+        <span class="text-muted small me-1 d-none d-sm-inline">Status:</span>
+        <a href="?{% if filters.q %}q={{ filters.q }}&{% endif %}per_page={{ per_page }}"
+           class="badge text-decoration-none px-2 py-2 {% if not status_filter %}bg-dark{% else %}bg-light text-dark border{% endif %}">
+          Todos
+        </a>
+        <a href="?status=em_andamento{% if filters.q %}&q={{ filters.q }}{% endif %}&per_page={{ per_page }}"
+           class="badge text-decoration-none px-2 py-2 {% if status_filter == 'em_andamento' %}badge-em_andamento{% else %}bg-light text-dark border{% endif %}">
+          <i class="bi bi-gear-wide-connected"></i> Andamento
+        </a>
+        <a href="?status=planejamento{% if filters.q %}&q={{ filters.q }}{% endif %}&per_page={{ per_page }}"
+           class="badge text-decoration-none px-2 py-2 {% if status_filter == 'planejamento' %}badge-planejamento{% else %}bg-light text-dark border{% endif %}">
+          <i class="bi bi-clipboard-data"></i> Planejam.
+        </a>
+        <a href="?status=concluida{% if filters.q %}&q={{ filters.q }}{% endif %}&per_page={{ per_page }}"
+           class="badge text-decoration-none px-2 py-2 {% if status_filter == 'concluida' %}badge-concluida{% else %}bg-light text-dark border{% endif %}">
+          <i class="bi bi-check-circle"></i> Concluída
+        </a>
+        <a href="?status=pausada{% if filters.q %}&q={{ filters.q }}{% endif %}&per_page={{ per_page }}"
+           class="badge text-decoration-none px-2 py-2 {% if status_filter == 'pausada' %}badge-pausada{% else %}bg-light text-dark border{% endif %}">
+          <i class="bi bi-pause-circle"></i> Pausada
+        </a>
+      </div>
+      <!-- Advanced filters toggle -->
+      <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" type="button" onclick="document.getElementById('advFilters').classList.toggle('show')">
+        <i class="bi bi-funnel"></i> <span class="d-none d-sm-inline">Avançado</span>
+      </button>
+    </div>
+
+    <!-- Advanced Filters (collapsible) -->
+    <div id="advFilters" class="filter-section {% if filters.cliente or filters.cpf or filters.data_inicio_de or filters.data_inicio_ate or filters.data_termino_de or filters.data_termino_ate %}show{% endif %}">
+      <form method="get" class="mt-3">
+        {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+        {% if filters.q %}<input type="hidden" name="q" value="{{ filters.q }}">{% endif %}
+        <input type="hidden" name="per_page" value="{{ per_page }}">
+        <div class="row g-2">
+          <div class="col-md-3">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white"><i class="bi bi-person text-muted"></i></span>
+              <input type="text" name="cliente" class="form-control" placeholder="Cliente..." value="{{ filters.cliente }}">
             </div>
           </div>
+          <div class="col-md-3">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white"><i class="bi bi-card-text text-muted"></i></span>
+              <input type="text" name="cpf" class="form-control" placeholder="CPF..." value="{{ filters.cpf }}">
+            </div>
+          </div>
+          <div class="col-6 col-md-1-5" style="flex: 0 0 auto; width: 12.5%;">
+            <input type="date" name="data_inicio_de" class="form-control form-control-sm" value="{{ filters.data_inicio_de }}" title="Início de">
+          </div>
+          <div class="col-6 col-md-1-5" style="flex: 0 0 auto; width: 12.5%;">
+            <input type="date" name="data_inicio_ate" class="form-control form-control-sm" value="{{ filters.data_inicio_ate }}" title="Início até">
+          </div>
+          <div class="col-6 col-md-1-5" style="flex: 0 0 auto; width: 12.5%;">
+            <input type="date" name="data_termino_de" class="form-control form-control-sm" value="{{ filters.data_termino_de }}" title="Término de">
+          </div>
+          <div class="col-6 col-md-1-5" style="flex: 0 0 auto; width: 12.5%;">
+            <input type="date" name="data_termino_ate" class="form-control form-control-sm" value="{{ filters.data_termino_ate }}" title="Término até">
+          </div>
+        </div>
+        <div class="d-flex justify-content-end gap-2 mt-2">
+          <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-search"></i> Filtrar</button>
+          <a href="{% url 'obras:obra_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i> Limpar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Results count + per_page -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
+  <small class="text-muted">
+    <i class="bi bi-list-ul"></i> {{ total_resultado }} obra{{ total_resultado|pluralize:"s" }} encontrada{{ total_resultado|pluralize:"s" }}
+  </small>
+  <div class="d-flex align-items-center gap-1">
+    <small class="text-muted me-1">Exibir:</small>
+    <a href="?per_page=10{% if status_filter %}&status={{ status_filter }}{% endif %}{% if filters.q %}&q={{ filters.q }}{% endif %}"
+       class="badge text-decoration-none px-2 py-1 {% if per_page == 10 %}bg-dark{% else %}bg-light text-dark border{% endif %}">10</a>
+    <a href="?per_page=15{% if status_filter %}&status={{ status_filter }}{% endif %}{% if filters.q %}&q={{ filters.q }}{% endif %}"
+       class="badge text-decoration-none px-2 py-1 {% if per_page == 15 %}bg-dark{% else %}bg-light text-dark border{% endif %}">15</a>
+    <a href="?per_page=20{% if status_filter %}&status={{ status_filter }}{% endif %}{% if filters.q %}&q={{ filters.q }}{% endif %}"
+       class="badge text-decoration-none px-2 py-1 {% if per_page == 20 %}bg-dark{% else %}bg-light text-dark border{% endif %}">20</a>
+  </div>
+</div>
+
+{% if obras %}
+
+<!-- Desktop Table -->
+<div class="card border-0 shadow-sm obra-table">
+  <div class="table-responsive">
+    <table class="table table-borderless mb-0">
+      <thead>
+        <tr class="border-bottom" style="background-color: #e9ecef;">
+          <th class="ps-3">Obra</th>
+          <th><i class="bi bi-person"></i> Cliente</th>
+          <th class="text-center" style="width: 130px;">Status</th>
+          <th class="text-center" style="width: 100px;">Progresso</th>
+          <th class="text-center" style="width: 110px;"><i class="bi bi-calendar-event"></i> Início</th>
+          <th class="text-center" style="width: 110px;"><i class="bi bi-calendar-check"></i> Previsão</th>
+          <th class="text-center" style="width: 80px;">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for obra in obras %}
+        <tr class="obra-row border-bottom">
+          <td class="ps-3">
+            <a href="{% url 'obras:obra_etapas' obra.pk %}" class="text-decoration-none fw-semibold text-dark">
+              <i class="bi bi-building text-primary me-1"></i>{{ obra.nome }}
+            </a>
+            <div class="text-muted small text-truncate" style="max-width: 280px;">
+              <i class="bi bi-geo-alt"></i> {{ obra.endereco }}
+            </div>
+          </td>
+          <td>
+            <div class="small">{{ obra.cliente_nome|default:"—" }}</div>
+            {% if obra.cliente_cpf %}
+            <div class="text-muted small">{{ obra.cliente_cpf }}</div>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <span class="badge badge-{{ obra.status }} px-2 py-1">
+              {% if obra.status == 'em_andamento' %}<i class="bi bi-gear-wide-connected"></i>
+              {% elif obra.status == 'planejamento' %}<i class="bi bi-clipboard-data"></i>
+              {% elif obra.status == 'concluida' %}<i class="bi bi-check-circle"></i>
+              {% elif obra.status == 'pausada' %}<i class="bi bi-pause-circle"></i>
+              {% elif obra.status == 'cancelada' %}<i class="bi bi-x-circle"></i>
+              {% endif %}
+              {{ obra.get_status_display }}
+            </span>
+          </td>
+          <td class="text-center">
+            <div class="d-flex align-items-center gap-1">
+              <div class="progress flex-grow-1">
+                <div class="progress-bar {% if obra.percentual_concluido >= 100 %}bg-success{% elif obra.percentual_concluido >= 50 %}bg-primary{% else %}bg-warning{% endif %}"
+                     style="width: {{ obra.percentual_concluido }}%"></div>
+              </div>
+              <small class="text-muted" style="min-width: 36px;">{{ obra.percentual_concluido|floatformat:0 }}%</small>
+            </div>
+          </td>
+          <td class="text-center small">{{ obra.data_inicio|date:"d/m/Y" }}</td>
+          <td class="text-center small">{{ obra.data_previsao_termino|date:"d/m/Y"|default:"—" }}</td>
+          <td class="text-center">
+            <a href="{% url 'obras:obra_etapas' obra.pk %}" class="btn btn-sm btn-outline-primary" title="Ver etapas">
+              <i class="bi bi-layers"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Mobile Cards -->
+<div class="obra-mobile">
+  {% for obra in obras %}
+  <div class="card border-0 shadow-sm mb-2 mobile-card">
+    <div class="card-body py-2 px-3">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="min-w-0 flex-grow-1">
+          <a href="{% url 'obras:obra_etapas' obra.pk %}" class="text-decoration-none fw-semibold text-dark d-block text-truncate">
+            <i class="bi bi-building text-primary me-1"></i>{{ obra.nome }}
+          </a>
+          <div class="text-muted small text-truncate mt-1">
+            <i class="bi bi-person"></i> {{ obra.cliente_nome|default:"—" }}
+          </div>
+        </div>
+        <div class="ms-2 flex-shrink-0">
+          <span class="badge badge-{{ obra.status }} px-2 py-1">
+            {% if obra.status == 'em_andamento' %}<i class="bi bi-gear-wide-connected"></i>
+            {% elif obra.status == 'planejamento' %}<i class="bi bi-clipboard-data"></i>
+            {% elif obra.status == 'concluida' %}<i class="bi bi-check-circle"></i>
+            {% elif obra.status == 'pausada' %}<i class="bi bi-pause-circle"></i>
+            {% elif obra.status == 'cancelada' %}<i class="bi bi-x-circle"></i>
+            {% endif %}
+            {{ obra.get_status_display }}
+          </span>
         </div>
       </div>
-    {% empty %}
-      <div class="col-12">
-        <div class="alert alert-info">Nenhuma obra encontrada.</div>
+      <div class="d-flex align-items-center gap-2 mt-2">
+        <div class="progress flex-grow-1">
+          <div class="progress-bar {% if obra.percentual_concluido >= 100 %}bg-success{% elif obra.percentual_concluido >= 50 %}bg-primary{% else %}bg-warning{% endif %}"
+               style="width: {{ obra.percentual_concluido }}%"></div>
+        </div>
+        <small class="text-muted">{{ obra.percentual_concluido|floatformat:0 }}%</small>
       </div>
-    {% endfor %}
-  </div>
-
-  {% if is_paginated %}
-    <nav class="mt-4" aria-label="Pagination">
-      <ul class="pagination justify-content-center">
-        {% if page_obj.has_previous %}
-          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">Anterior</a></li>
-        {% else %}
-          <li class="page-item disabled"><span class="page-link">Anterior</span></li>
-        {% endif %}
-
-        {% for num in page_obj.paginator.page_range %}
-          {% if page_obj.number == num %}
-            <li class="page-item active" aria-current="page"><span class="page-link">{{ num }}</span></li>
-          {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-            <li class="page-item"><a class="page-link" href="?page={{ num }}{% if querystring %}&{{ querystring }}{% endif %}">{{ num }}</a></li>
+      <div class="d-flex flex-wrap justify-content-between align-items-center mt-2">
+        <div class="d-flex flex-wrap gap-3 small text-muted">
+          <span><i class="bi bi-calendar-event"></i> {{ obra.data_inicio|date:"d/m/Y" }}</span>
+          {% if obra.data_previsao_termino %}
+          <span><i class="bi bi-calendar-check"></i> {{ obra.data_previsao_termino|date:"d/m/Y" }}</span>
           {% endif %}
-        {% endfor %}
+        </div>
+        <a href="{% url 'obras:obra_etapas' obra.pk %}" class="btn btn-sm btn-outline-primary" title="Ver etapas">
+          <i class="bi bi-layers"></i> Etapas
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
 
-        {% if page_obj.has_next %}
-          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">Próxima</a></li>
-        {% else %}
-          <li class="page-item disabled"><span class="page-link">Próxima</span></li>
-        {% endif %}
-      </ul>
-    </nav>
-  {% endif %}
+<!-- Pagination -->
+{% if is_paginated %}
+<nav class="mt-3" aria-label="Paginação">
+  <ul class="pagination pagination-sm justify-content-center mb-0">
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+    {% else %}
+    <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
+    {% endif %}
+
+    {% for num in page_obj.paginator.page_range %}
+      {% if page_obj.number == num %}
+      <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+      {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ num }}{% if querystring %}&{{ querystring }}{% endif %}">{{ num }}</a>
+      </li>
+      {% elif num == 1 or num == page_obj.paginator.num_pages %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ num }}{% if querystring %}&{{ querystring }}{% endif %}">{{ num }}</a>
+      </li>
+      {% elif num == 2 or num == page_obj.paginator.num_pages|add:'-1' %}
+      <li class="page-item disabled"><span class="page-link">...</span></li>
+      {% endif %}
+    {% endfor %}
+
+    {% if page_obj.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+    {% else %}
+    <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-building-x fs-1"></i>
+    <p class="mt-2 mb-0">Nenhuma obra encontrada.</p>
+    {% if filters.q or status_filter or filters.cliente or filters.cpf %}
+    <a href="{% url 'obras:obra_list' %}" class="btn btn-sm btn-outline-primary mt-3">
+      <i class="bi bi-arrow-counterclockwise"></i> Limpar filtros
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
 
 {% endblock %}

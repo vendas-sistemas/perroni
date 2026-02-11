@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+
+{% block title %}Rendimento - {{ pedreiro.nome_completo }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  {# ── Header ── #}
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="mb-1">{{ pedreiro.nome_completo }}</h3>
+      <span class="badge bg-primary">{{ pedreiro.get_funcao_display }}</span>
+    </div>
+    <a href="{% url 'analytics:dashboard' %}" class="btn btn-secondary">← Voltar</a>
+  </div>
+
+  {# ── Métricas resumo ── #}
+  {% if rendimento %}
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-md-3">
+      <div class="card shadow-sm border-start border-primary border-3">
+        <div class="card-body">
+          <h6 class="text-uppercase text-muted small">Dias Trabalhados</h6>
+          <h3 class="mt-1 mb-0">{{ rendimento.total_dias_trabalhados }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-md-3">
+      <div class="card shadow-sm border-start border-info border-3">
+        <div class="card-body">
+          <h6 class="text-uppercase text-muted small">Total Horas</h6>
+          <h3 class="mt-1 mb-0">{{ rendimento.total_horas }}h</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-md-3">
+      <div class="card shadow-sm border-start border-success border-3">
+        <div class="card-body">
+          <h6 class="text-uppercase text-muted small">Obras Trabalhadas</h6>
+          <h3 class="mt-1 mb-0">{{ rendimento.obras_trabalhadas }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-md-3">
+      <div class="card shadow-sm border-start border-warning border-3">
+        <div class="card-body">
+          <h6 class="text-uppercase text-muted small">Taxa Retrabalho</h6>
+          <h3 class="mt-1 mb-0 {% if rendimento.taxa_retrabalho > 10 %}text-danger{% else %}text-success{% endif %}">
+            {{ rendimento.taxa_retrabalho }}%
+          </h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-md-3">
+      <div class="card shadow-sm border-start border-danger border-3">
+        <div class="card-body">
+          <h6 class="text-uppercase text-muted small">Taxa Ociosidade</h6>
+          <h3 class="mt-1 mb-0 {% if rendimento.taxa_ociosidade > 10 %}text-danger{% else %}text-success{% endif %}">
+            {{ rendimento.taxa_ociosidade }}%
+          </h3>
+        </div>
+      </div>
+    </div>
+
+    {% if rendimento.produtividade.reboco_m2_dia %}
+    <div class="col-sm-6 col-md-3">
+      <div class="card shadow-sm border-start border-secondary border-3">
+        <div class="card-body">
+          <h6 class="text-uppercase text-muted small">Reboco (m²/dia)</h6>
+          <h3 class="mt-1 mb-0">{{ rendimento.produtividade.reboco_m2_dia }}</h3>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if rendimento.produtividade.blocos_dia %}
+    <div class="col-sm-6 col-md-3">
+      <div class="card shadow-sm border-start border-secondary border-3">
+        <div class="card-body">
+          <h6 class="text-uppercase text-muted small">Blocos/dia</h6>
+          <h3 class="mt-1 mb-0">{{ rendimento.produtividade.blocos_dia }}</h3>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── Performance por Etapa ── #}
+  {% if rendimento.performance_por_etapa %}
+  <div class="card shadow-sm mb-4">
+    <div class="card-header"><h5 class="mb-0">Performance por Etapa</h5></div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-striped align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Etapa</th>
+              <th class="text-center">Execuções</th>
+              <th class="text-center">Média Dias</th>
+              <th class="text-center">Total Horas</th>
+              <th class="text-center">Retrabalho</th>
+              <th class="text-center">Ociosidade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for num, perf in rendimento.performance_por_etapa.items %}
+            <tr>
+              <td>Etapa {{ num }}</td>
+              <td class="text-center">{{ perf.total_execucoes }}</td>
+              <td class="text-center">{{ perf.media_dias }} dias</td>
+              <td class="text-center">{{ perf.total_horas }}h</td>
+              <td class="text-center">
+                <span class="badge {% if perf.taxa_retrabalho > 10 %}bg-danger{% else %}bg-success{% endif %}">
+                  {{ perf.taxa_retrabalho }}%
+                </span>
+              </td>
+              <td class="text-center">
+                <span class="badge {% if perf.taxa_ociosidade > 10 %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                  {{ perf.taxa_ociosidade }}%
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="alert alert-info">Nenhum dado de rendimento disponível para este funcionário.</div>
+  {% endif %}
+
+  {# ── Histórico Semanal ── #}
+  {% if historico and historico.historico %}
+  <div class="card shadow-sm mb-4">
+    <div class="card-header"><h5 class="mb-0">Histórico Semanal (últimas 4 semanas)</h5></div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-striped align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Semana</th>
+              <th class="text-center">Dias</th>
+              <th class="text-center">Horas</th>
+              <th class="text-end">Valor (R$)</th>
+              <th class="text-center">Ociosidades</th>
+              <th class="text-center">Retrabalhos</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for semana in historico.historico %}
+            <tr>
+              <td>{{ semana.semana }}</td>
+              <td class="text-center">{{ semana.dias_trabalhados }}</td>
+              <td class="text-center">{{ semana.total_horas }}h</td>
+              <td class="text-end">{{ semana.total_valor }}</td>
+              <td class="text-center">
+                {% if semana.ociosidades > 0 %}
+                  <span class="badge bg-warning text-dark">{{ semana.ociosidades }}</span>
+                {% else %}
+                  <span class="text-muted">0</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if semana.retrabalhos > 0 %}
+                  <span class="badge bg-danger">{{ semana.retrabalhos }}</span>
+                {% else %}
+                  <span class="text-muted">0</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# ── Detalhes expandidos por semana ── #}
+  {% for semana in historico.historico %}
+  <div class="card shadow-sm mb-3">
+    <div class="card-header bg-light">
+      <strong>Detalhes — {{ semana.semana }}</strong>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Obra</th>
+              <th>Etapa</th>
+              <th class="text-center">Horas</th>
+              <th class="text-end">Valor</th>
+              <th class="text-center">Clima</th>
+              <th class="text-center">Ociosidade</th>
+              <th class="text-center">Retrabalho</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in semana.detalhes %}
+            <tr>
+              <td>{{ d.data|date:"d/m/Y" }}</td>
+              <td>{{ d.obra }}</td>
+              <td>{{ d.etapa|default:"-" }}</td>
+              <td class="text-center">{{ d.horas }}h</td>
+              <td class="text-end">R$ {{ d.valor }}</td>
+              <td class="text-center">{{ d.clima|default:"-" }}</td>
+              <td class="text-center">{% if d.ociosidade %}<span class="badge bg-warning text-dark">Sim</span>{% else %}-{% endif %}</td>
+              <td class="text-center">{% if d.retrabalho %}<span class="badge bg-danger">Sim</span>{% else %}-{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  {% else %}
+  <div class="alert alert-info">Nenhum histórico semanal encontrado para as últimas 4 semanas.</div>
+  {% endif %}
+
+</div>
+{% endblock %}

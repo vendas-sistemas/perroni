@@ -31,6 +31,7 @@ def obra_list(request):
     q = request.GET.get('q')
     cliente = request.GET.get('cliente')
     cpf = request.GET.get('cpf')
+    status_filter = request.GET.get('status', '')
     data_inicio_de = request.GET.get('data_inicio_de')
     data_inicio_ate = request.GET.get('data_inicio_ate')
     data_termino_de = request.GET.get('data_termino_de')
@@ -38,21 +39,19 @@ def obra_list(request):
     if q:
         qs = qs.filter(nome__icontains=q)
     if cliente:
-        # Obra.cliente is a FK to Cliente now; filter by cliente.nome
         qs = qs.filter(cliente__nome__icontains=cliente)
     if cpf:
-        # normalize cpf input to digits only and accept both formatted and unformatted matches
         digits = re.sub(r"\D", "", cpf or "")
         q_filters = Q()
         if digits:
-            # search by cliente.cpf (digits or formatted)
             q_filters |= Q(cliente__cpf__icontains=digits)
             if len(digits) == 11:
                 formatted = f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
                 q_filters |= Q(cliente__cpf__icontains=formatted)
-        # also search by cliente.nome fallback
         q_filters |= Q(cliente__nome__icontains=cpf)
         qs = qs.filter(q_filters)
+    if status_filter and status_filter in dict(Obra.STATUS_CHOICES):
+        qs = qs.filter(status=status_filter)
     if data_inicio_de:
         qs = qs.filter(data_inicio__gte=data_inicio_de)
     if data_inicio_ate:
@@ -64,15 +63,26 @@ def obra_list(request):
 
     qs = qs.order_by('-created_at')
 
+    # Contadores (antes da paginação)
+    all_active = Obra.objects.filter(ativo=True)
+    total_obras = all_active.count()
+    total_em_andamento = all_active.filter(status='em_andamento').count()
+    total_planejamento = all_active.filter(status='planejamento').count()
+    total_concluida = all_active.filter(status='concluida').count()
+    total_pausada = all_active.filter(status='pausada').count()
+    total_resultado = qs.count()
+
     # pagination
-    per_page = 12
+    per_page_param = request.GET.get('per_page', '15')
+    if per_page_param not in ('10', '15', '20'):
+        per_page_param = '15'
+    per_page = int(per_page_param)
     paginator = Paginator(qs, per_page)
     page = request.GET.get('page')
     page_obj = paginator.get_page(page)
 
-    # annotate obras with cliente info (cpf and normalized name) for display
+    # annotate obras with cliente info
     for obra in page_obj.object_list:
-        # after migration `obra.cliente` is either a Cliente instance or None
         if hasattr(obra, 'cliente') and obra.cliente is not None:
             obra.cliente_nome = getattr(obra.cliente, 'nome', str(obra.cliente))
             obra.cliente_cpf = getattr(obra.cliente, 'cpf', '') or ''
@@ -91,11 +101,20 @@ def obra_list(request):
         'is_paginated': page_obj.has_other_pages(),
         'paginator': paginator,
         'querystring': querystring,
+        'per_page': per_page,
         'title': 'Obras',
+        'total_obras': total_obras,
+        'total_em_andamento': total_em_andamento,
+        'total_planejamento': total_planejamento,
+        'total_concluida': total_concluida,
+        'total_pausada': total_pausada,
+        'total_resultado': total_resultado,
+        'status_filter': status_filter,
         'filters': {
             'q': q or '',
             'cliente': cliente or '',
             'cpf': cpf or '',
+            'status': status_filter or '',
             'data_inicio_de': data_inicio_de or '',
             'data_inicio_ate': data_inicio_ate or '',
             'data_termino_de': data_termino_de or '',

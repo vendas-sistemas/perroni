@@ -14,9 +14,12 @@ class ClienteForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
-            # Boolean fields (checkbox) should use Bootstrap checkbox class
+            # Boolean fields (checkbox) should use Bootstrap switch
             if isinstance(field, forms.BooleanField):
-                field.widget.attrs.setdefault('class', 'form-check-input')
+                field.widget = forms.CheckboxInput(attrs={
+                    'class': 'form-check-input',
+                    'role': 'switch',
+                })
             else:
                 field.widget.attrs.setdefault('class', 'form-control')
 

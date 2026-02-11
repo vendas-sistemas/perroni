@@ -14,7 +14,8 @@ django.setup()
 
 from apps.funcionarios.models import Funcionario
 from apps.ferramentas.models import Ferramenta
-from apps.obras.models import Obra
+from apps.obras.models import Obra, Etapa
+from apps.clientes.models import Cliente
 from django.db import transaction
 
 # Pools for realistic names
@@ -48,19 +49,25 @@ def clean_previous_generated():
     print('Cleaning previously generated test data (matching "Teste" or auto-generated descriptors)...')
     # Obras with name starting with 'Obra Teste' or 'Residencial ' patterns created earlier: remove 'Obra Teste' only
     Obra.objects.filter(nome__icontains='Obra Teste').delete()
+    # Also remove obras created by this script (with numbered patterns)
+    for prefix in OBRA_PREFIXES:
+        Obra.objects.filter(nome__startswith=prefix).delete()
     # Funcionarios with name containing 'Funcionario Teste'
     Funcionario.objects.filter(nome_completo__icontains='Funcionario Teste').delete()
-    # Ferramentas with description marker
-    Ferramenta.objects.filter(descricao__icontains='Gerado automaticamente para testes').delete()
+    # Ferramentas with description marker or code pattern TF####
+    Ferramenta.objects.filter(descricao__icontains='Gerado automaticamente').delete()
+    Ferramenta.objects.filter(codigo__startswith='TF').delete()
     print('Cleanup done.')
 
 
 def create_obras(n=100):
     print('Creating obras...')
     created = []
+    clientes = list(Cliente.objects.all())
     for i in range(1, n+1):
         nome = f"{random.choice(OBRA_PREFIXES)} {random.choice(['Bela Vista', 'Jardim das Flores', 'Nova Era', 'Quinta Real', 'Vale Verde', 'Centro Comercial'])} {i:03d}"
-        cliente = random.choice(CLIENTES)
+        # choose a Cliente instance if any exist
+        cliente = random.choice(clientes) if clientes else None
         endereco = f"Rua {random.choice(['A', 'B', 'C', 'D', 'E'])}, {random.randint(10,999)} - Bairro {random.choice(['Centro','Jardim','Vila'])}"
         data_inicio = random_date(3650, 365)
         data_previsao_termino = data_inicio + datetime.timedelta(days=random.randint(90, 720))
@@ -76,6 +83,13 @@ def create_obras(n=100):
             percentual_concluido=Decimal(str(percentual)),
             ativo=True
         )
+        # Criar 5 etapas para cada obra
+        for num, _label in Etapa.ETAPA_CHOICES:
+            Etapa.objects.create(
+                obra=o,
+                numero_etapa=num,
+                percentual_valor=Etapa.PERCENTUAIS_ETAPA.get(num)
+            )
         created.append(o)
     print(f'Created {len(created)} obras')
     return created
@@ -154,10 +168,31 @@ def create_funcionarios(n=100):
     return created
 
 
+def create_clientes():
+    """Create Cliente records for names listed in CLIENTES if they don't exist."""
+    print('Creating clientes...')
+    created = []
+    existing_cpfs = set(Cliente.objects.values_list('cpf', flat=True))
+    for name in CLIENTES:
+        if Cliente.objects.filter(nome__iexact=name).exists():
+            continue
+        cpf = unique_cpf(existing_cpfs)
+        c = Cliente.objects.create(
+            nome=name,
+            cpf=cpf,
+            endereco='Endereço gerado automaticamente',
+            ativo=True
+        )
+        created.append(c)
+    print(f'Created {len(created)} clientes')
+    return created
+
+
 if __name__ == '__main__':
     print('Recreating test data with realistic names...')
     with transaction.atomic():
         clean_previous_generated()
+        created_clientes = create_clientes()
         created_obras = create_obras(100)
         created_ferramentas = create_ferramentas(100)
         created_funcionarios = create_funcionarios(100)

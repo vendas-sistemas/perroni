@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load obras_extras %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -8,7 +9,10 @@
     <div class="col-md-10">
       <div class="card">
         <div class="card-body">
-          <h4 class="card-title mb-3">
+          <a href="{% url 'funcionarios:fechamento_semana_detail' fechamento.data_inicio|date:'Y-m-d' %}" class="text-decoration-none text-muted">
+            <i class="bi bi-arrow-left"></i> Voltar para semana
+          </a>
+          <h4 class="card-title mb-3 mt-1">
             Fechamento Semanal — {{ fechamento.data_inicio|date:"d/m/Y" }} a {{ fechamento.data_fim|date:"d/m/Y" }}
           </h4>
 
@@ -29,13 +33,9 @@
               <strong>Dias:</strong><br>
               <span class="h5">{{ fechamento.total_dias }}</span>
             </div>
-            <div class="col-4 col-md-2">
-              <strong>Horas:</strong><br>
-              <span class="h5">{{ fechamento.total_horas }}h</span>
-            </div>
             <div class="col-4 col-md-3">
               <strong>Total a Pagar:</strong><br>
-              <span class="h4 text-success">R$ {{ fechamento.total_valor }}</span>
+              <span class="h4 text-success">{{ fechamento.total_valor|brl }}</span>
             </div>
           </div>
 
@@ -65,14 +65,13 @@
           <div class="table-responsive mb-3">
             <table class="table table-sm table-bordered">
               <thead class="table-light">
-                <tr><th>Obra</th><th>Dias</th><th>Horas</th><th>Etapas</th></tr>
+                <tr><th>Obra</th><th>Dias</th><th>Etapas</th></tr>
               </thead>
               <tbody>
                 {% for obra_nome, info in obras_etapas.items %}
                 <tr>
                   <td>{{ obra_nome }}</td>
                   <td>{{ info.dias }}</td>
-                  <td>{{ info.horas }}h</td>
                   <td>
                     {% for etapa_name in info.etapas %}
                       <span class="badge bg-info">{{ etapa_name }}</span>
@@ -94,7 +93,6 @@
                   <th>Data</th>
                   <th>Obra</th>
                   <th>Etapa</th>
-                  <th>Horas</th>
                   <th>Clima</th>
                   <th>Valor</th>
                   <th>Status</th>
@@ -106,9 +104,8 @@
                   <td>{{ a.data|date:"d/m/Y" }}</td>
                   <td>{{ a.obra.nome }}</td>
                   <td>{{ a.etapa|default:"-" }}</td>
-                  <td>{{ a.horas_trabalhadas }}h</td>
                   <td>{% if a.clima == 'sol' %}☀️{% elif a.clima == 'chuva' %}🌧️{% else %}☁️{% endif %}</td>
-                  <td>R$ {{ a.valor_diaria }}</td>
+                  <td>{{ a.valor_diaria|brl }}</td>
                   <td>
                     {% if a.houve_retrabalho %}<span class="badge bg-danger">Retrabalho</span>{% endif %}
                     {% if a.houve_ociosidade %}<span class="badge bg-warning text-dark">Ocioso</span>{% endif %}
@@ -116,13 +113,13 @@
                   </td>
                 </tr>
                 {% if a.houve_retrabalho %}
-                <tr class="table-danger"><td colspan="7"><small>🔴 Retrabalho: {{ a.motivo_retrabalho }}</small></td></tr>
+                <tr class="table-danger"><td colspan="6"><small>🔴 Retrabalho: {{ a.motivo_retrabalho }}</small></td></tr>
                 {% endif %}
                 {% if a.houve_ociosidade %}
-                <tr class="table-warning"><td colspan="7"><small>🟡 Ociosidade: {{ a.observacao_ociosidade }}</small></td></tr>
+                <tr class="table-warning"><td colspan="6"><small>🟡 Ociosidade: {{ a.observacao_ociosidade }}</small></td></tr>
                 {% endif %}
                 {% empty %}
-                <tr><td colspan="7">Nenhum apontamento nesta semana.</td></tr>
+                <tr><td colspan="6">Nenhum apontamento nesta semana.</td></tr>
                 {% endfor %}
               </tbody>
             </table>
@@ -136,7 +133,7 @@
           {% endif %}
 
           <div class="d-flex gap-2 mt-3">
-            <a href="{% url 'funcionarios:fechamento_list' %}" class="btn btn-secondary">Voltar</a>
+            <a href="{% url 'funcionarios:fechamento_semana_detail' fechamento.data_inicio|date:'Y-m-d' %}" class="btn btn-secondary">Voltar para Semana</a>
             <a href="{% url 'funcionarios:funcionario_historico' fechamento.funcionario.pk %}" class="btn btn-outline-primary">Ver Calendário</a>
           </div>
         </div>

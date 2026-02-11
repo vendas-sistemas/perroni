@@ -22,6 +22,7 @@ urlpatterns = [
     path('fechamentos/', views.fechamento_list, name='fechamento_list'),
     path('fechamentos/criar/', views.fechamento_create, name='fechamento_create'),
     path('fechamentos/auto/', views.fechamento_auto, name='fechamento_auto'),
+    path('fechamentos/semana/<str:data_inicio>/', views.fechamento_semana_detail, name='fechamento_semana_detail'),
     path('fechamentos/<int:pk>/', views.fechamento_detail, name='fechamento_detail'),
 
     # Visão por obra

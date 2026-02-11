@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.db import models
 from .models import Ferramenta, ConferenciaFerramenta, MovimentacaoFerramenta, ItemConferencia
 from .forms import FerramentaForm, MovimentacaoForm, ConferenciaForm, ItemConferenciaForm
 from django.contrib import messages
@@ -23,17 +24,23 @@ def ferramenta_list(request):
     codigo = request.GET.get('codigo')
     nome = request.GET.get('nome')
     categoria = request.GET.get('categoria')
-    status = request.GET.get('status')
+    status_filter = request.GET.get('status')
     obra = request.GET.get('obra')
+    busca = request.GET.get('q', '').strip()
 
+    if busca:
+        qs = qs.filter(
+            models.Q(nome__icontains=busca) |
+            models.Q(codigo__icontains=busca)
+        )
     if codigo:
         qs = qs.filter(codigo__icontains=codigo)
     if nome:
         qs = qs.filter(nome__icontains=nome)
     if categoria:
         qs = qs.filter(categoria=categoria)
-    if status:
-        qs = qs.filter(status=status)
+    if status_filter:
+        qs = qs.filter(status=status_filter)
     if obra:
         qs = qs.filter(obra_atual__nome__icontains=obra)
 
@@ -52,9 +59,21 @@ def ferramenta_list(request):
         order_field = f'-{order_field}'
     qs = qs.order_by(order_field)
 
+    # Contadores
+    all_active = Ferramenta.objects.filter(ativo=True)
+    total_ferramentas = all_active.count()
+    total_deposito = all_active.filter(status='deposito').count()
+    total_em_obra = all_active.filter(status='em_obra').count()
+    total_manutencao = all_active.filter(status='manutencao').count()
+    total_resultado = qs.count()
+
     # Pagination
     from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-    paginator = Paginator(qs, 10)
+    per_page_param = request.GET.get('per_page', '15')
+    if per_page_param not in ('10', '15', '20'):
+        per_page_param = '15'
+    per_page = int(per_page_param)
+    paginator = Paginator(qs, per_page)
     page = request.GET.get('page')
     try:
         ferramentas_page = paginator.page(page)
@@ -77,8 +96,17 @@ def ferramenta_list(request):
         'current_order': order,
         'current_dir': direction,
         'paginator': paginator,
+        'per_page': per_page,
         'category_choices': [(k, v) for k, v in Ferramenta._meta.get_field('categoria').choices],
         'status_choices': [(k, v) for k, v in Ferramenta._meta.get_field('status').choices],
+        'busca': busca,
+        'status_filter': status_filter or '',
+        'categoria_filter': categoria or '',
+        'total_ferramentas': total_ferramentas,
+        'total_deposito': total_deposito,
+        'total_em_obra': total_em_obra,
+        'total_manutencao': total_manutencao,
+        'total_resultado': total_resultado,
     }
     return render(request, 'ferramentas/ferramenta_list.html', context)
 

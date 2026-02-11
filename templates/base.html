@@ -5,92 +5,433 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Fiscalização de Obras{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     {% block extra_css %}{% endblock %}
     <style>
-      /* Small helper to make touch targets larger on mobile */
-      .nav-link { padding: .75rem 1rem; }
+      :root {
+        --nav-gradient-start: #1a237e;
+        --nav-gradient-end: #283593;
+        --nav-hover: rgba(255,255,255,.12);
+        --nav-active: rgba(255,255,255,.2);
+        --accent: #42a5f5;
+      }
+
+      /* ─── Navbar ─── */
+      .main-navbar {
+        background: linear-gradient(135deg, var(--nav-gradient-start), var(--nav-gradient-end));
+        box-shadow: 0 2px 12px rgba(0,0,0,.25);
+        padding: .35rem 0;
+      }
+      .main-navbar .nav-link {
+        color: rgba(255,255,255,.85);
+        padding: .6rem .9rem;
+        border-radius: .5rem;
+        font-size: .875rem;
+        font-weight: 500;
+        transition: all .2s;
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+      }
+      .main-navbar .nav-link:hover,
+      .main-navbar .nav-link:focus {
+        color: #fff;
+        background: var(--nav-hover);
+      }
+      .main-navbar .nav-link.active,
+      .main-navbar .nav-link-active {
+        color: #fff;
+        background: var(--nav-active);
+      }
+      .main-navbar .nav-link .bi { font-size: 1.05rem; }
+      .navbar-brand-custom {
+        color: #fff !important;
+        font-weight: 700;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        text-decoration: none;
+        padding: .3rem 0;
+      }
+      .navbar-brand-custom .brand-icon {
+        background: rgba(255,255,255,.15);
+        border-radius: .5rem;
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+      }
+      .navbar-brand-custom:hover .brand-icon {
+        background: rgba(255,255,255,.25);
+      }
+
+      /* Dropdown */
+      .main-navbar .dropdown-menu {
+        border: none;
+        border-radius: .75rem;
+        box-shadow: 0 8px 24px rgba(0,0,0,.15);
+        padding: .5rem;
+        min-width: 230px;
+        animation: dropIn .2s ease;
+      }
+      @keyframes dropIn {
+        from { opacity: 0; transform: translateY(-6px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .main-navbar .dropdown-item {
+        border-radius: .5rem;
+        padding: .5rem .75rem;
+        font-size: .875rem;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        transition: background .15s;
+      }
+      .main-navbar .dropdown-item:hover {
+        background: #e8eaf6;
+      }
+      .main-navbar .dropdown-item .bi { font-size: 1rem; width: 20px; text-align: center; }
+      .dropdown-section-label {
+        font-size: .7rem;
+        font-weight: 700;
+        letter-spacing: .06em;
+        color: #9e9e9e;
+        text-transform: uppercase;
+        padding: .4rem .75rem .2rem;
+      }
+
+      /* User pill */
+      .user-pill {
+        background: rgba(255,255,255,.12);
+        border-radius: 2rem;
+        padding: .35rem .75rem .35rem .5rem;
+        display: flex;
+        align-items: center;
+        gap: .45rem;
+        color: rgba(255,255,255,.9);
+        font-size: .82rem;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+      .user-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: .75rem;
+        color: #fff;
+      }
+
+      /* Logout btn */
+      .btn-logout {
+        color: rgba(255,255,255,.7);
+        border: 1px solid rgba(255,255,255,.2);
+        border-radius: .5rem;
+        padding: .35rem .65rem;
+        font-size: .82rem;
+        text-decoration: none;
+        background: transparent;
+        transition: all .2s;
+        display: flex;
+        align-items: center;
+        gap: .3rem;
+      }
+      .btn-logout:hover {
+        color: #fff;
+        background: rgba(255,255,255,.1);
+        border-color: rgba(255,255,255,.35);
+      }
+
+      /* ─── Offcanvas Mobile ─── */
+      .offcanvas-nav {
+        background: linear-gradient(180deg, var(--nav-gradient-start), var(--nav-gradient-end));
+        max-width: 280px;
+      }
+      .offcanvas-nav .offcanvas-header {
+        border-bottom: 1px solid rgba(255,255,255,.1);
+      }
+      .offcanvas-nav .btn-close {
+        filter: invert(1);
+      }
+      .offcanvas-nav .nav-link {
+        color: rgba(255,255,255,.85);
+        padding: .65rem 1rem;
+        border-radius: .5rem;
+        font-size: .9rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        transition: all .15s;
+      }
+      .offcanvas-nav .nav-link:hover,
+      .offcanvas-nav .nav-link.active {
+        color: #fff;
+        background: rgba(255,255,255,.12);
+      }
+      .offcanvas-nav .dropdown-menu {
+        background: rgba(255,255,255,.08);
+        border: none;
+        border-radius: .5rem;
+        margin: .25rem 0;
+        padding: .3rem;
+      }
+      .offcanvas-nav .dropdown-item {
+        color: rgba(255,255,255,.8);
+        border-radius: .4rem;
+        font-size: .85rem;
+        padding: .45rem .75rem;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+      }
+      .offcanvas-nav .dropdown-item:hover {
+        color: #fff;
+        background: rgba(255,255,255,.12);
+      }
+      .offcanvas-nav .dropdown-section-label {
+        color: rgba(255,255,255,.4);
+      }
+      .offcanvas-nav .dropdown-divider {
+        border-color: rgba(255,255,255,.1);
+      }
+      .offcanvas-divider {
+        border-color: rgba(255,255,255,.1);
+        margin: .5rem 1rem;
+      }
+
+      /* ─── Messages ─── */
+      .alert-toast {
+        border: none;
+        border-radius: .75rem;
+        box-shadow: 0 2px 12px rgba(0,0,0,.08);
+        font-size: .9rem;
+      }
+
+      /* ─── Footer ─── */
+      .main-footer {
+        border-top: 1px solid #dee2e6;
+        padding: 1rem 0;
+        margin-top: 2rem;
+        font-size: .78rem;
+        color: #9e9e9e;
+      }
+
+      /* ─── Global helpers ─── */
+      body { min-height: 100vh; display: flex; flex-direction: column; }
+      main  { flex: 1; }
     </style>
   </head>
   <body class="bg-light">
     {% url 'login' as login_url %}
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-      <div class="container-fluid">
-          {% if user.is_authenticated %}
-          <a class="navbar-brand" href="/">Fiscalização</a>
-          {% endif %}
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="mainNav">
-          {% if user.is_authenticated %}
-          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" id="obrasMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">Obras</a>
-              <ul class="dropdown-menu" aria-labelledby="obrasMenu">
-                <li><a class="dropdown-item" href="{% url 'obras:obra_list' %}">Todas as Obras</a></li>
-                <li><hr class="dropdown-divider"></li>
-                {% for obra in recent_obras %}
-                  <li>
-                    <a class="dropdown-item" href="{% url 'obras:obra_allocations' obra.id %}">
-                      {{ obra.nome }}
-                      <small class="text-muted"> - {{ obra.created_at|date:"d/m/Y" }}</small>
-                    </a>
-                  </li>
-                {% empty %}
-                  <li><span class="dropdown-item text-muted">Nenhuma obra recente</span></li>
-                {% endfor %}
-              </ul>
-            </li>
-            <li class="nav-item"><a class="nav-link" href="/obras/#allocacoes">Alocações</a></li>
-            <li class="nav-item"><a class="nav-link" href="/fiscalizacao/">Fiscalização</a></li>
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" id="funcMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">Funcionários</a>
-              <ul class="dropdown-menu" aria-labelledby="funcMenu">
-                <li><a class="dropdown-item" href="/funcionarios/">Lista de Funcionários</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item fw-bold text-success" href="/funcionarios/apontamentos/diario/">📋 Apontamento Diário</a></li>
-                <li><a class="dropdown-item" href="/funcionarios/apontamentos/">Apontamentos</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="/funcionarios/fechamentos/">Fechamentos Semanais</a></li>
-                <li><a class="dropdown-item" href="/funcionarios/fechamentos/auto/">⚡ Fechamento Automático</a></li>
-              </ul>
-            </li>
-            <li class="nav-item"><a class="nav-link" href="/ferramentas/">Ferramentas</a></li>
-            <li class="nav-item"><a class="nav-link" href="/analytics/">Analytics</a></li>
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" id="clientesMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">Clientes</a>
-              <ul class="dropdown-menu" aria-labelledby="clientesMenu">
-                <li><a class="dropdown-item" href="{% url 'clientes:cliente_list' %}">Lista de Clientes</a></li>
-                <li><a class="dropdown-item" href="{% url 'clientes:cliente_create' %}">Cadastrar Cliente</a></li>
-              </ul>
-            </li>
-          </ul>
-          {% endif %}
-          {# Right-side nav: hide entirely if on login page to keep login screen clean #}
-          {% if request.path != login_url %}
-          <ul class="navbar-nav ms-auto">
-            {% if user.is_authenticated %}
-              <li class="nav-item"><a class="nav-link" href="/admin/">Admin</a></li>
-              <li class="nav-item">
-                <form method="post" action="{% url 'logout' %}" class="d-inline">
-                  {% csrf_token %}
-                  <button type="submit" class="btn btn-link nav-link" style="text-decoration:none;">Logout</button>
-                </form>
-              </li>
-            {% else %}
-              <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Login</a></li>
-            {% endif %}
-          </ul>
-          {% endif %}
+
+    {# ═══════ DESKTOP NAVBAR (lg+) ═══════ #}
+    <nav class="main-navbar navbar navbar-expand-lg d-none d-lg-flex">
+      <div class="container-fluid px-3">
+        <!-- Brand -->
+        <a class="navbar-brand-custom me-3" href="{% if user.is_authenticated %}{% url 'obras:obra_list' %}{% else %}/{% endif %}">
+          <span class="brand-icon"><i class="bi bi-building-gear"></i></span>
+          <span>Fiscalização</span>
+        </a>
+
+        {% if user.is_authenticated %}
+        <!-- Main links -->
+        <ul class="navbar-nav me-auto gap-1">
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'obras:obra_list' %}">
+              <i class="bi bi-buildings"></i> Obras
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/fiscalizacao/">
+              <i class="bi bi-clipboard-check"></i> Fiscalização
+            </a>
+          </li>
+
+          <!-- Funcionários -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-people"></i> Funcionários
+            </a>
+            <ul class="dropdown-menu">
+              <li class="dropdown-section-label">Cadastro</li>
+              <li><a class="dropdown-item" href="/funcionarios/"><i class="bi bi-person-lines-fill text-primary"></i> Lista de Funcionários</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li class="dropdown-section-label">Apontamentos</li>
+              <li><a class="dropdown-item" href="/funcionarios/apontamentos/diario/"><i class="bi bi-calendar-check text-success"></i> <strong>Apontamento Diário</strong></a></li>
+              <li><a class="dropdown-item" href="/funcionarios/apontamentos/"><i class="bi bi-list-check text-muted"></i> Todos os Apontamentos</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li class="dropdown-section-label">Fechamentos</li>
+              <li><a class="dropdown-item" href="/funcionarios/fechamentos/"><i class="bi bi-calculator text-muted"></i> Fechamentos Semanais</a></li>
+              <li><a class="dropdown-item" href="/funcionarios/fechamentos/auto/"><i class="bi bi-lightning-charge text-warning"></i> <strong>Fechamento Automático</strong></a></li>
+            </ul>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="/ferramentas/">
+              <i class="bi bi-tools"></i> Ferramentas
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="/analytics/">
+              <i class="bi bi-graph-up"></i> Analytics
+            </a>
+          </li>
+
+          <!-- Clientes -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-person-vcard"></i> Clientes
+            </a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="{% url 'clientes:cliente_list' %}"><i class="bi bi-people text-primary"></i> Lista de Clientes</a></li>
+              <li><a class="dropdown-item" href="{% url 'clientes:cliente_create' %}"><i class="bi bi-person-plus text-success"></i> Cadastrar Cliente</a></li>
+            </ul>
+          </li>
+        </ul>
+
+        <!-- Right side -->
+        <div class="d-flex align-items-center gap-2">
+          <a href="/admin/" class="nav-link py-1 px-2" title="Admin" style="color:rgba(255,255,255,.7);">
+            <i class="bi bi-gear"></i>
+          </a>
+          <div class="user-pill">
+            <span class="user-avatar">{{ user.first_name|default:user.username|truncatechars:1|upper }}</span>
+            {{ user.get_full_name|default:user.username }}
+          </div>
+          <form method="post" action="{% url 'logout' %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn-logout" title="Sair">
+              <i class="bi bi-box-arrow-right"></i>
+            </button>
+          </form>
         </div>
+        {% else %}
+        {% if request.path != login_url %}
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'login' %}"><i class="bi bi-box-arrow-in-right"></i> Login</a>
+          </li>
+        </ul>
+        {% endif %}
+        {% endif %}
       </div>
     </nav>
+
+    {# ═══════ MOBILE TOP BAR + OFFCANVAS (< lg) ═══════ #}
+    <nav class="main-navbar navbar d-lg-none">
+      <div class="container-fluid px-3">
+        <a class="navbar-brand-custom" href="{% if user.is_authenticated %}{% url 'obras:obra_list' %}{% else %}/{% endif %}">
+          <span class="brand-icon"><i class="bi bi-building-gear"></i></span>
+          <span>Fiscalização</span>
+        </a>
+        {% if user.is_authenticated %}
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileNav" aria-label="Menu">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        {% endif %}
+      </div>
+    </nav>
+
+    {% if user.is_authenticated %}
+    <div class="offcanvas offcanvas-start offcanvas-nav d-lg-none" tabindex="-1" id="mobileNav">
+      <div class="offcanvas-header pb-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="user-avatar">{{ user.first_name|default:user.username|truncatechars:1|upper }}</span>
+          <div>
+            <div class="text-white fw-semibold" style="font-size:.9rem;">{{ user.get_full_name|default:user.username }}</div>
+            <div style="font-size:.75rem;color:rgba(255,255,255,.5);">{{ user.email|default:"" }}</div>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+      </div>
+      <div class="offcanvas-body p-2">
+        <ul class="navbar-nav gap-1">
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'obras:obra_list' %}"><i class="bi bi-buildings"></i> Obras</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/fiscalizacao/"><i class="bi bi-clipboard-check"></i> Fiscalização</a>
+          </li>
+
+          <hr class="offcanvas-divider">
+
+          <!-- Funcionários -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+              <i class="bi bi-people"></i> Funcionários
+            </a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="/funcionarios/"><i class="bi bi-person-lines-fill"></i> Lista</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="/funcionarios/apontamentos/diario/"><i class="bi bi-calendar-check"></i> <strong>Apontamento Diário</strong></a></li>
+              <li><a class="dropdown-item" href="/funcionarios/apontamentos/"><i class="bi bi-list-check"></i> Apontamentos</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="/funcionarios/fechamentos/"><i class="bi bi-calculator"></i> Fechamentos</a></li>
+              <li><a class="dropdown-item" href="/funcionarios/fechamentos/auto/"><i class="bi bi-lightning-charge"></i> <strong>Fech. Automático</strong></a></li>
+            </ul>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="/ferramentas/"><i class="bi bi-tools"></i> Ferramentas</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/analytics/"><i class="bi bi-graph-up"></i> Analytics</a>
+          </li>
+
+          <hr class="offcanvas-divider">
+
+          <!-- Clientes -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+              <i class="bi bi-person-vcard"></i> Clientes
+            </a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="{% url 'clientes:cliente_list' %}"><i class="bi bi-people"></i> Lista de Clientes</a></li>
+              <li><a class="dropdown-item" href="{% url 'clientes:cliente_create' %}"><i class="bi bi-person-plus"></i> Cadastrar Cliente</a></li>
+            </ul>
+          </li>
+
+          <hr class="offcanvas-divider">
+
+          <li class="nav-item">
+            <a class="nav-link" href="/admin/"><i class="bi bi-gear"></i> Admin</a>
+          </li>
+          <li class="nav-item">
+            <form method="post" action="{% url 'logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="nav-link w-100 border-0 bg-transparent text-start" style="color:rgba(255,255,255,.7);">
+                <i class="bi bi-box-arrow-right"></i> Sair
+              </button>
+            </form>
+          </li>
+        </ul>
+      </div>
+    </div>
+    {% endif %}
 
     <main class="container my-4">
       {% if messages %}
         <div class="mb-3">
           {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            <div class="alert alert-{{ message.tags }} alert-toast alert-dismissible fade show d-flex align-items-center gap-2" role="alert">
+              {% if message.tags == 'success' %}
+                <i class="bi bi-check-circle-fill text-success"></i>
+              {% elif message.tags == 'error' or message.tags == 'danger' %}
+                <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+              {% elif message.tags == 'warning' %}
+                <i class="bi bi-exclamation-circle-fill text-warning"></i>
+              {% else %}
+                <i class="bi bi-info-circle-fill text-primary"></i>
+              {% endif %}
               {{ message }}
               <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
@@ -100,7 +441,29 @@
       {% block content %}{% endblock %}
     </main>
 
+    <footer class="main-footer">
+      <div class="container d-flex flex-wrap justify-content-between align-items-center">
+        <span><i class="bi bi-building-gear"></i> Fiscalização de Obras &copy; {% now "Y" %}</span>
+        {% if user.is_authenticated %}
+        <span><i class="bi bi-person-circle"></i> {{ user.get_full_name|default:user.username }}</span>
+        {% endif %}
+      </div>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="" crossorigin="anonymous"></script>
+    <script>
+      // Highlight active nav link based on current path
+      (function(){
+        var path = window.location.pathname;
+        document.querySelectorAll('.main-navbar .nav-link, .offcanvas-nav .nav-link').forEach(function(link){
+          if(link.classList.contains('dropdown-toggle')) return;
+          var href = link.getAttribute('href');
+          if(href && href !== '/' && path.startsWith(href)){
+            link.classList.add('active');
+          }
+        });
+      })();
+    </script>
     {% block extra_js %}{% endblock %}
   </body>
 </html>
