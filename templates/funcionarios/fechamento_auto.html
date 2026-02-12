@@ -16,12 +16,27 @@
             <i class="bi bi-exclamation-triangle-fill me-2"></i>
             <strong>Atenção!</strong> <span id="alerta-msg"></span>
           </div>
+          <!-- Period presets -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Atalhos de Período</label>
+            <div class="d-flex flex-wrap gap-2">
+              <button type="button" class="btn btn-sm btn-outline-primary preset-btn" data-days="7">Semana</button>
+              <button type="button" class="btn btn-sm btn-outline-primary preset-btn" data-days="15">Quinzena</button>
+              <button type="button" class="btn btn-sm btn-outline-primary preset-btn" data-days="30">Mês</button>
+            </div>
+          </div>
+
           <form method="post" id="form-fechamento-auto">
             {% csrf_token %}
-            <div class="mb-3">
-              <label class="form-label">Data de Início da Semana (segunda-feira)</label>
-              <input type="date" name="data_inicio" id="data_inicio" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
-              <div class="form-text">O período será da data selecionada até +6 dias.</div>
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Data de Início</label>
+                <input type="date" name="data_inicio" id="data_inicio" class="form-control" value="{{ inicio_semana|date:'Y-m-d' }}" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Data de Fim</label>
+                <input type="date" name="data_fim" id="data_fim" class="form-control" value="{{ fim_semana|date:'Y-m-d' }}" required>
+              </div>
             </div>
             <div class="d-flex gap-2">
               <button type="submit" class="btn btn-primary btn-lg" id="btn-gerar">Gerar Fechamentos</button>
@@ -38,7 +53,8 @@
 {% block extra_js %}
 <script>
 (function(){
-  const dataInput = document.getElementById('data_inicio');
+  const dataInicio = document.getElementById('data_inicio');
+  const dataFim = document.getElementById('data_fim');
   const alerta = document.getElementById('alerta-fechamento');
   const alertaMsg = document.getElementById('alerta-msg');
   const btnGerar = document.getElementById('btn-gerar');
@@ -47,9 +63,27 @@
 
   let semanaTemFechamento = false;
 
+  // Preset buttons
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const days = parseInt(this.dataset.days);
+      const hoje = new Date();
+      // Find Monday of current week as base
+      const dow = hoje.getDay();
+      const monday = new Date(hoje);
+      monday.setDate(hoje.getDate() - ((dow + 6) % 7));
+      const end = new Date(monday);
+      end.setDate(monday.getDate() + days - 1);
+      dataInicio.value = monday.toISOString().slice(0, 10);
+      dataFim.value = end.toISOString().slice(0, 10);
+      verificarFechamento();
+    });
+  });
+
   async function verificarFechamento() {
-    const di = dataInput.value;
-    if (!di) {
+    const di = dataInicio.value;
+    const df = dataFim.value;
+    if (!di || !df) {
       alerta.classList.add('d-none');
       semanaTemFechamento = false;
       btnGerar.disabled = false;
@@ -61,14 +95,13 @@
       const data = await resp.json();
       if (data.exists) {
         semanaTemFechamento = true;
-        let msg = `Já existe(m) ${data.count} fechamento(s) para a semana de ${data.semana}.`;
+        let msg = `Já existe(m) ${data.count} fechamento(s) para este período.`;
         if (data.funcionarios && data.funcionarios.length > 0) {
           msg += ' Funcionários: ' + data.funcionarios.join(', ');
           if (data.count > data.funcionarios.length) {
             msg += ` e mais ${data.count - data.funcionarios.length}...`;
           }
         }
-        msg += ' Não é possível gerar novos fechamentos para esta semana.';
         alertaMsg.textContent = msg;
         alerta.classList.remove('d-none');
         btnGerar.disabled = true;
@@ -82,16 +115,16 @@
     }
   }
 
-  dataInput.addEventListener('change', verificarFechamento);
+  dataInicio.addEventListener('change', verificarFechamento);
+  dataFim.addEventListener('change', verificarFechamento);
 
   form.addEventListener('submit', function(e) {
     if (semanaTemFechamento) {
       e.preventDefault();
-      alert('Não é possível gerar fechamentos: já existe fechamento para a semana selecionada.');
+      alert('Não é possível gerar fechamentos: já existe fechamento para o período selecionado.');
     }
   });
 
-  // Verificar ao carregar a página
   document.addEventListener('DOMContentLoaded', verificarFechamento);
 })();
 </script>

@@ -159,7 +159,7 @@
           <th style="width: 140px;"><i class="bi bi-phone"></i> Telefone</th>
           <th class="text-end" style="width: 130px;"><i class="bi bi-cash-stack"></i> Diária</th>
           <th class="text-center" style="width: 110px;">Admissão</th>
-          <th class="text-center" style="width: 100px;">Ações</th>
+          <th class="text-center" style="width: 130px;">Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -188,11 +188,14 @@
           <td class="text-center small">{{ f.data_admissao|date:"d/m/Y" }}</td>
           <td class="text-center">
             <div class="d-flex justify-content-center gap-1">
-              <a href="{% url 'funcionarios:funcionario_detail' f.pk %}" class="btn btn-sm btn-outline-primary" title="Ver detalhes">
+              <a href="{% url 'funcionarios:funcionario_detail' f.pk %}" class="btn btn-sm btn-outline-primary" title="Ver perfil completo">
                 <i class="bi bi-eye"></i>
               </a>
               <a href="{% url 'funcionarios:funcionario_update' f.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar">
                 <i class="bi bi-pencil"></i>
+              </a>
+              <a href="{% url 'funcionarios:funcionario_historico' f.pk %}" class="btn btn-sm btn-outline-info" title="Histórico">
+                <i class="bi bi-clock-history"></i>
               </a>
             </div>
           </td>

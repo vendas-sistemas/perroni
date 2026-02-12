@@ -1,286 +1,138 @@
 {% extends 'base.html' %}
+{% load obras_extras %}
 
 {% block title %}Registro Diário{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <style>
-  /* General improvements for clarity and color separation */
-  .worker-card { border-left: 4px solid #0d6efd; margin-bottom: .5rem; padding: .5rem; border-radius: .25rem; }
-  .worker-card.ociosidade { border-left-color: #ffc107; background: rgba(255,193,7,0.06); }
-  .worker-card.retrabalho { border-left-color: #dc3545; background: rgba(220,53,69,0.04); }
-
-  .badge-clima-sol { background-color: #ffc107; color: #333; }
-  .badge-clima-chuva { background-color: #6c757d; }
-  .badge-clima-nublado { background-color: #adb5bd; color: #333; }
-
   .step-indicator { display: flex; gap: .5rem; margin-bottom: 1rem; }
   .step-indicator .step { flex: 1; text-align: center; padding: .5rem; border-radius: .5rem; background: #f1f3f5; font-size: .9rem; }
   .step-indicator .step.active { background: #0d6efd; color: #fff; }
   .step-indicator .step.done { background: #198754; color: #fff; }
 
-  /* Etapa cards — base */
-  .etapa-card { border-radius: .5rem; padding: .75rem; margin-bottom: .75rem; border-left: 5px solid #dee2e6; }
-  .etapa-card + .etapa-card { margin-top: .5rem; }
-  .etapa-card h6 { margin: 0 0 .5rem 0; }
-  .etapa-card .badge { margin-left: .5rem; }
+  .badge-clima-sol { background-color: #ffc107; color: #333; }
+  .badge-clima-chuva { background-color: #6c757d; }
+  .badge-clima-nublado { background-color: #adb5bd; color: #333; }
 
-  /* Etapa 1 — Fundação: azul */
-  .etapa-card.etapa-1 { background: #e8f0fe; border-left-color: #1a73e8; }
-  .etapa-card.etapa-1 h6 { color: #1a53a0; }
+  .func-row { transition: background-color .15s; }
+  .func-row:hover { background-color: #e9ecef; }
+  .func-row.selected { background-color: #d1ecf1; }
+  .func-row.ja-apontado { background-color: #d4edda; }
+  .func-row.bloqueado { background-color: #f8d7da; opacity: .7; }
 
-  /* Etapa 2 — Estrutura: verde */
-  .etapa-card.etapa-2 { background: #e6f4ea; border-left-color: #1e8e3e; }
-  .etapa-card.etapa-2 h6 { color: #137333; }
+  .badge-pedreiro { background-color: #0d6efd; }
+  .badge-servente { background-color: #6f42c1; }
 
-  /* Etapa 3 — Instalações: laranja */
-  .etapa-card.etapa-3 { background: #fef3e0; border-left-color: #e8710a; }
-  .etapa-card.etapa-3 h6 { color: #b05c09; }
+  .batch-table th { font-size: .85rem; white-space: nowrap; }
+  .batch-table td { vertical-align: middle; }
+  .batch-table .form-control-sm, .batch-table .form-select-sm { font-size: .85rem; }
 
-  /* Etapa 4 — Acabamentos: roxo */
-  .etapa-card.etapa-4 { background: #f3e8fd; border-left-color: #8430ce; }
-  .etapa-card.etapa-4 h6 { color: #5e1ea0; }
-
-  /* Etapa 5 — Finalização: vermelho/rosé */
-  .etapa-card.etapa-5 { background: #fce8e6; border-left-color: #d93025; }
-  .etapa-card.etapa-5 h6 { color: #a50e0e; }
-
-  /* Visual hierarchy for items */
-  .etapa-items-form .border { background: #fbfcfd; }
-  .etapa-item-badge { font-size: .82rem; }
-  .etapa-overview-value { font-weight: 600; font-size: 1rem; }
-
-  /* Edit form style */
-  .edit-etapa-form { background: #f8f9fa; border-left: 4px solid #0d6efd; }
-  .edit-etapa-form .form-label { font-weight: 600; font-size: .85rem; }
-
-  /* Table improvements */
-  .apontamentos-table { font-size: .95rem; }
-  .apontamentos-table thead { background: #1b2a4a; }
-  .apontamentos-table thead th { color: #fff; font-weight: 600; padding: .6rem .5rem; border-color: #1b2a4a; }
-  .apontamentos-table tbody td { padding: .55rem .5rem; color: #212529; }
-  .apontamentos-table tbody tr:nth-child(odd) { background-color: #eef2f7; }
-  .apontamentos-table tbody tr:nth-child(even) { background-color: #f8f9fb; }
-  .apontamentos-table tbody tr:hover { background-color: #dce4f0; }
-
-  /* Apontados card header */
   .apontados-header { background: #1b2a4a; color: #fff; }
-  .apontados-header .text-muted { color: #c0cfe0 !important; }
+  .apontamentos-table thead { background: #1b2a4a; }
+  .apontamentos-table thead th { color: #fff; font-weight: 600; padding: .5rem; border-color: #1b2a4a; }
 
-  /* Add worker form section */
-  .add-worker-card .card-body { background: #f0f4fa; }
-  .add-worker-card .form-label { font-weight: 600; color: #1b2a4a; font-size: .95rem; }
-  .add-worker-card .form-text { color: #5a6a85; }
-  .add-worker-card .form-check-label { font-weight: 500; color: #333; }
-
-  /* Touch-friendly controls */
-  .form-check-input { width: 1.4rem; height: 1.4rem; }
-  .form-check-label { padding-left: .25rem; font-size: .95rem; }
-
-  /* Toggle icon for collapsible sections */
-  .etapas-toggle-icon { transition: transform .25s ease; display: inline-block; }
-  .card-header[aria-expanded="true"] .etapas-toggle-icon { transform: rotate(180deg); }
+  .select-all-container { cursor: pointer; }
+  .form-check-input { width: 1.3rem; height: 1.3rem; }
 
   @media (max-width: 768px) {
-    .table-responsive { font-size: .88rem; }
-    .btn { padding: .45rem 0.9rem; }
+    .table-responsive { font-size: .85rem; }
   }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid py-3">
-  <h4 class="mb-3">📋 Registro Diário de Mão de Obra</h4>
+  <h4 class="mb-3"><i class="bi bi-clipboard-check text-primary"></i> Registro Diário de Mão de Obra</h4>
 
-  <!-- Step Indicator -->
   <div class="step-indicator">
     <div class="step {% if obra %}done{% else %}active{% endif %}">1. Obra & Data</div>
-    <div class="step {% if obra %}active{% endif %}">2. Etapas & Funcionários</div>
+    <div class="step {% if obra %}active{% endif %}">2. Marcar Funcionários</div>
   </div>
 
   <!-- STEP 1: Select Obra, Date, Clima -->
-  <div class="card mb-3">
+  <div class="card mb-3 border-0 shadow-sm">
     <div class="card-body">
-      <h5 class="card-title">Selecione a Obra</h5>
+      <h5 class="card-title mb-3">Selecione a Obra</h5>
       <form method="get" class="row g-2">
         <div class="col-12 col-md-4">
-          <label class="form-label">Obra</label>
+          <label class="form-label fw-semibold">Obra</label>
           {{ cab_form.obra }}
         </div>
         <div class="col-6 col-md-3">
-          <label class="form-label">Data</label>
+          <label class="form-label fw-semibold">Data</label>
           {{ cab_form.data }}
         </div>
         <div class="col-6 col-md-3">
-          <label class="form-label">Clima</label>
+          <label class="form-label fw-semibold">Clima</label>
           {{ cab_form.clima }}
         </div>
         <div class="col-12 col-md-2 d-flex align-items-end">
-          <button type="submit" class="btn btn-primary w-100">Carregar</button>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-arrow-right"></i> Carregar
+          </button>
         </div>
       </form>
     </div>
   </div>
 
   {% if obra and data %}
-  <!-- Header info -->
-  <div class="alert alert-info d-flex flex-wrap justify-content-between align-items-center py-2">
+  <!-- Header info bar -->
+  <div class="alert alert-info d-flex flex-wrap justify-content-between align-items-center py-2 mb-3">
     <div>
       <strong>{{ obra.nome }}</strong> &mdash; {{ data|date:"d/m/Y" }}
       <span class="badge badge-clima-{{ clima }}">{{ clima|upper }}</span>
     </div>
     <div>
       <span class="badge bg-primary">{{ obra.percentual_concluido }}% concluído</span>
-      <strong>{{ apontamentos_existentes|length }}</strong> funcionário(s) apontado(s)
+      <strong>{{ apontamentos_existentes|length }}</strong> funcionário(s) já apontado(s)
     </div>
   </div>
 
-  <!-- ========== ETAPAS OVERVIEW ========== -->
-  {% if etapas_overview %}
-  <div class="card mb-3">
-    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center" style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#etapasOverviewBody" aria-expanded="false" aria-controls="etapasOverviewBody">
-      <strong>📊 Progresso da Obra - Etapas e Itens</strong>
-      <span class="etapas-toggle-icon fs-5">&#9660;</span>
-    </div>
-    <div class="collapse" id="etapasOverviewBody">
-    <div class="card-body p-2">
-      {% for ed in etapas_overview %}
-      <div class="mb-3 etapa-card etapa-{{ ed.etapa.numero_etapa }}">
-        <h6 class="fw-bold mb-2 border-bottom pb-1">
-          {{ ed.etapa.get_numero_etapa_display }}
-          {% if ed.etapa.concluida %}
-            <span class="badge bg-success ms-1">✓ Concluída</span>
-          {% else %}
-            <span class="badge bg-warning text-dark ms-1">Em andamento</span>
-          {% endif %}
-        </h6>
-        {% if ed.items %}
-        <div class="row g-2">
-          {% for item in ed.items %}
-          <div class="col-6 col-md-4 col-lg-3">
-            <div class="border rounded p-2 h-100 {% if item.type == 'boolean' and item.value %}bg-success bg-opacity-10{% endif %}">
-              <small class="text-muted d-block">{{ item.label }}</small>
-              {% if item.type == 'boolean' %}
-                {% if item.value %}
-                  <span class="badge bg-success etapa-item-badge">✓ Concluído</span>
-                {% else %}
-                  <span class="badge bg-secondary etapa-item-badge">✗ Pendente</span>
-                {% endif %}
-              {% else %}
-                <span class="etapa-overview-value">{{ item.value }}</span>
-              {% endif %}
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-
-        <!-- Edit button opens a modal for better UX on small screens -->
-        <div class="mt-2">
-          <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#editEtapaModal-{{ ed.etapa.pk }}">✎ Editar Progresso</button>
-        </div>
-
-        <!-- Modal -->
-        <div class="modal fade" id="editEtapaModal-{{ ed.etapa.pk }}" tabindex="-1" aria-labelledby="editEtapaLabel-{{ ed.etapa.pk }}" aria-hidden="true">
-          <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title" id="editEtapaLabel-{{ ed.etapa.pk }}">Editar Progresso — {{ ed.etapa.get_numero_etapa_display }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-              </div>
-              <div class="modal-body">
-                <div class="alert alert-info py-2 mb-3">
-                  <small><strong>ℹ️ Informe apenas a quantidade realizada HOJE.</strong> O sistema somará automaticamente ao total acumulado da obra.</small>
-                </div>
-                <form method="post">
-                  {% csrf_token %}
-                  <input type="hidden" name="obra" value="{{ obra.pk }}">
-                  <input type="hidden" name="data_apontamento" value="{{ data|date:'Y-m-d' }}">
-                  <input type="hidden" name="clima_apontamento" value="{{ clima }}">
-                  <input type="hidden" name="items_etapa_id" value="{{ ed.etapa.pk }}">
-                  <input type="hidden" name="save_etapa_items" value="1">
-                  <div class="row g-2">
-                    {% for item in ed.items %}
-                      <div class="col-12 col-md-6 col-lg-4">
-                        <div class="mb-2 p-2 border rounded bg-white">
-                          {% if item.type == 'boolean' %}
-                            <input type="hidden" name="item_{{ item.name }}" value="0">
-                            <div class="form-check">
-                              <input class="form-check-input" type="checkbox" name="item_{{ item.name }}" id="modal_{{ item.name }}_{{ ed.etapa.pk }}" value="1" {% if item.value %}checked disabled{% endif %}>
-                              <label class="form-check-label" for="modal_{{ item.name }}_{{ ed.etapa.pk }}">{{ item.label }}</label>
-                              {% if item.value %}
-                                <span class="badge bg-success ms-1">✓ Já concluído</span>
-                              {% endif %}
-                            </div>
-                          {% elif item.type == 'integer' %}
-                            <label class="form-label small mb-1">{{ item.label }}</label>
-                            <div class="text-muted small mb-1">Acumulado: <strong>{{ item.value }}</strong></div>
-                            <input type="number" class="form-control form-control-sm" name="item_{{ item.name }}" value="0" min="0" placeholder="Qtd. do dia">
-                          {% elif item.type == 'decimal' %}
-                            <label class="form-label small mb-1">{{ item.label }}</label>
-                            <div class="text-muted small mb-1">Acumulado: <strong>{{ item.value }}</strong></div>
-                            <input type="number" class="form-control form-control-sm" name="item_{{ item.name }}" value="0" min="0" step="0.01" placeholder="Qtd. do dia">
-                          {% endif %}
-                        </div>
-                      </div>
-                    {% endfor %}
-                  </div>
-                  <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar Progresso</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-        {% else %}
-        <p class="text-muted small mb-0">Nenhum item cadastrado.</p>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-    </div>{# close collapse #}
-  </div>
-  {% endif %}
-
-  <!-- List existing appointments for this day -->
+  <!-- Existing appointments (if any) -->
   {% if apontamentos_existentes %}
-  <div class="card mb-3 shadow-sm">
+  <div class="card mb-3 shadow-sm border-0">
     <div class="card-header d-flex justify-content-between apontados-header">
-      <span><strong>👷 Funcionários Apontados</strong></span>
-      <span class="text-muted">Total: R$ {% widthratio 1 1 1 as x %}{% for ap in apontamentos_existentes %}{% if forloop.first %}{{ ap.valor_diaria }}{% endif %}{% endfor %}</span>
+      <span><i class="bi bi-check2-all"></i> <strong>Já Apontados Hoje</strong></span>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">
-        <table class="table table-sm table-hover table-striped table-bordered mb-0 apontamentos-table">
+        <table class="table table-sm table-hover mb-0 apontamentos-table">
           <thead>
             <tr>
               <th>Funcionário</th>
               <th>Função</th>
               <th>Etapa</th>
-              <th>Horas</th>
-              <th>Valor</th>
-              <th>Status</th>
+              <th class="text-center">Horas</th>
+              <th class="text-end">Valor</th>
+              <th class="text-center">Status</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {% for ap in apontamentos_existentes %}
             <tr class="{% if ap.houve_retrabalho %}table-danger{% elif ap.houve_ociosidade %}table-warning{% endif %}">
-              <td>{{ ap.funcionario.nome_completo }}</td>
-              <td><span class="badge bg-secondary">{{ ap.funcionario.get_funcao_display }}</span></td>
-              <td>{{ ap.etapa|default:"-" }}</td>
-              <td>{{ ap.horas_trabalhadas }}h</td>
-              <td>R$ {{ ap.valor_diaria }}</td>
               <td>
-                {% if ap.houve_retrabalho %}<span class="badge bg-danger" title="{{ ap.motivo_retrabalho }}">Retrabalho</span>{% endif %}
-                {% if ap.houve_ociosidade %}<span class="badge bg-warning text-dark" title="{{ ap.observacao_ociosidade }}">Ocioso</span>{% endif %}
+                <a href="{% url 'funcionarios:funcionario_detail' ap.funcionario.pk %}" class="text-decoration-none">
+                  {{ ap.funcionario.nome_completo }}
+                </a>
+              </td>
+              <td><span class="badge {% if ap.funcionario.funcao == 'pedreiro' %}badge-pedreiro{% else %}badge-servente{% endif %}">{{ ap.funcionario.get_funcao_display }}</span></td>
+              <td>{{ ap.etapa|default:"-" }}</td>
+              <td class="text-center">{{ ap.horas_trabalhadas }}h</td>
+              <td class="text-end">{{ ap.valor_diaria|brl }}</td>
+              <td class="text-center">
+                {% if ap.houve_retrabalho %}<span class="badge bg-danger">Retrabalho</span>{% endif %}
+                {% if ap.houve_ociosidade %}<span class="badge bg-warning text-dark">Ocioso</span>{% endif %}
                 {% if not ap.houve_retrabalho and not ap.houve_ociosidade %}<span class="badge bg-success">OK</span>{% endif %}
               </td>
               <td>
                 <form method="post" action="{% url 'funcionarios:apontamento_delete' ap.pk %}" class="d-inline">
                   {% csrf_token %}
                   <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                  <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remover {{ ap.funcionario.nome_completo }}?')">✕</button>
+                  <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remover {{ ap.funcionario.nome_completo }}?')">
+                    <i class="bi bi-x-lg"></i>
+                  </button>
                 </form>
               </td>
             </tr>
@@ -292,94 +144,104 @@
   </div>
   {% endif %}
 
-  <!-- STEP 2: Add worker form -->
-  <div class="card shadow-sm add-worker-card">
-    <div class="card-header bg-primary text-white">
-      <strong>➕ Adicionar Funcionário</strong>
+  <!-- STEP 2: Batch selection table -->
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <strong><i class="bi bi-people"></i> Marcar Funcionários que Trabalharam</strong>
+      <small>Marque os funcionários, ajuste horas/etapa se necessário, e salve tudo de uma vez.</small>
     </div>
-    <div class="card-body">
-      <form method="post">
+    <div class="card-body p-0">
+      <form method="post" id="batch-form">
         {% csrf_token %}
         <input type="hidden" name="obra" value="{{ obra.pk }}">
         <input type="hidden" name="data_apontamento" value="{{ data|date:'Y-m-d' }}">
         <input type="hidden" name="clima_apontamento" value="{{ clima }}">
 
-        {% if item_form.non_field_errors %}
-          <div class="mb-2">
-            {% for err in item_form.non_field_errors %}
-              <div class="alert alert-danger py-1">{{ err }}</div>
-            {% endfor %}
-          </div>
-        {% endif %}
-
-        <div class="row g-2">
-          <div class="col-12 col-md-4">
-            <label class="form-label">Funcionário *</label>
-            {{ item_form.funcionario }}
-            {% for error in item_form.funcionario.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-          </div>
-          <div class="col-6 col-md-4">
-            <label class="form-label">Etapa/Fase</label>
-            {{ item_form.etapa }}
-          </div>
-          <div class="col-6 col-md-2">
-            <label class="form-label">Horas</label>
-            {{ item_form.horas_trabalhadas }}
-          </div>
-          <div class="col-6 col-md-2">
-            <label class="form-label">Valor Diária</label>
-            {{ item_form.valor_diaria }}
-            <div class="form-text">Auto se vazio</div>
-          </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0 batch-table">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 50px;" class="text-center">
+                  <div class="form-check d-flex justify-content-center">
+                    <input type="checkbox" class="form-check-input" id="select-all" title="Selecionar todos">
+                  </div>
+                </th>
+                <th>Funcionário</th>
+                <th class="text-center" style="width: 100px;">Função</th>
+                <th style="width: 130px;">Etapa</th>
+                <th class="text-center" style="width: 90px;">Horas</th>
+                <th class="text-end" style="width: 110px;">Diária</th>
+                <th class="text-center" style="width: 80px;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for f in funcionarios_disponiveis %}
+              <tr class="func-row {% if f.ja_apontado %}ja-apontado{% elif f.bloqueado %}bloqueado{% endif %}" data-func-id="{{ f.obj.pk }}">
+                <td class="text-center">
+                  {% if f.bloqueado %}
+                    <span class="text-danger" title="Apontado em outra obra"><i class="bi bi-x-circle"></i></span>
+                  {% else %}
+                    <div class="form-check d-flex justify-content-center">
+                      <input type="checkbox" class="form-check-input func-check" name="func_ids" value="{{ f.obj.pk }}"
+                        {% if f.ja_apontado %}checked{% endif %}>
+                    </div>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{% url 'funcionarios:funcionario_detail' f.obj.pk %}" class="text-decoration-none fw-semibold">
+                    {{ f.obj.nome_completo }}
+                  </a>
+                </td>
+                <td class="text-center">
+                  <span class="badge {% if f.obj.funcao == 'pedreiro' %}badge-pedreiro{% else %}badge-servente{% endif %}">
+                    {{ f.obj.get_funcao_display }}
+                  </span>
+                </td>
+                <td>
+                  {% if not f.bloqueado %}
+                  <select name="etapa_{{ f.obj.pk }}" class="form-select form-select-sm">
+                    <option value="">—</option>
+                    {% for e in etapas %}
+                    <option value="{{ e.pk }}">{{ e.get_numero_etapa_display }}</option>
+                    {% endfor %}
+                  </select>
+                  {% else %}
+                  <span class="text-muted small">—</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  {% if not f.bloqueado %}
+                  <input type="number" name="horas_{{ f.obj.pk }}" value="8.0" step="0.5" min="0.5" max="24" class="form-control form-control-sm text-center" style="width:80px; margin:auto;">
+                  {% else %}
+                  <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">{{ f.obj.valor_diaria|brl }}</td>
+                <td class="text-center">
+                  {% if f.ja_apontado %}
+                    <span class="badge bg-success"><i class="bi bi-check"></i></span>
+                  {% elif f.bloqueado %}
+                    <span class="badge bg-danger" title="Em outra obra">Outra obra</span>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="7" class="text-center py-3 text-muted">Nenhum funcionário ativo cadastrado.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
 
-        <!-- ========== DYNAMIC ETAPA ITEMS ========== -->
-        <div id="etapa-items-container" class="mt-3">
-          <!-- Populated dynamically via JS when etapa is selected -->
-        </div>
-
-        <div class="row g-2 mt-2">
-          <div class="col-6 col-md-3">
-            <div class="form-check">
-              {{ item_form.houve_ociosidade }}
-              <label class="form-check-label" for="{{ item_form.houve_ociosidade.id_for_label }}">
-                Houve Ociosidade?
-              </label>
-            </div>
+        <div class="card-footer bg-white d-flex justify-content-between align-items-center py-3">
+          <div>
+            <span class="text-muted" id="selected-count">0 selecionado(s)</span>
           </div>
-          <div class="col-12 col-md-4" id="ociosidade-container" style="display:none;">
-            <label class="form-label">Justificativa da Ociosidade *</label>
-            {{ item_form.observacao_ociosidade }}
-            {% for error in item_form.observacao_ociosidade.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-          </div>
-        </div>
-
-        <div class="row g-2 mt-2">
-          <div class="col-6 col-md-3">
-            <div class="form-check">
-              {{ item_form.houve_retrabalho }}
-              <label class="form-check-label" for="{{ item_form.houve_retrabalho.id_for_label }}">
-                Houve Retrabalho?
-              </label>
-            </div>
-          </div>
-          <div class="col-12 col-md-4" id="retrabalho-container" style="display:none;">
-            <label class="form-label">Motivo do Retrabalho *</label>
-            {{ item_form.motivo_retrabalho }}
-            {% for error in item_form.motivo_retrabalho.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-          </div>
-        </div>
-
-        <div class="row g-2 mt-2">
-          <div class="col-12">
-            <label class="form-label">Observações</label>
-            {{ item_form.observacoes }}
-          </div>
-        </div>
-
-        <div class="mt-3">
-          <button type="submit" name="add_funcionario" value="1" class="btn btn-success btn-lg w-100">
-            ✓ Adicionar Funcionário e Atualizar Obra
+          <button type="submit" name="salvar_lote" value="1" class="btn btn-success btn-lg" id="btn-salvar">
+            <i class="bi bi-check2-all"></i> Salvar Apontamentos
           </button>
         </div>
       </form>
@@ -391,152 +253,53 @@
 
 {% block extra_js %}
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // === Show/hide ociosidade and retrabalho fields ===
-    const ociosidadeCheck = document.getElementById('{{ item_form.houve_ociosidade.id_for_label }}');
-    const ociosidadeContainer = document.getElementById('ociosidade-container');
-    const retrabalhoCheck = document.getElementById('{{ item_form.houve_retrabalho.id_for_label }}');
-    const retrabalhoContainer = document.getElementById('retrabalho-container');
+document.addEventListener('DOMContentLoaded', function() {
+  const selectAll = document.getElementById('select-all');
+  const checkboxes = document.querySelectorAll('.func-check');
+  const countSpan = document.getElementById('selected-count');
+  const btnSalvar = document.getElementById('btn-salvar');
 
-    function toggleOciosidade() {
-      if (ociosidadeCheck && ociosidadeContainer)
-        ociosidadeContainer.style.display = ociosidadeCheck.checked ? 'block' : 'none';
-    }
-    function toggleRetrabalho() {
-      if (retrabalhoCheck && retrabalhoContainer)
-        retrabalhoContainer.style.display = retrabalhoCheck.checked ? 'block' : 'none';
-    }
+  function updateCount() {
+    const checked = document.querySelectorAll('.func-check:checked').length;
+    if (countSpan) countSpan.textContent = checked + ' selecionado(s)';
+    if (btnSalvar) btnSalvar.disabled = checked === 0;
+  }
 
-    if (ociosidadeCheck) { ociosidadeCheck.addEventListener('change', toggleOciosidade); toggleOciosidade(); }
-    if (retrabalhoCheck) { retrabalhoCheck.addEventListener('change', toggleRetrabalho); toggleRetrabalho(); }
-
-    // === Auto-fill valor_diaria when funcionario changes ===
-    const funcSelect = document.getElementById('{{ item_form.funcionario.id_for_label }}');
-    const valorInput = document.querySelector('[name="valor_diaria"]');
-    if (funcSelect && valorInput) {
-      funcSelect.addEventListener('change', function() {
-        valorInput.value = '';
-        valorInput.placeholder = 'Automático';
-      });
-    }
-
-    // === DYNAMIC ETAPA ITEMS LOADING ===
-    const etapaSelect = document.getElementById('{{ item_form.etapa.id_for_label }}');
-    const itemsContainer = document.getElementById('etapa-items-container');
-
-    if (etapaSelect && itemsContainer) {
-      etapaSelect.addEventListener('change', function() {
-        const etapaId = this.value;
-        if (!etapaId) {
-          itemsContainer.innerHTML = '';
-          return;
-        }
-
-        // Show loading state
-        itemsContainer.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div> Carregando itens da etapa...</div>';
-
-        fetch('{% url "funcionarios:itens_etapa_api" %}?etapa_id=' + etapaId)
-          .then(r => r.json())
-          .then(data => {
-            if (!data.items || data.items.length === 0) {
-              itemsContainer.innerHTML = '<div class="alert alert-secondary py-2">Nenhum item cadastrado para esta etapa.</div>';
-              return;
-            }
-
-            let html = '';
-            html += '<div class="card border-info">';
-            html += '<div class="card-header bg-info text-white py-2">';
-            html += '<strong>📋 Itens da ' + data.etapa_label + '</strong>';
-            html += '<small class="ms-2">— Informe a quantidade realizada HOJE. Será somada ao total acumulado.</small>';
-            html += '</div>';
-            html += '<div class="card-body etapa-items-form">';
-            html += '<input type="hidden" name="items_etapa_id" value="' + data.etapa_id + '">';
-            html += '<div class="row g-2">';
-
-            data.items.forEach(function(item) {
-              if (item.type === 'boolean') {
-                const checked = item.value ? 'checked disabled' : '';
-                html += '<div class="col-6 col-md-4 col-lg-3">';
-                html += '<div class="border rounded p-2 h-100">';
-                html += '<input type="hidden" name="item_' + item.name + '" value="0">';
-                html += '<div class="form-check">';
-                html += '<input type="checkbox" class="form-check-input" name="item_' + item.name + '" value="1" ' + checked + ' id="item_' + item.name + '">';
-                html += '<label class="form-check-label" for="item_' + item.name + '">' + item.label + '</label>';
-                if (item.value) { html += ' <span class="badge bg-success">✓</span>'; }
-                html += '</div>';
-                html += '</div>';
-                html += '</div>';
-              } else if (item.type === 'integer') {
-                html += '<div class="col-6 col-md-4 col-lg-3">';
-                html += '<div class="border rounded p-2 h-100">';
-                html += '<label class="form-label" for="item_' + item.name + '">' + item.label + '</label>';
-                html += '<div class="text-muted small mb-1">Acumulado: <strong>' + item.value + '</strong></div>';
-                html += '<input type="number" class="form-control form-control-sm" name="item_' + item.name + '" value="0" min="0" placeholder="Qtd. do dia" id="item_' + item.name + '">';
-                html += '</div>';
-                html += '</div>';
-              } else if (item.type === 'decimal') {
-                html += '<div class="col-6 col-md-4 col-lg-3">';
-                html += '<div class="border rounded p-2 h-100">';
-                html += '<label class="form-label" for="item_' + item.name + '">' + item.label + '</label>';
-                html += '<div class="text-muted small mb-1">Acumulado: <strong>' + item.value + '</strong></div>';
-                html += '<input type="number" class="form-control form-control-sm" name="item_' + item.name + '" value="0" min="0" step="0.01" placeholder="Qtd. do dia" id="item_' + item.name + '">';
-                html += '</div>';
-                html += '</div>';
-              }
-            });
-
-            html += '</div>'; // row
-            html += '</div>'; // card-body
-            html += '</div>'; // card
-            itemsContainer.innerHTML = html;
-          })
-          .catch(function(err) {
-            itemsContainer.innerHTML = '<div class="alert alert-danger py-2">Erro ao carregar itens: ' + err.message + '</div>';
-          });
-      });
-
-      // If etapa is already selected on page load (e.g. after form error), trigger loading
-      if (etapaSelect.value) {
-        etapaSelect.dispatchEvent(new Event('change'));
+  function updateRowHighlight(cb) {
+    const row = cb.closest('tr');
+    if (row) {
+      if (cb.checked) {
+        row.classList.add('selected');
+      } else {
+        row.classList.remove('selected');
       }
     }
+  }
 
-    // === Dynamic etapa loading for cab_form (when obra changes in step 1) ===
-    const obraSelect = document.querySelector('[name="obra"]');
-    if (obraSelect && etapaSelect) {
-      obraSelect.addEventListener('change', function() {
-        const obraId = this.value;
-        if (!obraId) return;
-        fetch('{% url "funcionarios:etapas_por_obra_api" %}?obra_id=' + obraId)
-          .then(r => r.json())
-          .then(data => {
-            etapaSelect.innerHTML = '<option value="">---------</option>';
-            data.etapas.forEach(function(e) {
-              const opt = document.createElement('option');
-              opt.value = e.id;
-              opt.textContent = e.label;
-              etapaSelect.appendChild(opt);
-            });
-          });
+  if (selectAll) {
+    selectAll.addEventListener('change', function() {
+      checkboxes.forEach(cb => {
+        cb.checked = selectAll.checked;
+        updateRowHighlight(cb);
       });
-    }
-    // Toggle arrow icon on etapas overview collapse
-    const etapasHeader = document.querySelector('[data-bs-target="#etapasOverviewBody"]');
-    if (etapasHeader) {
-      const collapseEl = document.getElementById('etapasOverviewBody');
-      if (collapseEl) {
-        collapseEl.addEventListener('shown.bs.collapse', function() { etapasHeader.setAttribute('aria-expanded', 'true'); });
-        collapseEl.addEventListener('hidden.bs.collapse', function() { etapasHeader.setAttribute('aria-expanded', 'false'); });
-      }
-    }
-
-    // Auto-focus first input when modal opens
-    document.addEventListener('shown.bs.modal', function(e) {
-      const modal = e.target;
-      if (!modal) return;
-      const first = modal.querySelector('input:not([type=hidden]), select, textarea');
-      if (first) first.focus();
+      updateCount();
     });
+  }
+
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      updateRowHighlight(this);
+      updateCount();
+      // Update select-all state
+      if (selectAll) {
+        selectAll.checked = document.querySelectorAll('.func-check:checked').length === checkboxes.length;
+      }
+    });
+    // Init highlight for pre-checked
+    if (cb.checked) updateRowHighlight(cb);
   });
+
+  updateCount();
+});
 </script>
 {% endblock %}

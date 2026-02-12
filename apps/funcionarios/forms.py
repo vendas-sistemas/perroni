@@ -7,6 +7,8 @@ from django.core.exceptions import ValidationError
 
 
 class ApontamentoForm(forms.ModelForm):
+    """Formulário simplificado de apontamento individual.
+    Campos essenciais visíveis + seção avançada colapsável no template."""
     class Meta:
         model = ApontamentoFuncionario
         fields = [
@@ -44,15 +46,12 @@ class ApontamentoForm(forms.ModelForm):
         elif self.instance and self.instance.pk and self.instance.obra_id:
             self.fields['etapa'].queryset = Etapa.objects.filter(obra_id=self.instance.obra_id)
         elif self.data and self.data.get('obra'):
-            # Form submitted with obra selected — filter etapas for validation
             try:
                 self.fields['etapa'].queryset = Etapa.objects.filter(obra_id=int(self.data['obra']))
             except (ValueError, TypeError):
                 self.fields['etapa'].queryset = Etapa.objects.none()
         else:
-            # New form without obra selected — start empty, JS will populate
             self.fields['etapa'].queryset = Etapa.objects.none()
-        # Make etapa not required in form but encouraged
         self.fields['etapa'].required = False
         self.fields['valor_diaria'].required = False
         self.fields['observacao_ociosidade'].required = False
@@ -65,69 +64,22 @@ class ApontamentoForm(forms.ModelForm):
         obra = cleaned.get('obra')
 
         if funcionario and data:
-            # Validate: same funcionario should not be pointed in TWO DIFFERENT obras on same day.
             qs = ApontamentoFuncionario.objects.filter(funcionario=funcionario, data=data)
             if self.instance and self.instance.pk:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
-                # If any existing apontamento is for a different obra than the one being saved, block.
                 different_obras = [a for a in qs if (obra and a.obra_id != obra.id)] if obra else [a for a in qs if a.obra_id is not None]
                 if different_obras:
                     existing = qs.first()
                     existing_obra = existing.obra.nome if existing.obra else '(sem obra)'
                     raise ValidationError(f"Funcionário já está apontado em {existing_obra} na data {data.strftime('%d/%m/%Y')}. Remova ou edite o apontamento existente ou mova-o para outra obra.")
-                # else: all existing apontamentos (if any) are for the same obra - allow multiple records for updates/extra entries.
         
-        # Validate conditional required fields
         if cleaned.get('houve_ociosidade') and not cleaned.get('observacao_ociosidade'):
             self.add_error('observacao_ociosidade', 'Justificativa obrigatória quando há ociosidade.')
         if cleaned.get('houve_retrabalho') and not cleaned.get('motivo_retrabalho'):
             self.add_error('motivo_retrabalho', 'Motivo obrigatório quando há retrabalho.')
         
         return cleaned
-
-
-class ApontamentoDiarioItemForm(forms.ModelForm):
-    """Form para cada funcionário dentro do apontamento diário"""
-    class Meta:
-        model = ApontamentoFuncionario
-        fields = [
-            'funcionario', 'etapa', 'horas_trabalhadas', 'metragem_executada',
-            'houve_ociosidade', 'observacao_ociosidade',
-            'houve_retrabalho', 'motivo_retrabalho',
-            'valor_diaria', 'observacoes'
-        ]
-        widgets = {
-            'horas_trabalhadas': forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'step': '0.5', 'min': '0.5', 'max': '24'}),
-            'metragem_executada': forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'step': '0.01', 'min': '0', 'placeholder': 'm²'}),
-            'valor_diaria': forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'step': '0.01'}),
-            'observacoes': forms.Textarea(attrs={'class': 'form-control form-control-sm', 'rows': 1}),
-            'observacao_ociosidade': forms.Textarea(attrs={'class': 'form-control form-control-sm', 'rows': 1}),
-            'motivo_retrabalho': forms.Textarea(attrs={'class': 'form-control form-control-sm', 'rows': 1}),
-            'funcionario': forms.Select(attrs={'class': 'form-select form-select-sm'}),
-            'etapa': forms.Select(attrs={'class': 'form-select form-select-sm'}),
-            'houve_ociosidade': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'houve_retrabalho': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        obra_id = kwargs.pop('obra_id', None)
-        super().__init__(*args, **kwargs)
-        if obra_id:
-            self.fields['etapa'].queryset = Etapa.objects.filter(obra_id=obra_id)
-        self.fields['etapa'].required = False
-        self.fields['valor_diaria'].required = False
-        self.fields['observacao_ociosidade'].required = False
-        self.fields['motivo_retrabalho'].required = False
-        self.fields['funcionario'].queryset = Funcionario.objects.filter(ativo=True)
-
-
-ApontamentoDiarioFormSet = forms.modelformset_factory(
-    ApontamentoFuncionario,
-    form=ApontamentoDiarioItemForm,
-    extra=5,
-    can_delete=True,
-)
 
 
 class ApontamentoDiarioCabecalhoForm(forms.Form):
@@ -150,11 +102,13 @@ class ApontamentoDiarioCabecalhoForm(forms.Form):
 
 
 class FechamentoForm(forms.ModelForm):
+    """Fechamento flexível por período — usuário escolhe data_inicio e data_fim."""
     class Meta:
         model = FechamentoSemanal
-        fields = ['funcionario', 'data_inicio', 'observacoes']
+        fields = ['funcionario', 'data_inicio', 'data_fim', 'observacoes']
         widgets = {
             'data_inicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_fim': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'funcionario': forms.Select(attrs={'class': 'form-select'}),
         }
@@ -163,9 +117,10 @@ class FechamentoForm(forms.ModelForm):
         cleaned = super().clean()
         funcionario = cleaned.get('funcionario')
         data_inicio = cleaned.get('data_inicio')
-        if funcionario and data_inicio:
-            import datetime as dt
-            data_fim = data_inicio + dt.timedelta(days=5)
+        data_fim = cleaned.get('data_fim')
+        if data_inicio and data_fim and data_fim < data_inicio:
+            raise ValidationError('Data fim não pode ser anterior à data início.')
+        if funcionario and data_inicio and data_fim:
             qs = FechamentoSemanal.objects.filter(
                 funcionario=funcionario,
                 data_inicio=data_inicio,
@@ -176,7 +131,7 @@ class FechamentoForm(forms.ModelForm):
             if qs.exists():
                 raise ValidationError(
                     f'Já existe fechamento para {funcionario.nome_completo} '
-                    f'na semana de {data_inicio.strftime("%d/%m/%Y")} a {data_fim.strftime("%d/%m/%Y")}.'
+                    f'no período de {data_inicio.strftime("%d/%m/%Y")} a {data_fim.strftime("%d/%m/%Y")}.'
                 )
         return cleaned
 
@@ -184,6 +139,8 @@ class FechamentoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if not self.instance.pk and not self.initial.get('data_inicio'):
             self.fields['data_inicio'].initial = datetime.date.today()
+        if not self.instance.pk and not self.initial.get('data_fim'):
+            self.fields['data_fim'].initial = datetime.date.today() + datetime.timedelta(days=6)
 
 
 class FuncionarioForm(forms.ModelForm):

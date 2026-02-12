@@ -57,6 +57,7 @@
   (function(){
     const funcionarioEl = document.getElementById('id_funcionario');
     const dataInicioEl = document.getElementById('id_data_inicio');
+    const dataFimEl = document.getElementById('id_data_fim');
     const preview = document.getElementById('apontamentos_preview');
     const container = document.getElementById('apontamentos_table_container');
     const totais = document.getElementById('totais_info');
@@ -164,6 +165,7 @@
 
     if(funcionarioEl) funcionarioEl.addEventListener('change', function(){ fetchApontamentos(); verificarFechamento(); });
     if(dataInicioEl) dataInicioEl.addEventListener('change', function(){ fetchApontamentos(); verificarFechamento(); });
+    if(dataFimEl) dataFimEl.addEventListener('change', function(){ fetchApontamentos(); verificarFechamento(); });
     // try initial fetch if both present
     document.addEventListener('DOMContentLoaded', function(){ fetchApontamentos(); verificarFechamento(); });
   })();

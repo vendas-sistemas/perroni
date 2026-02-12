@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from .models import Funcionario, ApontamentoFuncionario, FechamentoSemanal
 from .forms import (
     FuncionarioForm, ApontamentoForm, FechamentoForm,
-    ApontamentoDiarioCabecalhoForm, ApontamentoDiarioItemForm,
+    ApontamentoDiarioCabecalhoForm,
 )
 from django.contrib import messages
 from django.utils import timezone
@@ -228,11 +228,130 @@ def funcionario_list(request):
 
 @login_required
 def funcionario_detail(request, pk):
-    """Detalhes de um funcionário"""
+    """Hub completo do funcionário — mostra tudo num só lugar com filtro de período."""
     funcionario = get_object_or_404(Funcionario, pk=pk)
+
+    # Filtro de período com presets
+    hoje = datetime.date.today()
+    preset = request.GET.get('preset', '30dias')
+    data_inicio_str = request.GET.get('data_inicio', '')
+    data_fim_str = request.GET.get('data_fim', '')
+
+    if data_inicio_str and data_fim_str:
+        try:
+            data_inicio = datetime.date.fromisoformat(data_inicio_str)
+            data_fim = datetime.date.fromisoformat(data_fim_str)
+            preset = 'custom'
+        except ValueError:
+            data_inicio = hoje - datetime.timedelta(days=30)
+            data_fim = hoje
+    else:
+        if preset == 'semana':
+            # Início da semana (segunda)
+            data_inicio = hoje - datetime.timedelta(days=hoje.weekday())
+            data_fim = hoje
+        elif preset == 'mes':
+            data_inicio = hoje.replace(day=1)
+            data_fim = hoje
+        elif preset == 'quinzena':
+            data_inicio = hoje - datetime.timedelta(days=15)
+            data_fim = hoje
+        elif preset == '90dias':
+            data_inicio = hoje - datetime.timedelta(days=90)
+            data_fim = hoje
+        else:  # 30dias
+            data_inicio = hoje - datetime.timedelta(days=30)
+            data_fim = hoje
+
+    # --- Apontamentos no período ---
+    apontamentos = ApontamentoFuncionario.objects.filter(
+        funcionario=funcionario,
+        data__gte=data_inicio,
+        data__lte=data_fim
+    ).select_related('obra', 'etapa').order_by('-data')
+
+    # KPIs
+    kpis = apontamentos.aggregate(
+        total_dias=Count('data', distinct=True),
+        total_horas=Sum('horas_trabalhadas'),
+        total_valor=Sum('valor_diaria'),
+        total_metragem=Sum('metragem_executada'),
+        dias_ociosidade=Count('data', filter=Q(houve_ociosidade=True), distinct=True),
+        dias_retrabalho=Count('data', filter=Q(houve_retrabalho=True), distinct=True),
+    )
+    total_dias = kpis['total_dias'] or 0
+    total_horas = kpis['total_horas'] or Decimal('0.0')
+    total_valor = kpis['total_valor'] or Decimal('0.00')
+    total_metragem = kpis['total_metragem'] or Decimal('0.00')
+    dias_ociosidade = kpis['dias_ociosidade'] or 0
+    dias_retrabalho = kpis['dias_retrabalho'] or 0
+    taxa_ociosidade = round(dias_ociosidade / total_dias * 100, 1) if total_dias else 0
+    taxa_retrabalho = round(dias_retrabalho / total_dias * 100, 1) if total_dias else 0
+    media_horas = round(total_horas / total_dias, 1) if total_dias else Decimal('0.0')
+
+    # --- Obras trabalhadas no período ---
+    obras_periodo = (
+        apontamentos
+        .values('obra__pk', 'obra__nome')
+        .annotate(
+            dias=Count('data', distinct=True),
+            horas=Sum('horas_trabalhadas'),
+            valor=Sum('valor_diaria'),
+            metragem=Sum('metragem_executada'),
+        )
+        .order_by('-dias')
+    )
+
+    # --- Etapas trabalhadas ---
+    etapas_periodo = (
+        apontamentos
+        .filter(etapa__isnull=False)
+        .values('etapa__numero_etapa')
+        .annotate(
+            dias=Count('data', distinct=True),
+            metragem=Sum('metragem_executada'),
+        )
+        .order_by('etapa__numero_etapa')
+    )
+    ETAPA_NOMES = {
+        1: 'Fundação', 2: 'Estrutura', 3: 'Instalações',
+        4: 'Acabamentos', 5: 'Finalização',
+    }
+    for ep in etapas_periodo:
+        ep['etapa_nome'] = ETAPA_NOMES.get(ep['etapa__numero_etapa'], f"Etapa {ep['etapa__numero_etapa']}")
+
+    # --- Fechamentos no período ---
+    fechamentos = FechamentoSemanal.objects.filter(
+        funcionario=funcionario,
+        data_inicio__lte=data_fim,
+        data_fim__gte=data_inicio,
+    ).order_by('-data_inicio')
+
+    # --- Últimos apontamentos (últimos 15) ---
+    ultimos_apontamentos = apontamentos[:15]
+
     context = {
         'funcionario': funcionario,
-        'title': funcionario.nome_completo
+        'title': funcionario.nome_completo,
+        # Período
+        'preset': preset,
+        'data_inicio': data_inicio,
+        'data_fim': data_fim,
+        # KPIs
+        'total_dias': total_dias,
+        'total_horas': total_horas,
+        'total_valor': total_valor,
+        'total_metragem': total_metragem,
+        'dias_ociosidade': dias_ociosidade,
+        'dias_retrabalho': dias_retrabalho,
+        'taxa_ociosidade': taxa_ociosidade,
+        'taxa_retrabalho': taxa_retrabalho,
+        'media_horas': media_horas,
+        # Dados
+        'obras_periodo': obras_periodo,
+        'etapas_periodo': etapas_periodo,
+        'fechamentos': fechamentos,
+        'ultimos_apontamentos': ultimos_apontamentos,
     }
     return render(request, 'funcionarios/funcionario_detail.html', context)
 
@@ -404,20 +523,18 @@ def apontamento_create(request):
 @login_required
 def apontamento_diario(request):
     """
-    Fluxo principal de apontamento diário:
+    Registro diário em lote — simplificado:
     1. Fiscal seleciona obra + data + clima
-    2. Sistema exibe etapas da obra com seus itens (progresso atual)
-    3. Fiscal adiciona funcionários com etapa, horas, itens trabalhados
-    4. Sistema atualiza automaticamente a obra com os dados informados
+    2. Tabela mostra todos os funcionários ativos → marca quem trabalhou
+    3. Salva todos de uma vez com um clique
     """
     cab_form = ApontamentoDiarioCabecalhoForm(request.GET or None)
     obra = None
     data = None
     clima = None
     apontamentos_existentes = []
-    item_form = None
+    funcionarios_disponiveis = []
     etapas = []
-    etapas_overview = []
 
     # Step 1: Check if obra + data are set
     obra_id = request.GET.get('obra') or request.POST.get('obra')
@@ -438,84 +555,103 @@ def apontamento_diario(request):
             obra=obra, data=data
         ).select_related('funcionario', 'etapa')
 
-        # Build overview of all etapas with their items + current values
-        for etapa in etapas:
-            items = _get_etapa_items(etapa)
-            etapas_overview.append({
-                'etapa': etapa,
-                'items': items,
-            })
+        # IDs já apontados nesta obra/data
+        apontados_ids = set(apontamentos_existentes.values_list('funcionario_id', flat=True))
 
-        # Already appointed funcionarios on this date (any obra)
-        appointed_ids = ApontamentoFuncionario.objects.filter(
-            data=data
-        ).values_list('funcionario_id', flat=True)
+        # Funcionários apontados em OUTRA obra nesta data (não podem ser selecionados)
+        bloqueados_ids = set(
+            ApontamentoFuncionario.objects.filter(data=data)
+            .exclude(obra=obra)
+            .values_list('funcionario_id', flat=True)
+        )
+
+        # Lista de funcionários ativos disponíveis para apontar
+        todos_funcionarios = Funcionario.objects.filter(ativo=True).order_by('nome_completo')
+        for f in todos_funcionarios:
+            funcionarios_disponiveis.append({
+                'obj': f,
+                'ja_apontado': f.pk in apontados_ids,
+                'bloqueado': f.pk in bloqueados_ids,
+            })
 
         # Set initial values for cab_form
         cab_form = ApontamentoDiarioCabecalhoForm(initial={
             'obra': obra.pk, 'data': data, 'clima': clima
         })
 
-        if request.method == 'POST' and 'add_funcionario' in request.POST:
-            item_form = ApontamentoDiarioItemForm(request.POST, obra_id=obra.pk)
-            if item_form.is_valid():
-                ap = item_form.save(commit=False)
-                ap.obra = obra
-                ap.data = data
-                ap.clima = clima
-                if not ap.valor_diaria:
-                    ap.valor_diaria = ap.funcionario.valor_diaria
+        if request.method == 'POST' and 'salvar_lote' in request.POST:
+            # Processar apontamento em lote
+            func_ids = request.POST.getlist('func_ids')
+            criados = 0
+            atualizados = 0
+            erros = 0
+
+            for func_id in func_ids:
                 try:
-                    # Update existing entry instead of creating duplicate for same (funcionario, data, obra)
-                    existing = ApontamentoFuncionario.objects.filter(
-                        funcionario=ap.funcionario, data=data, obra=obra
-                    ).first()
-                    if existing:
-                        existing.etapa = ap.etapa
-                        existing.horas_trabalhadas = ap.horas_trabalhadas
-                        existing.clima = ap.clima
-                        existing.valor_diaria = ap.valor_diaria
-                        existing.houve_ociosidade = ap.houve_ociosidade
-                        existing.observacao_ociosidade = ap.observacao_ociosidade
-                        existing.houve_retrabalho = ap.houve_retrabalho
-                        existing.motivo_retrabalho = ap.motivo_retrabalho
-                        existing.observacoes = ap.observacoes
-                        existing.save()
-                        ap = existing
-                        messages.info(request, f'Apontamento de {ap.funcionario.nome_completo} atualizado (já existia registro nesta data/obra).')
-                    else:
-                        ap.save()
+                    func = Funcionario.objects.get(pk=func_id, ativo=True)
+                except Funcionario.DoesNotExist:
+                    erros += 1
+                    continue
 
-                    # ---- Auto-update obra: save etapa items from POST ----
-                    items_etapa_id = request.POST.get('items_etapa_id')
-                    if items_etapa_id and ap.etapa:
-                        _update_etapa_items_from_post(ap.etapa, request.POST)
-                        messages.info(request, f'📊 Progresso da etapa "{ap.etapa}" atualizado automaticamente.')
+                # Se está bloqueado em outra obra, pula
+                if func.pk in bloqueados_ids:
+                    erros += 1
+                    continue
 
-                    if ap.houve_retrabalho:
-                        messages.warning(request, f'⚠️ RETRABALHO: {ap.funcionario.nome_completo} - {ap.motivo_retrabalho}')
-                    if ap.houve_ociosidade:
-                        messages.warning(request, f'⚠️ OCIOSIDADE: {ap.funcionario.nome_completo} - {ap.observacao_ociosidade}')
-                    messages.success(request, f'{ap.funcionario.nome_completo} apontado com sucesso.')
-                    return redirect(f'{request.path}?obra={obra.pk}&data={data.isoformat()}&clima={clima}')
-                except IntegrityError:
-                    messages.error(request, 'Funcionário já apontado nesta data em outra obra. Remova ou edite o apontamento existente se necessário.')
-            else:
-                messages.error(request, 'Corrija os erros abaixo.')
-        elif request.method == 'POST' and request.POST.get('save_etapa_items'):
-            # Save etapa items from the overview edit form (no funcionario add)
-            items_etapa_id = request.POST.get('items_etapa_id')
-            try:
-                etapa_obj = Etapa.objects.get(pk=items_etapa_id, obra=obra)
-                _update_etapa_items_from_post(etapa_obj, request.POST)
-                messages.success(request, f'Progresso da etapa "{etapa_obj.get_numero_etapa_display()}" atualizado.')
-            except Etapa.DoesNotExist:
-                messages.error(request, 'Etapa inválida.')
+                # Pega dados da linha
+                horas = request.POST.get(f'horas_{func_id}', '8.0')
+                etapa_id = request.POST.get(f'etapa_{func_id}', '')
+
+                try:
+                    horas_dec = Decimal(horas)
+                    if horas_dec < Decimal('0.5'):
+                        horas_dec = Decimal('8.0')
+                except (InvalidOperation, ValueError):
+                    horas_dec = Decimal('8.0')
+
+                etapa_obj = None
+                if etapa_id:
+                    try:
+                        etapa_obj = Etapa.objects.get(pk=etapa_id, obra=obra)
+                    except Etapa.DoesNotExist:
+                        pass
+
+                # Verifica se já existe
+                existing = ApontamentoFuncionario.objects.filter(
+                    funcionario=func, data=data, obra=obra
+                ).first()
+
+                if existing:
+                    existing.etapa = etapa_obj
+                    existing.horas_trabalhadas = horas_dec
+                    existing.clima = clima
+                    if not existing.valor_diaria:
+                        existing.valor_diaria = func.valor_diaria
+                    existing.save()
+                    atualizados += 1
+                else:
+                    ApontamentoFuncionario.objects.create(
+                        funcionario=func,
+                        obra=obra,
+                        etapa=etapa_obj,
+                        data=data,
+                        horas_trabalhadas=horas_dec,
+                        clima=clima,
+                        valor_diaria=func.valor_diaria,
+                    )
+                    criados += 1
+
+            if criados or atualizados:
+                msg_parts = []
+                if criados:
+                    msg_parts.append(f'{criados} apontamento(s) criado(s)')
+                if atualizados:
+                    msg_parts.append(f'{atualizados} atualizado(s)')
+                messages.success(request, ', '.join(msg_parts) + '.')
+            if erros:
+                messages.warning(request, f'{erros} funcionário(s) não puderam ser apontados.')
+
             return redirect(f'{request.path}?obra={obra.pk}&data={data.isoformat()}&clima={clima}')
-        else:
-            item_form = ApontamentoDiarioItemForm(obra_id=obra.pk, initial={
-                'horas_trabalhadas': Decimal('8.0'),
-            })
 
     context = {
         'cab_form': cab_form,
@@ -523,9 +659,8 @@ def apontamento_diario(request):
         'data': data,
         'clima': clima,
         'etapas': etapas,
-        'etapas_overview': etapas_overview,
         'apontamentos_existentes': apontamentos_existentes,
-        'item_form': item_form,
+        'funcionarios_disponiveis': funcionarios_disponiveis,
         'title': 'Registro Diário'
     }
     return render(request, 'funcionarios/apontamento_diario.html', context)
@@ -737,12 +872,11 @@ def fechamento_semana_detail(request, data_inicio):
 
 @login_required
 def fechamento_create(request):
-    """Cria um fechamento semanal e calcula os totais"""
+    """Cria um fechamento com período flexível e calcula os totais"""
     if request.method == 'POST':
         form = FechamentoForm(request.POST)
         if form.is_valid():
             f = form.save(commit=False)
-            f.data_fim = f.data_inicio + datetime.timedelta(days=5)
             f.status = 'fechado'
             # Check duplicate
             existing = FechamentoSemanal.objects.filter(
@@ -765,7 +899,7 @@ def fechamento_create(request):
             messages.error(request, 'Corrija os erros no formulário.')
     else:
         form = FechamentoForm()
-    return render(request, 'funcionarios/fechamento_form.html', {'form': form, 'title': 'Novo Fechamento Semanal'})
+    return render(request, 'funcionarios/fechamento_form.html', {'form': form, 'title': 'Novo Fechamento'})
 
 
 @login_required
@@ -785,30 +919,36 @@ def fechamento_detail(request, pk):
 
 @login_required
 def fechamento_auto(request):
-    """Gera fechamentos semanais automaticamente para todos os funcionários ativos"""
+    """Gera fechamentos automaticamente para todos os funcionários ativos num período"""
     if request.method == 'POST':
         data_inicio_str = request.POST.get('data_inicio')
-        if not data_inicio_str:
-            messages.error(request, 'Informe a data de início da semana.')
+        data_fim_str = request.POST.get('data_fim')
+        if not data_inicio_str or not data_fim_str:
+            messages.error(request, 'Informe a data de início e a data de fim do período.')
             return redirect('funcionarios:fechamento_auto')
 
         try:
             data_inicio = datetime.date.fromisoformat(data_inicio_str)
+            data_fim = datetime.date.fromisoformat(data_fim_str)
         except ValueError:
             messages.error(request, 'Data inválida.')
             return redirect('funcionarios:fechamento_auto')
 
-        data_fim = data_inicio + datetime.timedelta(days=6)
+        if data_fim < data_inicio:
+            messages.error(request, 'Data fim não pode ser anterior à data início.')
+            return redirect('funcionarios:fechamento_auto')
 
-        # Verifica se já existe fechamento para esta semana
-        fechamentos_existentes = FechamentoSemanal.objects.filter(data_inicio=data_inicio)
+        # Verifica se já existe fechamento para este período
+        fechamentos_existentes = FechamentoSemanal.objects.filter(
+            data_inicio=data_inicio, data_fim=data_fim
+        )
         if fechamentos_existentes.exists():
             qtd = fechamentos_existentes.count()
             messages.warning(
                 request,
-                f'Já existe(m) {qtd} fechamento(s) para a semana de '
+                f'Já existe(m) {qtd} fechamento(s) para o período de '
                 f'{data_inicio.strftime("%d/%m/%Y")} a {data_fim.strftime("%d/%m/%Y")}. '
-                f'Não é possível gerar novos fechamentos para esta semana.'
+                f'Não é possível gerar novos fechamentos para este período.'
             )
             return redirect('funcionarios:fechamento_list')
 
@@ -817,7 +957,6 @@ def fechamento_auto(request):
         existentes = 0
 
         for func in funcionarios:
-            # Check if has apontamentos in the week
             has_ap = ApontamentoFuncionario.objects.filter(
                 funcionario=func,
                 data__gte=data_inicio,
@@ -846,10 +985,16 @@ def fechamento_auto(request):
         messages.success(request, f'Fechamento automático concluído: {criados} criados, {existentes} atualizados.')
         return redirect('funcionarios:fechamento_list')
 
-    # GET: show form to select week
+    # GET: show form to select period
+    hoje = datetime.date.today()
+    # Default: início da semana (segunda)
+    inicio_semana = hoje - datetime.timedelta(days=hoje.weekday())
+    fim_semana = inicio_semana + datetime.timedelta(days=6)
     context = {
-        'title': 'Fechamento Semanal Automático',
-        'today': datetime.date.today(),
+        'title': 'Fechamento Automático',
+        'today': hoje,
+        'inicio_semana': inicio_semana,
+        'fim_semana': fim_semana,
     }
     return render(request, 'funcionarios/fechamento_auto.html', context)
 
