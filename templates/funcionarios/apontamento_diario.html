@@ -4,27 +4,85 @@
 
 {% block extra_css %}
 <style>
-  .worker-card { border-left: 4px solid #0d6efd; margin-bottom: .5rem; }
-  .worker-card.ociosidade { border-left-color: #ffc107; }
-  .worker-card.retrabalho { border-left-color: #dc3545; }
+  /* General improvements for clarity and color separation */
+  .worker-card { border-left: 4px solid #0d6efd; margin-bottom: .5rem; padding: .5rem; border-radius: .25rem; }
+  .worker-card.ociosidade { border-left-color: #ffc107; background: rgba(255,193,7,0.06); }
+  .worker-card.retrabalho { border-left-color: #dc3545; background: rgba(220,53,69,0.04); }
+
   .badge-clima-sol { background-color: #ffc107; color: #333; }
   .badge-clima-chuva { background-color: #6c757d; }
   .badge-clima-nublado { background-color: #adb5bd; color: #333; }
+
   .step-indicator { display: flex; gap: .5rem; margin-bottom: 1rem; }
-  .step-indicator .step { flex: 1; text-align: center; padding: .5rem; border-radius: .5rem; background: #e9ecef; font-size: .85rem; }
+  .step-indicator .step { flex: 1; text-align: center; padding: .5rem; border-radius: .5rem; background: #f1f3f5; font-size: .9rem; }
   .step-indicator .step.active { background: #0d6efd; color: #fff; }
   .step-indicator .step.done { background: #198754; color: #fff; }
+
+  /* Etapa cards — base */
+  .etapa-card { border-radius: .5rem; padding: .75rem; margin-bottom: .75rem; border-left: 5px solid #dee2e6; }
+  .etapa-card + .etapa-card { margin-top: .5rem; }
+  .etapa-card h6 { margin: 0 0 .5rem 0; }
+  .etapa-card .badge { margin-left: .5rem; }
+
+  /* Etapa 1 — Fundação: azul */
+  .etapa-card.etapa-1 { background: #e8f0fe; border-left-color: #1a73e8; }
+  .etapa-card.etapa-1 h6 { color: #1a53a0; }
+
+  /* Etapa 2 — Estrutura: verde */
+  .etapa-card.etapa-2 { background: #e6f4ea; border-left-color: #1e8e3e; }
+  .etapa-card.etapa-2 h6 { color: #137333; }
+
+  /* Etapa 3 — Instalações: laranja */
+  .etapa-card.etapa-3 { background: #fef3e0; border-left-color: #e8710a; }
+  .etapa-card.etapa-3 h6 { color: #b05c09; }
+
+  /* Etapa 4 — Acabamentos: roxo */
+  .etapa-card.etapa-4 { background: #f3e8fd; border-left-color: #8430ce; }
+  .etapa-card.etapa-4 h6 { color: #5e1ea0; }
+
+  /* Etapa 5 — Finalização: vermelho/rosé */
+  .etapa-card.etapa-5 { background: #fce8e6; border-left-color: #d93025; }
+  .etapa-card.etapa-5 h6 { color: #a50e0e; }
+
+  /* Visual hierarchy for items */
+  .etapa-items-form .border { background: #fbfcfd; }
+  .etapa-item-badge { font-size: .82rem; }
+  .etapa-overview-value { font-weight: 600; font-size: 1rem; }
+
+  /* Edit form style */
+  .edit-etapa-form { background: #f8f9fa; border-left: 4px solid #0d6efd; }
+  .edit-etapa-form .form-label { font-weight: 600; font-size: .85rem; }
+
+  /* Table improvements */
+  .apontamentos-table { font-size: .95rem; }
+  .apontamentos-table thead { background: #1b2a4a; }
+  .apontamentos-table thead th { color: #fff; font-weight: 600; padding: .6rem .5rem; border-color: #1b2a4a; }
+  .apontamentos-table tbody td { padding: .55rem .5rem; color: #212529; }
+  .apontamentos-table tbody tr:nth-child(odd) { background-color: #eef2f7; }
+  .apontamentos-table tbody tr:nth-child(even) { background-color: #f8f9fb; }
+  .apontamentos-table tbody tr:hover { background-color: #dce4f0; }
+
+  /* Apontados card header */
+  .apontados-header { background: #1b2a4a; color: #fff; }
+  .apontados-header .text-muted { color: #c0cfe0 !important; }
+
+  /* Add worker form section */
+  .add-worker-card .card-body { background: #f0f4fa; }
+  .add-worker-card .form-label { font-weight: 600; color: #1b2a4a; font-size: .95rem; }
+  .add-worker-card .form-text { color: #5a6a85; }
+  .add-worker-card .form-check-label { font-weight: 500; color: #333; }
+
   /* Touch-friendly controls */
-  .form-check-input { width: 1.5rem; height: 1.5rem; }
-  .form-check-label { padding-left: .25rem; font-size: 1rem; }
-  /* Etapa overview styles */
-  .etapa-item-badge { font-size: .8rem; }
-  .etapa-overview-value { font-weight: 600; }
-  .etapa-items-form .form-label { font-size: .85rem; margin-bottom: .15rem; }
-  .etapa-items-form .form-control-sm { font-size: .85rem; }
+  .form-check-input { width: 1.4rem; height: 1.4rem; }
+  .form-check-label { padding-left: .25rem; font-size: .95rem; }
+
+  /* Toggle icon for collapsible sections */
+  .etapas-toggle-icon { transition: transform .25s ease; display: inline-block; }
+  .card-header[aria-expanded="true"] .etapas-toggle-icon { transform: rotate(180deg); }
+
   @media (max-width: 768px) {
-    .table-responsive { font-size: .85rem; }
-    .btn { padding: .5rem 1rem; }
+    .table-responsive { font-size: .88rem; }
+    .btn { padding: .45rem 0.9rem; }
   }
 </style>
 {% endblock %}
@@ -79,12 +137,14 @@
   <!-- ========== ETAPAS OVERVIEW ========== -->
   {% if etapas_overview %}
   <div class="card mb-3">
-    <div class="card-header bg-dark text-white">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center" style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#etapasOverviewBody" aria-expanded="false" aria-controls="etapasOverviewBody">
       <strong>📊 Progresso da Obra - Etapas e Itens</strong>
+      <span class="etapas-toggle-icon fs-5">&#9660;</span>
     </div>
+    <div class="collapse" id="etapasOverviewBody">
     <div class="card-body p-2">
       {% for ed in etapas_overview %}
-      <div class="mb-3">
+      <div class="mb-3 etapa-card etapa-{{ ed.etapa.numero_etapa }}">
         <h6 class="fw-bold mb-2 border-bottom pb-1">
           {{ ed.etapa.get_numero_etapa_display }}
           {% if ed.etapa.concluida %}
@@ -112,26 +172,87 @@
           </div>
           {% endfor %}
         </div>
+
+        <!-- Edit button opens a modal for better UX on small screens -->
+        <div class="mt-2">
+          <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#editEtapaModal-{{ ed.etapa.pk }}">✎ Editar Progresso</button>
+        </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="editEtapaModal-{{ ed.etapa.pk }}" tabindex="-1" aria-labelledby="editEtapaLabel-{{ ed.etapa.pk }}" aria-hidden="true">
+          <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="editEtapaLabel-{{ ed.etapa.pk }}">Editar Progresso — {{ ed.etapa.get_numero_etapa_display }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+              </div>
+              <div class="modal-body">
+                <div class="alert alert-info py-2 mb-3">
+                  <small><strong>ℹ️ Informe apenas a quantidade realizada HOJE.</strong> O sistema somará automaticamente ao total acumulado da obra.</small>
+                </div>
+                <form method="post">
+                  {% csrf_token %}
+                  <input type="hidden" name="obra" value="{{ obra.pk }}">
+                  <input type="hidden" name="data_apontamento" value="{{ data|date:'Y-m-d' }}">
+                  <input type="hidden" name="clima_apontamento" value="{{ clima }}">
+                  <input type="hidden" name="items_etapa_id" value="{{ ed.etapa.pk }}">
+                  <input type="hidden" name="save_etapa_items" value="1">
+                  <div class="row g-2">
+                    {% for item in ed.items %}
+                      <div class="col-12 col-md-6 col-lg-4">
+                        <div class="mb-2 p-2 border rounded bg-white">
+                          {% if item.type == 'boolean' %}
+                            <input type="hidden" name="item_{{ item.name }}" value="0">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="item_{{ item.name }}" id="modal_{{ item.name }}_{{ ed.etapa.pk }}" value="1" {% if item.value %}checked disabled{% endif %}>
+                              <label class="form-check-label" for="modal_{{ item.name }}_{{ ed.etapa.pk }}">{{ item.label }}</label>
+                              {% if item.value %}
+                                <span class="badge bg-success ms-1">✓ Já concluído</span>
+                              {% endif %}
+                            </div>
+                          {% elif item.type == 'integer' %}
+                            <label class="form-label small mb-1">{{ item.label }}</label>
+                            <div class="text-muted small mb-1">Acumulado: <strong>{{ item.value }}</strong></div>
+                            <input type="number" class="form-control form-control-sm" name="item_{{ item.name }}" value="0" min="0" placeholder="Qtd. do dia">
+                          {% elif item.type == 'decimal' %}
+                            <label class="form-label small mb-1">{{ item.label }}</label>
+                            <div class="text-muted small mb-1">Acumulado: <strong>{{ item.value }}</strong></div>
+                            <input type="number" class="form-control form-control-sm" name="item_{{ item.name }}" value="0" min="0" step="0.01" placeholder="Qtd. do dia">
+                          {% endif %}
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Progresso</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
         {% else %}
         <p class="text-muted small mb-0">Nenhum item cadastrado.</p>
         {% endif %}
       </div>
       {% endfor %}
     </div>
+    </div>{# close collapse #}
   </div>
   {% endif %}
 
   <!-- List existing appointments for this day -->
   {% if apontamentos_existentes %}
-  <div class="card mb-3">
-    <div class="card-header d-flex justify-content-between">
-      <span><strong>Funcionários Apontados</strong></span>
+  <div class="card mb-3 shadow-sm">
+    <div class="card-header d-flex justify-content-between apontados-header">
+      <span><strong>👷 Funcionários Apontados</strong></span>
       <span class="text-muted">Total: R$ {% widthratio 1 1 1 as x %}{% for ap in apontamentos_existentes %}{% if forloop.first %}{{ ap.valor_diaria }}{% endif %}{% endfor %}</span>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">
-        <table class="table table-sm table-hover mb-0">
-          <thead class="table-light">
+        <table class="table table-sm table-hover table-striped table-bordered mb-0 apontamentos-table">
+          <thead>
             <tr>
               <th>Funcionário</th>
               <th>Função</th>
@@ -172,7 +293,7 @@
   {% endif %}
 
   <!-- STEP 2: Add worker form -->
-  <div class="card">
+  <div class="card shadow-sm add-worker-card">
     <div class="card-header bg-primary text-white">
       <strong>➕ Adicionar Funcionário</strong>
     </div>
@@ -326,7 +447,7 @@
             html += '<div class="card border-info">';
             html += '<div class="card-header bg-info text-white py-2">';
             html += '<strong>📋 Itens da ' + data.etapa_label + '</strong>';
-            html += '<small class="ms-2">— Informe o progresso atual. Os dados serão salvos automaticamente na obra.</small>';
+            html += '<small class="ms-2">— Informe a quantidade realizada HOJE. Será somada ao total acumulado.</small>';
             html += '</div>';
             html += '<div class="card-body etapa-items-form">';
             html += '<input type="hidden" name="items_etapa_id" value="' + data.etapa_id + '">';
@@ -334,13 +455,14 @@
 
             data.items.forEach(function(item) {
               if (item.type === 'boolean') {
-                const checked = item.value ? 'checked' : '';
+                const checked = item.value ? 'checked disabled' : '';
                 html += '<div class="col-6 col-md-4 col-lg-3">';
                 html += '<div class="border rounded p-2 h-100">';
                 html += '<input type="hidden" name="item_' + item.name + '" value="0">';
                 html += '<div class="form-check">';
                 html += '<input type="checkbox" class="form-check-input" name="item_' + item.name + '" value="1" ' + checked + ' id="item_' + item.name + '">';
                 html += '<label class="form-check-label" for="item_' + item.name + '">' + item.label + '</label>';
+                if (item.value) { html += ' <span class="badge bg-success">✓</span>'; }
                 html += '</div>';
                 html += '</div>';
                 html += '</div>';
@@ -348,14 +470,16 @@
                 html += '<div class="col-6 col-md-4 col-lg-3">';
                 html += '<div class="border rounded p-2 h-100">';
                 html += '<label class="form-label" for="item_' + item.name + '">' + item.label + '</label>';
-                html += '<input type="number" class="form-control form-control-sm" name="item_' + item.name + '" value="' + item.value + '" min="0" id="item_' + item.name + '">';
+                html += '<div class="text-muted small mb-1">Acumulado: <strong>' + item.value + '</strong></div>';
+                html += '<input type="number" class="form-control form-control-sm" name="item_' + item.name + '" value="0" min="0" placeholder="Qtd. do dia" id="item_' + item.name + '">';
                 html += '</div>';
                 html += '</div>';
               } else if (item.type === 'decimal') {
                 html += '<div class="col-6 col-md-4 col-lg-3">';
                 html += '<div class="border rounded p-2 h-100">';
                 html += '<label class="form-label" for="item_' + item.name + '">' + item.label + '</label>';
-                html += '<input type="number" class="form-control form-control-sm" name="item_' + item.name + '" value="' + item.value + '" min="0" step="0.01" id="item_' + item.name + '">';
+                html += '<div class="text-muted small mb-1">Acumulado: <strong>' + item.value + '</strong></div>';
+                html += '<input type="number" class="form-control form-control-sm" name="item_' + item.name + '" value="0" min="0" step="0.01" placeholder="Qtd. do dia" id="item_' + item.name + '">';
                 html += '</div>';
                 html += '</div>';
               }
@@ -396,6 +520,23 @@
           });
       });
     }
+    // Toggle arrow icon on etapas overview collapse
+    const etapasHeader = document.querySelector('[data-bs-target="#etapasOverviewBody"]');
+    if (etapasHeader) {
+      const collapseEl = document.getElementById('etapasOverviewBody');
+      if (collapseEl) {
+        collapseEl.addEventListener('shown.bs.collapse', function() { etapasHeader.setAttribute('aria-expanded', 'true'); });
+        collapseEl.addEventListener('hidden.bs.collapse', function() { etapasHeader.setAttribute('aria-expanded', 'false'); });
+      }
+    }
+
+    // Auto-focus first input when modal opens
+    document.addEventListener('shown.bs.modal', function(e) {
+      const modal = e.target;
+      if (!modal) return;
+      const first = modal.querySelector('input:not([type=hidden]), select, textarea');
+      if (first) first.focus();
+    });
   });
 </script>
 {% endblock %}

@@ -123,7 +123,11 @@ def _get_etapa_items(etapa):
 
 
 def _update_etapa_items_from_post(etapa, post_data):
-    """Update etapa detail model fields from POST data and recalculate obra progress."""
+    """Update etapa detail model fields from POST data (ADDITIVE logic) and recalculate obra progress.
+
+    - boolean fields: OR logic (once marked True, stays True)
+    - integer/decimal fields: posted value is ADDED to the current value
+    """
     meta = ETAPA_FIELDS_META.get(etapa.numero_etapa)
     if not meta:
         return
@@ -135,19 +139,22 @@ def _update_etapa_items_from_post(etapa, post_data):
     for field_name, field_type, _ in meta['fields']:
         key = f'item_{field_name}'
         if field_type == 'boolean':
-            # Hidden "0" + checkbox "1" pattern
+            # Hidden "0" + checkbox "1" pattern — OR logic
             val = post_data.get(key, '0')
             new_val = val in ('1', 'on', 'true', 'True')
-            if getattr(detail_obj, field_name) != new_val:
-                setattr(detail_obj, field_name, new_val)
+            current_val = getattr(detail_obj, field_name, False)
+            final_val = current_val or new_val  # once True, stays True
+            if current_val != final_val:
+                setattr(detail_obj, field_name, final_val)
                 changed = True
         elif field_type == 'integer':
             raw = post_data.get(key, '')
             if raw != '':
                 try:
-                    new_val = int(raw)
-                    if getattr(detail_obj, field_name) != new_val:
-                        setattr(detail_obj, field_name, new_val)
+                    increment = int(raw)
+                    if increment != 0:
+                        current_val = getattr(detail_obj, field_name, 0) or 0
+                        setattr(detail_obj, field_name, current_val + increment)
                         changed = True
                 except (ValueError, TypeError):
                     pass
@@ -155,9 +162,10 @@ def _update_etapa_items_from_post(etapa, post_data):
             raw = post_data.get(key, '')
             if raw != '':
                 try:
-                    new_val = Decimal(raw)
-                    if getattr(detail_obj, field_name) != new_val:
-                        setattr(detail_obj, field_name, new_val)
+                    increment = Decimal(raw)
+                    if increment != Decimal('0'):
+                        current_val = getattr(detail_obj, field_name, Decimal('0')) or Decimal('0')
+                        setattr(detail_obj, field_name, current_val + increment)
                         changed = True
                 except (ValueError, TypeError, InvalidOperation):
                     pass
@@ -487,6 +495,16 @@ def apontamento_diario(request):
                     messages.error(request, 'Funcionário já apontado nesta data em outra obra. Remova ou edite o apontamento existente se necessário.')
             else:
                 messages.error(request, 'Corrija os erros abaixo.')
+        elif request.method == 'POST' and request.POST.get('save_etapa_items'):
+            # Save etapa items from the overview edit form (no funcionario add)
+            items_etapa_id = request.POST.get('items_etapa_id')
+            try:
+                etapa_obj = Etapa.objects.get(pk=items_etapa_id, obra=obra)
+                _update_etapa_items_from_post(etapa_obj, request.POST)
+                messages.success(request, f'Progresso da etapa "{etapa_obj.get_numero_etapa_display()}" atualizado.')
+            except Etapa.DoesNotExist:
+                messages.error(request, 'Etapa inválida.')
+            return redirect(f'{request.path}?obra={obra.pk}&data={data.isoformat()}&clima={clima}')
         else:
             item_form = ApontamentoDiarioItemForm(obra_id=obra.pk, initial={
                 'horas_trabalhadas': Decimal('8.0'),

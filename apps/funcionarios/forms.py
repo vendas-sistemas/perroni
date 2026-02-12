@@ -123,7 +123,7 @@ ApontamentoDiarioFormSet = forms.modelformset_factory(
 class ApontamentoDiarioCabecalhoForm(forms.Form):
     """Cabeçalho do apontamento diário: obra, data e clima"""
     obra = forms.ModelChoiceField(
-        queryset=Obra.objects.filter(status='em_andamento', ativo=True),
+        queryset=Obra.objects.filter(ativo=True),
         widget=forms.Select(attrs={'class': 'form-select'}),
         label="Obra"
     )
