@@ -34,6 +34,7 @@
               <div class="col-12 col-md-4">
                 <label class="form-label">Etapa/Fase</label>
                 {{ form.etapa }}
+                <div class="form-text text-muted" id="etapa-hint">Selecione uma obra para carregar as etapas.</div>
               </div>
               <div class="col-6 col-md-4">
                 <label class="form-label">Data *</label>
@@ -49,9 +50,25 @@
                 {{ form.clima }}
               </div>
               <div class="col-6 col-md-4">
+                <label class="form-label">Metragem Executada (m²)</label>
+                {{ form.metragem_executada }}
+                <div class="form-text">Área executada no dia.</div>
+              </div>
+              <div class="col-6 col-md-4">
                 <label class="form-label">Valor Diária</label>
                 {{ form.valor_diaria }}
                 <div class="form-text">Automático se vazio.</div>
+              </div>
+            </div>
+
+            <!-- ═══ Campos da Etapa (carregados dinamicamente) ═══ -->
+            <div id="etapa-items-section" class="mt-4" style="display:none;">
+              <hr>
+              <h5 class="mb-3"><i class="bi bi-list-check text-primary"></i> Itens da Etapa <span id="etapa-items-title" class="text-primary"></span></h5>
+              <p class="text-muted small">Preencha o progresso realizado neste apontamento. Valores numéricos serão <strong>adicionados</strong> ao acumulado atual.</p>
+              <input type="hidden" name="items_etapa_id" id="items_etapa_id" value="">
+              <div id="etapa-items-container" class="row g-3">
+                <!-- Items rendered by JS -->
               </div>
             </div>
 
@@ -102,6 +119,7 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // ── Ociosidade / Retrabalho toggles ──
   const oc = document.getElementById('{{ form.houve_ociosidade.id_for_label }}');
   const ow = document.getElementById('ociosidade-wrap');
   const rc = document.getElementById('{{ form.houve_retrabalho.id_for_label }}');
@@ -110,6 +128,134 @@ document.addEventListener('DOMContentLoaded', function() {
   function toggleR() { if(rc && rw) rw.style.display = rc.checked ? 'block' : 'none'; }
   if(oc) { oc.addEventListener('change', toggleO); toggleO(); }
   if(rc) { rc.addEventListener('change', toggleR); toggleR(); }
+
+  // ── Dynamic Etapa loading when Obra changes ──
+  const obraSelect = document.getElementById('id_obra');
+  const etapaSelect = document.getElementById('id_etapa');
+  const etapaHint = document.getElementById('etapa-hint');
+  const etapaItemsSection = document.getElementById('etapa-items-section');
+  const etapaItemsContainer = document.getElementById('etapa-items-container');
+  const etapaItemsTitle = document.getElementById('etapa-items-title');
+  const itemsEtapaIdInput = document.getElementById('items_etapa_id');
+
+  if (obraSelect && etapaSelect) {
+    obraSelect.addEventListener('change', function() {
+      const obraId = this.value;
+      // Reset etapa
+      etapaSelect.innerHTML = '<option value="">---------</option>';
+      hideEtapaItems();
+
+      if (!obraId) {
+        if(etapaHint) etapaHint.textContent = 'Selecione uma obra para carregar as etapas.';
+        return;
+      }
+
+      if(etapaHint) etapaHint.textContent = 'Carregando etapas...';
+
+      fetch(`{% url 'funcionarios:etapas_por_obra_api' %}?obra_id=${obraId}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.etapas && data.etapas.length > 0) {
+            data.etapas.forEach(e => {
+              const opt = document.createElement('option');
+              opt.value = e.id;
+              opt.textContent = e.label;
+              etapaSelect.appendChild(opt);
+            });
+            if(etapaHint) etapaHint.textContent = `${data.etapas.length} etapa(s) disponível(is).`;
+          } else {
+            if(etapaHint) etapaHint.textContent = 'Nenhuma etapa cadastrada para esta obra.';
+          }
+        })
+        .catch(() => {
+          if(etapaHint) etapaHint.textContent = 'Erro ao carregar etapas.';
+        });
+    });
+
+    // ── Dynamic Etapa Items loading when Etapa changes ──
+    etapaSelect.addEventListener('change', function() {
+      const etapaId = this.value;
+      if (!etapaId) {
+        hideEtapaItems();
+        return;
+      }
+      loadEtapaItems(etapaId);
+    });
+
+    // If obra is already selected (e.g. after validation error), trigger load
+    if (obraSelect.value) {
+      const currentEtapaVal = etapaSelect.value;
+      obraSelect.dispatchEvent(new Event('change'));
+      // Re-select the etapa after options are loaded
+      if (currentEtapaVal) {
+        setTimeout(() => {
+          etapaSelect.value = currentEtapaVal;
+          if (etapaSelect.value === currentEtapaVal) {
+            loadEtapaItems(currentEtapaVal);
+          }
+        }, 500);
+      }
+    }
+  }
+
+  function hideEtapaItems() {
+    if(etapaItemsSection) etapaItemsSection.style.display = 'none';
+    if(etapaItemsContainer) etapaItemsContainer.innerHTML = '';
+    if(itemsEtapaIdInput) itemsEtapaIdInput.value = '';
+  }
+
+  function loadEtapaItems(etapaId) {
+    fetch(`{% url 'funcionarios:itens_etapa_api' %}?etapa_id=${etapaId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.items || data.items.length === 0) {
+          hideEtapaItems();
+          return;
+        }
+        if(etapaItemsTitle) etapaItemsTitle.textContent = '— ' + data.etapa_label;
+        if(itemsEtapaIdInput) itemsEtapaIdInput.value = data.etapa_id;
+        renderEtapaItems(data.items);
+        if(etapaItemsSection) etapaItemsSection.style.display = 'block';
+      })
+      .catch(() => hideEtapaItems());
+  }
+
+  function renderEtapaItems(items) {
+    if(!etapaItemsContainer) return;
+    etapaItemsContainer.innerHTML = '';
+    items.forEach(item => {
+      const col = document.createElement('div');
+      col.className = 'col-md-6';
+
+      if (item.type === 'boolean') {
+        const currentLabel = item.value ? '<span class="badge bg-success">Concluído</span>' : '<span class="badge bg-secondary">Pendente</span>';
+        col.innerHTML = `
+          <div class="form-check border rounded p-3 h-100">
+            <input type="hidden" name="item_${item.name}" value="0">
+            <input class="form-check-input" type="checkbox" name="item_${item.name}" 
+                   value="1" id="item_${item.name}" ${item.value ? 'checked disabled' : ''}>
+            <label class="form-check-label" for="item_${item.name}">
+              ${item.label} ${currentLabel}
+            </label>
+          </div>`;
+      } else {
+        const unit = item.type === 'decimal' ? 'step="0.01"' : 'step="1"';
+        const currentStr = item.value != 0 && item.value != '0' && item.value != '0.00'
+          ? `<span class="text-muted small">(Atual: <strong>${item.value}</strong>)</span>` 
+          : '';
+        col.innerHTML = `
+          <div class="border rounded p-3 h-100">
+            <label class="form-label mb-1" for="item_${item.name}">
+              ${item.label} ${currentStr}
+            </label>
+            <input type="number" class="form-control form-control-sm" 
+                   name="item_${item.name}" id="item_${item.name}" 
+                   ${unit} min="0" placeholder="Incremento hoje" value="">
+          </div>`;
+      }
+      etapaItemsContainer.appendChild(col);
+    });
+  }
 });
 </script>
 {% endblock %}

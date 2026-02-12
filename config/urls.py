@@ -18,6 +18,7 @@ urlpatterns = [
     path('ferramentas/', include('apps.ferramentas.urls')),
     path('clientes/', include('apps.clientes.urls')),
     path('analytics/', include('apps.analytics.urls')),
+    path('relatorios/', include('apps.relatorios.urls')),
     
     # Authentication
     path('accounts/', include('django.contrib.auth.urls')),

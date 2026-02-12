@@ -369,6 +369,7 @@ def apontamento_create(request):
                 existing.etapa = ap.etapa
                 existing.horas_trabalhadas = ap.horas_trabalhadas
                 existing.clima = ap.clima
+                existing.metragem_executada = ap.metragem_executada
                 existing.valor_diaria = ap.valor_diaria
                 existing.houve_ociosidade = ap.houve_ociosidade
                 existing.observacao_ociosidade = ap.observacao_ociosidade
@@ -380,6 +381,12 @@ def apontamento_create(request):
                 messages.info(request, f'Apontamento de {ap.funcionario.nome_completo} atualizado (já existia registro nesta data/obra).')
             else:
                 ap.save()
+
+            # ---- Auto-update obra: save etapa items from POST ----
+            if ap.etapa and request.POST.get('items_etapa_id'):
+                _update_etapa_items_from_post(ap.etapa, request.POST)
+                messages.info(request, f'📊 Progresso da etapa "{ap.etapa}" atualizado automaticamente.')
+
             # Notificação de retrabalho/ociosidade
             if ap.houve_retrabalho:
                 messages.warning(request, f'⚠️ RETRABALHO registrado para {ap.funcionario.nome_completo}.')
@@ -792,6 +799,19 @@ def fechamento_auto(request):
             return redirect('funcionarios:fechamento_auto')
 
         data_fim = data_inicio + datetime.timedelta(days=6)
+
+        # Verifica se já existe fechamento para esta semana
+        fechamentos_existentes = FechamentoSemanal.objects.filter(data_inicio=data_inicio)
+        if fechamentos_existentes.exists():
+            qtd = fechamentos_existentes.count()
+            messages.warning(
+                request,
+                f'Já existe(m) {qtd} fechamento(s) para a semana de '
+                f'{data_inicio.strftime("%d/%m/%Y")} a {data_fim.strftime("%d/%m/%Y")}. '
+                f'Não é possível gerar novos fechamentos para esta semana.'
+            )
+            return redirect('funcionarios:fechamento_list')
+
         funcionarios = Funcionario.objects.filter(ativo=True)
         criados = 0
         existentes = 0
@@ -987,6 +1007,46 @@ def funcionario_historico(request, pk):
 
 
 # ==================== APIs ====================
+
+@login_required
+def check_fechamento_api(request):
+    """API JSON para verificar se já existe fechamento para uma semana."""
+    data_inicio_str = request.GET.get('data_inicio', '')
+    funcionario_id = request.GET.get('funcionario', '')
+
+    if not data_inicio_str:
+        return JsonResponse({'error': 'Parâmetro data_inicio obrigatório'}, status=400)
+
+    try:
+        di = datetime.date.fromisoformat(data_inicio_str)
+    except ValueError:
+        return JsonResponse({'error': 'data_inicio inválida'}, status=400)
+
+    qs = FechamentoSemanal.objects.filter(data_inicio=di)
+    if funcionario_id:
+        qs_func = qs.filter(funcionario_id=funcionario_id)
+        exists_func = qs_func.exists()
+    else:
+        exists_func = False
+
+    exists_any = qs.exists()
+    count = qs.count()
+
+    funcionarios_list = list(
+        qs.select_related('funcionario')
+        .values_list('funcionario__nome_completo', flat=True)
+        .order_by('funcionario__nome_completo')[:10]
+    )
+
+    di_fim = di + datetime.timedelta(days=6)
+    return JsonResponse({
+        'exists': exists_any,
+        'exists_funcionario': exists_func,
+        'count': count,
+        'funcionarios': funcionarios_list,
+        'semana': f'{di.strftime("%d/%m/%Y")} a {di_fim.strftime("%d/%m/%Y")}',
+    })
+
 
 @login_required
 def apontamentos_api(request):

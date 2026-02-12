@@ -56,6 +56,7 @@ INSTALLED_APPS += [
     'apps.ferramentas',
     'apps.analytics',
     'apps.clientes',
+    'apps.relatorios',
 ]
 
 MIDDLEWARE = [

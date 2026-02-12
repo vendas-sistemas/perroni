@@ -29,6 +29,7 @@ urlpatterns = [
     path('obra/<int:pk>/mao-de-obra/', views.obra_mao_de_obra, name='obra_mao_de_obra'),
 
     # APIs
+    path('api/check-fechamento/', views.check_fechamento_api, name='check_fechamento_api'),
     path('api/apontamentos/', views.apontamentos_api, name='apontamentos_api'),
     path('api/etapas-por-obra/', views.etapas_por_obra_api, name='etapas_por_obra_api'),
     path('api/itens-etapa/', views.itens_etapa_api, name='itens_etapa_api'),

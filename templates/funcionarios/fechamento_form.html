@@ -9,7 +9,11 @@
       <div class="card">
         <div class="card-body">
           <h4 class="card-title mb-3">{{ title }}</h4>
-          <form method="post">
+          <div id="alerta-fechamento" class="alert alert-warning d-none" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Atenção!</strong> <span id="alerta-msg"></span>
+          </div>
+          <form method="post" id="form-fechamento">
             {% csrf_token %}
             {% for field in form %}
               <div class="mb-3">
@@ -57,6 +61,52 @@
     const container = document.getElementById('apontamentos_table_container');
     const totais = document.getElementById('totais_info');
     const apiUrl = "{% url 'funcionarios:apontamentos_api' %}";
+    const checkUrl = "{% url 'funcionarios:check_fechamento_api' %}";
+    const alerta = document.getElementById('alerta-fechamento');
+    const alertaMsg = document.getElementById('alerta-msg');
+
+    let fechamentoExiste = false;
+
+    async function verificarFechamento() {
+      const func = funcionarioEl ? funcionarioEl.value : '';
+      const di = dataInicioEl ? dataInicioEl.value : '';
+      if (!di) {
+        alerta.classList.add('d-none');
+        fechamentoExiste = false;
+        return;
+      }
+      try {
+        let url = checkUrl + '?data_inicio=' + di;
+        if (func) url += '&funcionario=' + func;
+        const resp = await fetch(url);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (func && data.exists_funcionario) {
+          fechamentoExiste = true;
+          alertaMsg.textContent = `Já existe fechamento para este funcionário na semana de ${data.semana}. Não é possível criar outro.`;
+          alerta.classList.remove('d-none');
+        } else if (data.exists) {
+          fechamentoExiste = false;
+          alertaMsg.textContent = `Já existe(m) ${data.count} fechamento(s) para a semana de ${data.semana}. Verifique antes de prosseguir.`;
+          alerta.classList.remove('d-none');
+        } else {
+          fechamentoExiste = false;
+          alerta.classList.add('d-none');
+        }
+      } catch(e) {
+        console.error(e);
+      }
+    }
+
+    const form = document.getElementById('form-fechamento');
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        if (fechamentoExiste) {
+          e.preventDefault();
+          alert('Não é possível criar fechamento: já existe fechamento para este funcionário na semana selecionada.');
+        }
+      });
+    }
 
     function formatDate(iso){
       const d = new Date(iso);
@@ -112,10 +162,10 @@
       preview.style.display = 'block';
     }
 
-    if(funcionarioEl) funcionarioEl.addEventListener('change', fetchApontamentos);
-    if(dataInicioEl) dataInicioEl.addEventListener('change', fetchApontamentos);
+    if(funcionarioEl) funcionarioEl.addEventListener('change', function(){ fetchApontamentos(); verificarFechamento(); });
+    if(dataInicioEl) dataInicioEl.addEventListener('change', function(){ fetchApontamentos(); verificarFechamento(); });
     // try initial fetch if both present
-    document.addEventListener('DOMContentLoaded', function(){ fetchApontamentos(); });
+    document.addEventListener('DOMContentLoaded', function(){ fetchApontamentos(); verificarFechamento(); });
   })();
 </script>
 {% endblock %}

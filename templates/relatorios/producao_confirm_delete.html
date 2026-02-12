@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card shadow-sm border-danger" style="border-radius:.75rem">
+        <div class="card-body text-center py-5">
+          <i class="bi bi-exclamation-triangle text-danger" style="font-size:3rem"></i>
+          <h4 class="mt-3">Excluir Produção Diária?</h4>
+          <p class="text-muted">
+            <strong>{{ obj.funcionario.nome_completo }}</strong> —
+            {{ obj.obra.nome }} —
+            {{ obj.data|date:"d/m/Y" }} —
+            {{ obj.metragem_executada }} m²
+          </p>
+          <p class="text-danger small">Esta ação não pode ser desfeita.</p>
+          <form method="post">
+            {% csrf_token %}
+            <div class="d-flex gap-2 justify-content-center">
+              <button type="submit" class="btn btn-danger">
+                <i class="bi bi-trash"></i> Excluir
+              </button>
+              <a href="{% url 'relatorios:producao_list' %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

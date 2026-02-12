@@ -11,17 +11,20 @@
           <h4 class="card-title mb-3">⚡ Fechamento Semanal Automático</h4>
           <p class="text-muted">
             Gera fechamentos para todos os funcionários ativos que possuem apontamentos no período selecionado.
-            Fechamentos existentes serão recalculados.
           </p>
-          <form method="post">
+          <div id="alerta-fechamento" class="alert alert-warning d-none" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Atenção!</strong> <span id="alerta-msg"></span>
+          </div>
+          <form method="post" id="form-fechamento-auto">
             {% csrf_token %}
             <div class="mb-3">
               <label class="form-label">Data de Início da Semana (segunda-feira)</label>
-              <input type="date" name="data_inicio" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+              <input type="date" name="data_inicio" id="data_inicio" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
               <div class="form-text">O período será da data selecionada até +6 dias.</div>
             </div>
             <div class="d-flex gap-2">
-              <button type="submit" class="btn btn-primary btn-lg">Gerar Fechamentos</button>
+              <button type="submit" class="btn btn-primary btn-lg" id="btn-gerar">Gerar Fechamentos</button>
               <a href="{% url 'funcionarios:fechamento_list' %}" class="btn btn-secondary">Voltar</a>
             </div>
           </form>
@@ -30,4 +33,66 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  const dataInput = document.getElementById('data_inicio');
+  const alerta = document.getElementById('alerta-fechamento');
+  const alertaMsg = document.getElementById('alerta-msg');
+  const btnGerar = document.getElementById('btn-gerar');
+  const form = document.getElementById('form-fechamento-auto');
+  const apiUrl = "{% url 'funcionarios:check_fechamento_api' %}";
+
+  let semanaTemFechamento = false;
+
+  async function verificarFechamento() {
+    const di = dataInput.value;
+    if (!di) {
+      alerta.classList.add('d-none');
+      semanaTemFechamento = false;
+      btnGerar.disabled = false;
+      return;
+    }
+    try {
+      const resp = await fetch(apiUrl + '?data_inicio=' + di);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      if (data.exists) {
+        semanaTemFechamento = true;
+        let msg = `Já existe(m) ${data.count} fechamento(s) para a semana de ${data.semana}.`;
+        if (data.funcionarios && data.funcionarios.length > 0) {
+          msg += ' Funcionários: ' + data.funcionarios.join(', ');
+          if (data.count > data.funcionarios.length) {
+            msg += ` e mais ${data.count - data.funcionarios.length}...`;
+          }
+        }
+        msg += ' Não é possível gerar novos fechamentos para esta semana.';
+        alertaMsg.textContent = msg;
+        alerta.classList.remove('d-none');
+        btnGerar.disabled = true;
+      } else {
+        semanaTemFechamento = false;
+        alerta.classList.add('d-none');
+        btnGerar.disabled = false;
+      }
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  dataInput.addEventListener('change', verificarFechamento);
+
+  form.addEventListener('submit', function(e) {
+    if (semanaTemFechamento) {
+      e.preventDefault();
+      alert('Não é possível gerar fechamentos: já existe fechamento para a semana selecionada.');
+    }
+  });
+
+  // Verificar ao carregar a página
+  document.addEventListener('DOMContentLoaded', verificarFechamento);
+})();
+</script>
 {% endblock %}

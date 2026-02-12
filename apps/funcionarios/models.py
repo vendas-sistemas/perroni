@@ -157,6 +157,15 @@ class ApontamentoFuncionario(models.Model):
         verbose_name="Motivo do Retrabalho"
     )
     
+    # Metragem executada no dia
+    metragem_executada = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00'))],
+        verbose_name="Metragem Executada (m²)"
+    )
+    
     # Valores
     valor_diaria = models.DecimalField(
         max_digits=10,

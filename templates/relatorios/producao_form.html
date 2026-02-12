@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card shadow-sm" style="border:none; border-radius:.75rem">
+        <div class="card-body">
+          <h4 class="card-title mb-3">
+            <i class="bi bi-clipboard-plus text-primary"></i> {{ title }}
+          </h4>
+
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                  <p class="mb-0">{{ error }}</p>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <div class="row g-3">
+              <!-- Pedreiro -->
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">{{ form.funcionario.label }}</label>
+                {{ form.funcionario }}
+                {% for e in form.funcionario.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+              </div>
+
+              <!-- Obra -->
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">{{ form.obra.label }}</label>
+                {{ form.obra }}
+                {% for e in form.obra.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+              </div>
+
+              <!-- Etapa -->
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">{{ form.etapa.label }}</label>
+                {{ form.etapa }}
+                {% for e in form.etapa.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+              </div>
+
+              <!-- Data -->
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">{{ form.data.label }}</label>
+                {{ form.data }}
+                {% for e in form.data.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+              </div>
+
+              <!-- Clima -->
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">{{ form.clima.label }}</label>
+                {{ form.clima }}
+                {% for e in form.clima.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+              </div>
+
+              <!-- Metragem -->
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">{{ form.metragem_executada.label }}</label>
+                {{ form.metragem_executada }}
+                {% for e in form.metragem_executada.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+              </div>
+
+              <!-- Ociosidade -->
+              <div class="col-md-4">
+                <div class="form-check mt-4">
+                  {{ form.houve_ociosidade }}
+                  <label class="form-check-label fw-semibold" for="{{ form.houve_ociosidade.id_for_label }}">
+                    {{ form.houve_ociosidade.label }}
+                  </label>
+                </div>
+              </div>
+
+              <!-- Retrabalho -->
+              <div class="col-md-4">
+                <div class="form-check mt-4">
+                  {{ form.houve_retrabalho }}
+                  <label class="form-check-label fw-semibold" for="{{ form.houve_retrabalho.id_for_label }}">
+                    {{ form.houve_retrabalho.label }}
+                  </label>
+                </div>
+              </div>
+
+              <!-- Motivo Retrabalho -->
+              <div class="col-12" id="div-motivo-retrabalho">
+                <label class="form-label fw-semibold">{{ form.motivo_retrabalho.label }}</label>
+                {{ form.motivo_retrabalho }}
+                {% for e in form.motivo_retrabalho.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+              </div>
+
+              <!-- Observações -->
+              <div class="col-12">
+                <label class="form-label fw-semibold">{{ form.observacoes.label }}</label>
+                {{ form.observacoes }}
+              </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg"></i> Salvar
+              </button>
+              <a href="{% url 'relatorios:producao_list' %}" class="btn btn-secondary">Voltar</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  const chkRetrabalho = document.getElementById('{{ form.houve_retrabalho.id_for_label }}');
+  const divMotivo = document.getElementById('div-motivo-retrabalho');
+  function toggleMotivo(){
+    divMotivo.style.display = chkRetrabalho && chkRetrabalho.checked ? '' : 'none';
+  }
+  if(chkRetrabalho){
+    chkRetrabalho.addEventListener('change', toggleMotivo);
+    toggleMotivo();
+  }
+
+  // Filtrar etapas pela obra selecionada
+  const obraSelect = document.getElementById('id_obra');
+  const etapaSelect = document.getElementById('id_etapa');
+  if (obraSelect && etapaSelect) {
+    const allOptions = Array.from(etapaSelect.options).map(o => ({
+      value: o.value,
+      text: o.text,
+      obraId: o.getAttribute('data-obra-id') || '',
+    }));
+
+    obraSelect.addEventListener('change', function() {
+      // Reload to get filtered etapas - or use API if available
+    });
+  }
+})();
+</script>
+{% endblock %}

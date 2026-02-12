@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .filter-card { border: none; border-radius: .75rem; }
+  .section-card { border: none; border-radius: .75rem; }
+  .ranking-badge-best { background-color: #2e7d32; color: #fff; }
+  .ranking-badge-worst { background-color: #c62828; color: #fff; }
+  .metric-highlight {
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .metric-label-sm {
+    font-size: .72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #9e9e9e;
+  }
+  .table-ranking th {
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+  .export-btn { min-width: 140px; }
+  .empty-state {
+    padding: 3rem;
+    text-align: center;
+    color: #9e9e9e;
+  }
+  .empty-state i { font-size: 3rem; margin-bottom: .75rem; display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+    <div>
+      <h1 class="h3 mb-0"><i class="bi bi-bar-chart-line text-primary"></i> {{ title }}</h1>
+      <small class="text-muted">Análise de produção diária por pedreiro e etapa</small>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'funcionarios:apontamento_list' %}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-list-ul"></i> Apontamentos
+      </a>
+      <a href="{% url 'funcionarios:apontamento_create' %}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg"></i> Novo Apontamento
+      </a>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="card filter-card shadow-sm mb-4">
+    <div class="card-body">
+      <form method="get" id="filtro-form">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">Obra</label>
+            {{ form.obra }}
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">Etapa</label>
+            {{ form.etapa }}
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">Pedreiro</label>
+            {{ form.funcionario }}
+          </div>
+          <div class="col-md-1">
+            <label class="form-label small fw-semibold">Clima</label>
+            {{ form.clima }}
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">Data Início</label>
+            {{ form.data_inicio }}
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">Data Fim</label>
+            {{ form.data_fim }}
+          </div>
+          <div class="col-md-1 d-flex gap-1">
+            <button type="submit" class="btn btn-primary btn-sm w-100">
+              <i class="bi bi-funnel"></i> Filtrar
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Exportações -->
+  <div class="d-flex gap-2 mb-4 flex-wrap">
+    <a href="{% url 'relatorios:exportar_pdf' %}?{{ request.GET.urlencode }}"
+       class="btn btn-danger btn-sm export-btn">
+      <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
+    </a>
+    <a href="{% url 'relatorios:exportar_excel' %}?{{ request.GET.urlencode }}"
+       class="btn btn-success btn-sm export-btn">
+      <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+    </a>
+  </div>
+
+  {% if not ranking_etapa and not media_dias_etapa and not media_individual %}
+    <div class="card section-card shadow-sm">
+      <div class="card-body empty-state">
+        <i class="bi bi-clipboard-data"></i>
+        <h5>Nenhum dado encontrado</h5>
+        <p>Cadastre apontamentos diários com metragem executada para visualizar os relatórios.</p>
+        <a href="{% url 'funcionarios:apontamento_create' %}" class="btn btn-primary btn-sm">
+          <i class="bi bi-plus-lg"></i> Novo Apontamento
+        </a>
+      </div>
+    </div>
+  {% else %}
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- SEÇÃO 1: Ranking por Etapa                  -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="card section-card shadow-sm mb-4">
+    <div class="card-header bg-white border-0 pt-3">
+      <h5 class="mb-0"><i class="bi bi-trophy text-warning"></i> 1. Ranking por Etapa (Melhores e Piores)</h5>
+      <small class="text-muted">Critério: média de metragem executada (m²) por dia na etapa</small>
+    </div>
+    <div class="card-body">
+      {% for etapa in ranking_etapa %}
+      <div class="mb-4">
+        <h6 class="fw-bold text-primary mb-3">{{ etapa.etapa_nome }}</h6>
+        <div class="row g-3">
+          <!-- Melhores -->
+          <div class="col-md-6">
+            <div class="border rounded p-3 h-100">
+              <span class="badge ranking-badge-best mb-2"><i class="bi bi-arrow-up-circle"></i> Top 3 Melhores</span>
+              <table class="table table-sm table-ranking mb-0">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Pedreiro</th>
+                    <th class="text-end">Média m²/dia</th>
+                    <th class="text-end">Dias</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for m in etapa.melhores %}
+                  <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ m.nome }}</td>
+                    <td class="text-end fw-bold text-success">{{ m.media_metragem }}</td>
+                    <td class="text-end">{{ m.total_dias }}</td>
+                  </tr>
+                  {% empty %}
+                  <tr><td colspan="4" class="text-muted text-center">Sem dados</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <!-- Piores -->
+          <div class="col-md-6">
+            <div class="border rounded p-3 h-100">
+              <span class="badge ranking-badge-worst mb-2"><i class="bi bi-arrow-down-circle"></i> Top 3 Piores</span>
+              <table class="table table-sm table-ranking mb-0">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Pedreiro</th>
+                    <th class="text-end">Média m²/dia</th>
+                    <th class="text-end">Dias</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for p in etapa.piores %}
+                  <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ p.nome }}</td>
+                    <td class="text-end fw-bold text-danger">{{ p.media_metragem }}</td>
+                    <td class="text-end">{{ p.total_dias }}</td>
+                  </tr>
+                  {% empty %}
+                  <tr><td colspan="4" class="text-muted text-center">Sem dados</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- SEÇÃO 2: Média de Dias por Etapa            -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="card section-card shadow-sm mb-4">
+    <div class="card-header bg-white border-0 pt-3">
+      <h5 class="mb-0"><i class="bi bi-calendar-week text-info"></i> 2. Média de Dias para Execução de Cada Etapa</h5>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Etapa</th>
+              <th class="text-center">Média de Dias</th>
+              <th class="text-center">Obras Analisadas</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in media_dias_etapa %}
+            <tr>
+              <td class="fw-semibold">{{ e.etapa_nome }}</td>
+              <td class="text-center">
+                <span class="badge bg-info text-dark fs-6">{{ e.media_dias }} dias</span>
+              </td>
+              <td class="text-center">{{ e.total_obras }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-muted text-center">Sem dados</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- SEÇÃO 3: Média Individual                   -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="card section-card shadow-sm mb-4">
+    <div class="card-header bg-white border-0 pt-3">
+      <h5 class="mb-0"><i class="bi bi-person-lines-fill text-primary"></i> 3. Média de Rendimento Individual</h5>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Pedreiro</th>
+              <th class="text-center">Média m²/dia</th>
+              <th class="text-center">Dias Trab.</th>
+              <th class="text-center">Dias Ocioso</th>
+              <th class="text-center">Dias Retrabalho</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in media_individual %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td class="fw-semibold">{{ r.nome }}</td>
+              <td class="text-center">
+                <span class="badge bg-primary fs-6">{{ r.media_metragem }}</span>
+              </td>
+              <td class="text-center">{{ r.total_dias }}</td>
+              <td class="text-center">
+                {% if r.total_ociosidade > 0 %}
+                  <span class="text-warning fw-bold">{{ r.total_ociosidade }}</span>
+                {% else %}
+                  0
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if r.total_retrabalho > 0 %}
+                  <span class="text-danger fw-bold">{{ r.total_retrabalho }}</span>
+                {% else %}
+                  0
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-muted text-center">Sem dados</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {% endif %}
+
+</div>
+{% endblock %}

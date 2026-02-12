@@ -11,13 +11,15 @@ class ApontamentoForm(forms.ModelForm):
         model = ApontamentoFuncionario
         fields = [
             'funcionario', 'obra', 'etapa', 'data', 'horas_trabalhadas',
-            'clima', 'houve_ociosidade', 'observacao_ociosidade',
+            'clima', 'metragem_executada',
+            'houve_ociosidade', 'observacao_ociosidade',
             'houve_retrabalho', 'motivo_retrabalho',
             'valor_diaria', 'observacoes'
         ]
         widgets = {
             'data': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'horas_trabalhadas': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5', 'min': '0.5', 'max': '24'}),
+            'metragem_executada': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'placeholder': 'm² executados'}),
             'valor_diaria': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'observacao_ociosidade': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Descreva o motivo da ociosidade...'}),
@@ -41,8 +43,15 @@ class ApontamentoForm(forms.ModelForm):
             self.fields['etapa'].queryset = Etapa.objects.filter(obra_id=obra_id)
         elif self.instance and self.instance.pk and self.instance.obra_id:
             self.fields['etapa'].queryset = Etapa.objects.filter(obra_id=self.instance.obra_id)
+        elif self.data and self.data.get('obra'):
+            # Form submitted with obra selected — filter etapas for validation
+            try:
+                self.fields['etapa'].queryset = Etapa.objects.filter(obra_id=int(self.data['obra']))
+            except (ValueError, TypeError):
+                self.fields['etapa'].queryset = Etapa.objects.none()
         else:
-            self.fields['etapa'].queryset = Etapa.objects.all()
+            # New form without obra selected — start empty, JS will populate
+            self.fields['etapa'].queryset = Etapa.objects.none()
         # Make etapa not required in form but encouraged
         self.fields['etapa'].required = False
         self.fields['valor_diaria'].required = False
@@ -83,13 +92,14 @@ class ApontamentoDiarioItemForm(forms.ModelForm):
     class Meta:
         model = ApontamentoFuncionario
         fields = [
-            'funcionario', 'etapa', 'horas_trabalhadas',
+            'funcionario', 'etapa', 'horas_trabalhadas', 'metragem_executada',
             'houve_ociosidade', 'observacao_ociosidade',
             'houve_retrabalho', 'motivo_retrabalho',
             'valor_diaria', 'observacoes'
         ]
         widgets = {
             'horas_trabalhadas': forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'step': '0.5', 'min': '0.5', 'max': '24'}),
+            'metragem_executada': forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'step': '0.01', 'min': '0', 'placeholder': 'm²'}),
             'valor_diaria': forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'step': '0.01'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control form-control-sm', 'rows': 1}),
             'observacao_ociosidade': forms.Textarea(attrs={'class': 'form-control form-control-sm', 'rows': 1}),
@@ -148,6 +158,27 @@ class FechamentoForm(forms.ModelForm):
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'funcionario': forms.Select(attrs={'class': 'form-select'}),
         }
+
+    def clean(self):
+        cleaned = super().clean()
+        funcionario = cleaned.get('funcionario')
+        data_inicio = cleaned.get('data_inicio')
+        if funcionario and data_inicio:
+            import datetime as dt
+            data_fim = data_inicio + dt.timedelta(days=5)
+            qs = FechamentoSemanal.objects.filter(
+                funcionario=funcionario,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+            )
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise ValidationError(
+                    f'Já existe fechamento para {funcionario.nome_completo} '
+                    f'na semana de {data_inicio.strftime("%d/%m/%Y")} a {data_fim.strftime("%d/%m/%Y")}.'
+                )
+        return cleaned
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
