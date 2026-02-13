@@ -11,7 +11,7 @@ class Funcionario(models.Model):
     nome_completo = models.CharField(max_length=200, verbose_name="Nome Completo")
     cpf = models.CharField(max_length=14, unique=True, verbose_name="CPF")
     rg = models.CharField(max_length=20, blank=True, null=True, verbose_name="RG")
-    data_nascimento = models.DateField(verbose_name="Data de Nascimento")
+    data_nascimento = models.DateField(blank=True, null=True, verbose_name="Data de Nascimento")
     
     # Contato
     telefone = models.CharField(max_length=20, verbose_name="Telefone")
@@ -52,7 +52,7 @@ class Funcionario(models.Model):
     
     # Status
     ativo = models.BooleanField(default=True, verbose_name="Ativo")
-    data_admissao = models.DateField(verbose_name="Data de Admissão")
+    data_admissao = models.DateField(blank=True, null=True, verbose_name="Data de Admissão")
     data_demissao = models.DateField(
         blank=True,
         null=True,

@@ -99,8 +99,8 @@
         {% if funcao_filter %}<input type="hidden" name="funcao" value="{{ funcao_filter }}">{% endif %}
         <div class="input-group input-group-sm">
           <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
-          <input type="text" name="q" value="{{ busca }}" class="form-control border-start-0"
-                 placeholder="Buscar por nome...">
+             <input type="text" name="q" value="{{ busca }}" class="form-control border-start-0"
+               placeholder="Buscar por nome ou CPF...">
           {% if busca %}
           <a href="?{% if funcao_filter %}funcao={{ funcao_filter }}{% endif %}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-x-lg"></i>

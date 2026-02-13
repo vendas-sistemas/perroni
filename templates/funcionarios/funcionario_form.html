@@ -243,9 +243,23 @@ function setInputMask(selector, fn) {
   const el = document.querySelector(selector);
   if (!el) return;
   el.addEventListener('input', function(){
-    const start = this.selectionStart;
-    this.value = fn(this.value);
-    try { this.selectionStart = this.selectionEnd = start; } catch(e){}
+    const raw = this.value;
+    const caret = this.selectionStart;
+    // count how many digits are before the caret
+    let digitsBefore = 0;
+    for (let i = 0; i < caret; i++) if (/\d/.test(raw[i])) digitsBefore++;
+    // apply mask
+    const newVal = fn(raw);
+    this.value = newVal;
+    // find caret position corresponding to same number of digits
+    let found = 0;
+    let newPos = 0;
+    for (let i = 0; i < newVal.length; i++) {
+      if (/\d/.test(newVal[i])) found++;
+      if (found >= digitsBefore) { newPos = i + 1; break; }
+    }
+    if (digitsBefore === 0) newPos = 0;
+    try { this.selectionStart = this.selectionEnd = newPos; } catch(e){}
   });
 }
 

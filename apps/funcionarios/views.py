@@ -16,7 +16,8 @@ from apps.obras.models import (
     Etapa4Acabamentos, Etapa5Finalizacao,
 )
 from django.db import IntegrityError
-from django.db.models import Sum, Count, Q, Avg, F
+from django.db.models import Sum, Count, Q, Avg, F, Value
+from django.db.models.functions import Replace
 import datetime
 from decimal import Decimal, InvalidOperation
 from collections import defaultdict
@@ -186,10 +187,24 @@ def funcionario_list(request):
     if funcao_filter in ('pedreiro', 'servente'):
         funcionarios = funcionarios.filter(funcao=funcao_filter)
 
-    # Busca por nome
+    # Busca por nome ou CPF (ignora pontos/traços na comparação)
     busca = request.GET.get('q', '').strip()
     if busca:
-        funcionarios = funcionarios.filter(nome_completo__icontains=busca)
+        import re
+        digits = re.sub(r'\D', '', busca)
+        if digits:
+            # remove '.' '-' and spaces from cpf field for comparison
+            funcionarios = funcionarios.annotate(
+                cpf_digits=Replace(
+                    Replace(
+                        Replace(F('cpf'), Value('.'), Value('')),
+                        Value('-'), Value('')
+                    ),
+                    Value(' '), Value('')
+                )
+            ).filter(Q(nome_completo__icontains=busca) | Q(cpf_digits__icontains=digits))
+        else:
+            funcionarios = funcionarios.filter(nome_completo__icontains=busca)
 
     # Contadores
     total_ativos = Funcionario.objects.filter(ativo=True).count()

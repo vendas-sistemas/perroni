@@ -297,6 +297,53 @@
       body.theme-dark.variant-blue .dashboard-summary .card { background-color: rgba(10,40,60,.065); border-color: rgba(120,180,255,.06); }
       body.theme-dark.variant-blue .dashboard-summary .card .h5 { color: #9fd6ff; }
       body.theme-dark.variant-blue .badge { box-shadow: 0 0 10px rgba(124,192,255,.06); }
+
+      /* Mobile fixes: avoid native select/arrow overlapping text */
+      @media (max-width: 575.98px) {
+        .form-control, input.form-control, select.form-control, .input-group .form-control {
+          padding-right: 2.6rem !important;
+        }
+        select.form-control {
+          -webkit-appearance: menulist-button;
+          appearance: menulist-button;
+        }
+        /* make offcanvas nav items wrap instead of overlapping */
+        .offcanvas-nav .nav-link { white-space: normal; }
+        /* style collapsed menus as expandable items inside offcanvas */
+        .offcanvas-nav .collapse {
+          background: rgba(255,255,255,0.04);
+          border-radius: .4rem;
+          margin: .2rem 0;
+          overflow: hidden;
+          transition: all .2s ease;
+        }
+        .offcanvas-nav .collapse.show {
+          background: rgba(255,255,255,0.08);
+        }
+        .offcanvas-nav .collapse .dropdown-item {
+          border-radius: 0;
+          padding-left: 1.5rem;
+        }
+        .offcanvas-nav [data-bs-toggle="collapse"] {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .offcanvas-nav [data-bs-toggle="collapse"]::after {
+          content: '';
+          display: inline-block;
+          width: 0.5rem;
+          height: 0.5rem;
+          border-right: 2px solid rgba(255,255,255,.6);
+          border-bottom: 2px solid rgba(255,255,255,.6);
+          transform: rotate(-45deg);
+          margin-left: auto;
+          transition: transform .2s;
+        }
+        .offcanvas-nav [data-bs-toggle="collapse"][aria-expanded="true"]::after {
+          transform: rotate(45deg);
+        }
+      }
     </style>
   </head>
   <body class="bg-light" {% if user.is_authenticated %}data-server-theme="{{ request.user.profile.theme_preference }}" data-server-variant="{{ request.user.profile.theme_variant }}"{% endif %}>
@@ -706,5 +753,33 @@
       })();
     </script>
     {% block extra_js %}{% endblock %}
+    <script>
+    // Convert offcanvas dropdowns to collapses on mobile for better UX
+    document.addEventListener('DOMContentLoaded', function(){
+      if(window.innerWidth >= 992) return; // only for mobile
+      var offcanvas = document.querySelector('.offcanvas-nav');
+      if(!offcanvas) return;
+      var collapseId = 0;
+      offcanvas.querySelectorAll('.dropdown').forEach(function(dd){
+        var toggle = dd.querySelector('[data-bs-toggle="dropdown"]');
+        var menu = dd.querySelector('.dropdown-menu');
+        if(!toggle || !menu) return;
+        collapseId++;
+        var id = 'offcanvasCollapse' + collapseId;
+        menu.id = id;
+        // change toggle from dropdown to collapse
+        toggle.removeAttribute('data-bs-toggle');
+        toggle.setAttribute('data-bs-toggle', 'collapse');
+        toggle.setAttribute('data-bs-target', '#' + id);
+        toggle.setAttribute('role', 'button');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-controls', id);
+        // make menu collapsible
+        menu.classList.remove('dropdown-menu');
+        menu.classList.add('collapse');
+        menu.style.padding = '.25rem 0';
+      });
+    });
+    </script>
   </body>
 </html>
