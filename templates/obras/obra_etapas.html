@@ -82,6 +82,39 @@
     </div>
   </div>
 </div>
+
+<!-- Datas da Obra -->
+<div class="card border-0 shadow-sm mb-4" style="border-radius:.75rem;">
+  <div class="card-body py-3 px-3">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-calendar-event text-success fs-5"></i>
+          <div>
+            <div class="text-muted small">Início da Obra</div>
+            <div class="fw-bold">{{ obra.data_inicio|date:"d/m/Y" }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-calendar-check text-primary fs-5"></i>
+          <div>
+            <div class="text-muted small">Previsão de Término</div>
+            <div class="fw-bold">
+              {% if obra.data_previsao_termino %}
+                {{ obra.data_previsao_termino|date:"d/m/Y" }}
+                <span class="badge bg-info badge-sm ms-2">Total: {% widthratio obra.data_previsao_termino obra.data_inicio 1 %} dias</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endwith %}
 {% endwith %}
 

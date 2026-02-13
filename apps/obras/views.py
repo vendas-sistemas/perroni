@@ -6,6 +6,7 @@ from django.http import HttpResponse
 import csv
 from decimal import Decimal
 from .forms import ObraForm
+from .models import distribuir_datas_etapas
 from .forms import (
     EtapaForm, Etapa1FundacaoForm, Etapa2EstruturaForm,
     Etapa3InstalacoesForm, Etapa4AcabamentosForm, Etapa5FinalizacaoForm
@@ -144,13 +145,18 @@ def obra_create(request):
         if form.is_valid():
             obra = form.save()
             # Criar 5 etapas básicas se não existirem
-            for num, _label in Etapa.ETAPA_CHOICES:
-                Etapa.objects.create(
-                    obra=obra,
-                    numero_etapa=num,
-                    percentual_valor=Etapa.PERCENTUAIS_ETAPA.get(num)
-                )
-            messages.success(request, 'Obra criada com sucesso.')
+            try:
+                for num, _label in Etapa.ETAPA_CHOICES:
+                    # Verifica se etapa já existe
+                    if not Etapa.objects.filter(obra=obra, numero_etapa=num).exists():
+                        Etapa.objects.create(
+                            obra=obra,
+                            numero_etapa=num,
+                            percentual_valor=Etapa.PERCENTUAIS_ETAPA.get(num)
+                        )
+                messages.success(request, 'Obra criada com sucesso. Etapas carregadas automaticamente.')
+            except Exception as e:
+                messages.warning(request, f'Obra criada, mas houve erro ao criar etapas: {str(e)}')
             return redirect('obras:obra_detail', pk=obra.pk)
         else:
             messages.error(request, 'Corrija os erros no formulário.')
@@ -166,8 +172,23 @@ def obra_update(request, pk):
     if request.method == 'POST':
         form = ObraForm(request.POST, instance=obra)
         if form.is_valid():
+            # Verifica se as datas foram alteradas
+            datas_alteradas = (
+                form.cleaned_data.get('data_inicio') != obra.data_inicio or
+                form.cleaned_data.get('data_previsao_termino') != obra.data_previsao_termino
+            )
+            
             form.save()
-            messages.success(request, 'Obra atualizada com sucesso.')
+            
+            # Se as datas foram alteradas, redistribui para as etapas
+            if datas_alteradas:
+                try:
+                    distribuir_datas_etapas(obra)
+                    messages.success(request, 'Obra atualizada com sucesso. Datas das etapas recalculadas.')
+                except Exception as e:
+                    messages.warning(request, f'Obra atualizada, mas houve erro ao recalcular datas: {str(e)}')
+            else:
+                messages.success(request, 'Obra atualizada com sucesso.')
             return redirect('obras:obra_detail', pk=obra.pk)
         else:
             messages.error(request, 'Corrija os erros no formulário.')

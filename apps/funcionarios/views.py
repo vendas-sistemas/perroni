@@ -487,10 +487,10 @@ def apontamento_list(request):
 
 
 @login_required
-def apontamento_create(request):
+def apontamento_create(request, funcionario_id=None):
     """Cria apontamento individual"""
     if request.method == 'POST':
-        form = ApontamentoForm(request.POST)
+        form = ApontamentoForm(request.POST, funcionario_id=funcionario_id)
         if form.is_valid():
             ap = form.save(commit=False)
             if not ap.valor_diaria:
@@ -531,7 +531,7 @@ def apontamento_create(request):
         else:
             messages.error(request, 'Corrija os erros no formulário.')
     else:
-        form = ApontamentoForm()
+        form = ApontamentoForm(funcionario_id=funcionario_id)
     return render(request, 'funcionarios/apontamento_form.html', {'form': form, 'title': 'Novo Apontamento'})
 
 

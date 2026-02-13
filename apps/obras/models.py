@@ -1,6 +1,9 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from decimal import Decimal
+from datetime import timedelta
 
 
 class Obra(models.Model):
@@ -476,3 +479,69 @@ class Etapa5Finalizacao(models.Model):
     
     def __str__(self):
         return f"Finalização - {self.etapa.obra.nome}"
+
+
+# ==================== SIGNALS ====================
+
+def distribuir_datas_etapas(obra):
+    """Distribui as datas da obra entre as 5 etapas de forma proporcional"""
+    if not obra.data_inicio or not obra.data_previsao_termino:
+        return
+    
+    # Calcula total de dias
+    total_dias = (obra.data_previsao_termino - obra.data_inicio).days
+    if total_dias <= 0:
+        return
+    
+    # Definir durações de cada etapa (deve somar 100%)
+    # Os percentuais são acumulativos, então vamos calcular dias para cada etapa
+    duracao_proporcoes = {
+        1: 0.30,  # Etapa 1: 30% do tempo
+        2: 0.25,  # Etapa 2: 25% do tempo
+        3: 0.25,  # Etapa 3: 25% do tempo
+        4: 0.12,  # Etapa 4: 12% do tempo
+        5: 0.08,  # Etapa 5: 8% do tempo
+    }
+    
+    data_atual = obra.data_inicio
+    etapas = Etapa.objects.filter(obra=obra).order_by('numero_etapa')
+    
+    for etapa in etapas:
+        # Calcula duração dessa etapa
+        dias_etapa = int(total_dias * duracao_proporcoes.get(etapa.numero_etapa, 0.20))
+        
+        # Define data de início
+        etapa.data_inicio = data_atual
+        
+        # Define data de término
+        etapa.data_termino = data_atual + timedelta(days=dias_etapa)
+        
+        # Salva sem disparar signals novamente
+        etapa.save(update_fields=['data_inicio', 'data_termino'])
+        
+        # Próxima etapa começa quando a anterior termina
+        data_atual = etapa.data_termino + timedelta(days=1)
+
+
+@receiver(post_save, sender=Obra)
+def criar_etapas_automaticamente(sender, instance, created, **kwargs):
+    """Signal para criar automaticamente as 5 etapas quando uma obra é criada"""
+    if created:
+        for num, _label in Etapa.ETAPA_CHOICES:
+            # Verifica se etapa já existe (por segurança)
+            if not Etapa.objects.filter(obra=instance, numero_etapa=num).exists():
+                try:
+                    Etapa.objects.create(
+                        obra=instance,
+                        numero_etapa=num,
+                        percentual_valor=Etapa.PERCENTUAIS_ETAPA.get(num)
+                    )
+                except Exception as e:
+                    # Log silencioso para não quebrar o fluxo
+                    print(f"Erro ao criar etapa {num} para obra {instance.pk}: {str(e)}")
+        
+        # Depois de criar as etapas, distribui as datas
+        try:
+            distribuir_datas_etapas(instance)
+        except Exception as e:
+            print(f"Erro ao distribuir datas para obra {instance.pk}: {str(e)}")

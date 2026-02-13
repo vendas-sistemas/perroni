@@ -36,10 +36,15 @@ class ApontamentoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         obra_id = kwargs.pop('obra_id', None)
+        funcionario_id = kwargs.pop('funcionario_id', None)
         super().__init__(*args, **kwargs)
         # default date to today
         if not self.instance.pk and not self.initial.get('data'):
             self.fields['data'].initial = datetime.date.today()
+        # Pre-fill funcionario if provided
+        if funcionario_id:
+            self.fields['funcionario'].initial = funcionario_id
+            self.fields['funcionario'].disabled = True  # Make it read-only
         # Filter etapas by obra if provided
         if obra_id:
             self.fields['etapa'].queryset = Etapa.objects.filter(obra_id=obra_id)

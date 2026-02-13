@@ -48,8 +48,12 @@ class Etapa3InstalacoesForm(forms.ModelForm):
         model = Etapa3Instalacoes
         exclude = ('etapa',)
         widgets = {
-            'reboco_externo_m2': forms.NumberInput(attrs={'class': 'form-control'}),
-            'reboco_interno_m2': forms.NumberInput(attrs={'class': 'form-control'}),
+            'reboco_externo_m2': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'reboco_interno_m2': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'instalacao_portais': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'agua_fria': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'esgoto': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'fluvial': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 
