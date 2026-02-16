@@ -7,13 +7,13 @@ from .forms import (
 )
 from django.contrib import messages
 from django.utils import timezone
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseForbidden
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from urllib.parse import urlencode
 from apps.obras.models import (
     Obra, Etapa,
     Etapa1Fundacao, Etapa2Estrutura, Etapa3Instalacoes,
-    Etapa4Acabamentos, Etapa5Finalizacao,
+    Etapa4Acabamentos, Etapa5Finalizacao, EtapaHistorico,
 )
 from django.db import IntegrityError
 from django.db.models import Sum, Count, Q, Avg, F, Value
@@ -22,6 +22,9 @@ import datetime
 from decimal import Decimal, InvalidOperation
 from collections import defaultdict
 import calendar
+from apps.obras.templatetags.obras_extras import brl
+from django.db import transaction
+from django.views.decorators.http import require_GET
 
 
 # ==================== ETAPA ITEMS HELPERS ====================
@@ -34,21 +37,18 @@ ETAPA_FIELDS_META = {
         'fields': [
             ('limpeza_terreno', 'boolean', 'Limpeza do Terreno'),
             ('instalacao_energia_agua', 'boolean', 'Instalação de Energia e Água'),
-            ('marcacao_escavacao_dias', 'integer', 'Marcação e Escavação (dias)'),
-            ('locacao_ferragem_dias', 'integer', 'Locação de Ferragem (dias)'),
-            ('alicerce_percentual', 'decimal', 'Alicerce, Reboco e Impermeabilização (%)'),
-            ('aterro_contrapiso_dias', 'integer', 'Aterro e Contrapiso (dias)'),
-            ('parede_7fiadas_blocos', 'integer', 'Parede 7 Fiadas (blocos)'),
-            ('fiadas_respaldo_dias', 'integer', '8 Fiadas até Respaldo (dias)'),
+            ('marcacao_escavacao_conclusao', 'date', 'Marcação e Escavação (conclusão)'),
+            ('locacao_ferragem_conclusao', 'date', 'Locação de Ferragem (conclusão)'),
+            ('aterro_contrapiso_conclusao', 'date', 'Aterro e Contrapiso (conclusão)'),
+            ('fiadas_respaldo_conclusao', 'date', '8 Fiadas até Respaldo (conclusão)'),
         ]
     },
     2: {
         'related_name': 'estrutura',
         'model_class': Etapa2Estrutura,
         'fields': [
-            ('montagem_laje_dias', 'integer', 'Montagem da Laje (dias)'),
-            ('platibanda_blocos', 'integer', 'Platibanda (blocos)'),
-            ('cobertura_dias', 'integer', 'Cobertura Completa (dias)'),
+            ('montagem_laje_conclusao', 'date', 'Montagem da Laje (conclusão)'),
+            ('cobertura_conclusao', 'date', 'Cobertura Completa (conclusão)'),
         ]
     },
     3: {
@@ -68,17 +68,17 @@ ETAPA_FIELDS_META = {
         'model_class': Etapa4Acabamentos,
         'fields': [
             ('portas_janelas', 'boolean', 'Portas e Janelas'),
-            ('pintura_externa_1demao_dias', 'integer', 'Pintura Externa 1ª Demão (dias)'),
-            ('pintura_interna_1demao_dias', 'integer', 'Pintura Interna 1ª Demão (dias)'),
-            ('assentamento_piso_dias', 'integer', 'Assentamento de Piso (dias)'),
+            ('pintura_externa_1demao_conclusao', 'date', 'Pintura Externa 1ª Demão (conclusão)'),
+            ('pintura_interna_1demao_conclusao', 'date', 'Pintura Interna 1ª Demão (conclusão)'),
+            ('assentamento_piso_conclusao', 'date', 'Assentamento de Piso (conclusão)'),
         ]
     },
     5: {
         'related_name': 'finalizacao',
         'model_class': Etapa5Finalizacao,
         'fields': [
-            ('pintura_externa_2demao_dias', 'integer', 'Pintura Externa 2ª Demão (dias)'),
-            ('pintura_interna_2demao_dias', 'integer', 'Pintura Interna 2ª Demão (dias)'),
+            ('pintura_externa_2demao_conclusao', 'date', 'Pintura Externa 2ª Demão (conclusão)'),
+            ('pintura_interna_2demao_conclusao', 'date', 'Pintura Interna 2ª Demão (conclusão)'),
             ('loucas_metais', 'boolean', 'Louças e Metais'),
             ('eletrica', 'boolean', 'Elétrica'),
         ]
@@ -114,6 +114,12 @@ def _get_etapa_items(etapa):
             current_value = getattr(detail_obj, field_name, None)
         if current_value is None:
             current_value = False if field_type == 'boolean' else 0
+        # Normalize date to ISO string for the UI
+        if field_type == 'date' and current_value:
+            try:
+                current_value = current_value.isoformat()
+            except Exception:
+                current_value = ''
         items.append({
             'name': field_name,
             'type': field_type,
@@ -126,18 +132,21 @@ def _get_etapa_items(etapa):
 def _update_etapa_items_from_post(etapa, post_data):
     """Update etapa detail model fields from POST data (ADDITIVE logic) and recalculate obra progress.
 
+    Returns a list of change description strings (empty list if nothing changed).
+
     - boolean fields: OR logic (once marked True, stays True)
     - integer/decimal fields: posted value is ADDED to the current value
     """
     meta = ETAPA_FIELDS_META.get(etapa.numero_etapa)
     if not meta:
-        return
+        return []
     detail_obj = _get_etapa_detail_obj(etapa, create=True)
     if not detail_obj:
-        return
+        return []
 
     changed = False
-    for field_name, field_type, _ in meta['fields']:
+    alteracoes = []  # list of "Label: antes → depois" strings
+    for field_name, field_type, label in meta['fields']:
         key = f'item_{field_name}'
         if field_type == 'boolean':
             # Hidden "0" + checkbox "1" pattern — OR logic
@@ -148,6 +157,7 @@ def _update_etapa_items_from_post(etapa, post_data):
             if current_val != final_val:
                 setattr(detail_obj, field_name, final_val)
                 changed = True
+                alteracoes.append(f"{label}: {'Sim' if current_val else 'Não'} → {'Sim' if final_val else 'Não'}")
         elif field_type == 'integer':
             raw = post_data.get(key, '')
             if raw != '':
@@ -155,8 +165,10 @@ def _update_etapa_items_from_post(etapa, post_data):
                     increment = int(raw)
                     if increment != 0:
                         current_val = getattr(detail_obj, field_name, 0) or 0
-                        setattr(detail_obj, field_name, current_val + increment)
+                        novo_val = current_val + increment
+                        setattr(detail_obj, field_name, novo_val)
                         changed = True
+                        alteracoes.append(f"{label}: {current_val} → {novo_val} (+{increment})")
                 except (ValueError, TypeError):
                     pass
         elif field_type == 'decimal':
@@ -166,15 +178,76 @@ def _update_etapa_items_from_post(etapa, post_data):
                     increment = Decimal(raw)
                     if increment != Decimal('0'):
                         current_val = getattr(detail_obj, field_name, Decimal('0')) or Decimal('0')
-                        setattr(detail_obj, field_name, current_val + increment)
+                        novo_val = current_val + increment
+                        setattr(detail_obj, field_name, novo_val)
                         changed = True
+                        alteracoes.append(f"{label}: {current_val} → {novo_val} (+{increment})")
                 except (ValueError, TypeError, InvalidOperation):
+                    pass
+        elif field_type == 'date':
+            raw = post_data.get(key, '')
+            if raw:
+                try:
+                    new_date = datetime.date.fromisoformat(raw)
+                    current_val = getattr(detail_obj, field_name, None)
+                    if current_val != new_date:
+                        setattr(detail_obj, field_name, new_date)
+                        changed = True
+                        antes = current_val.strftime('%d/%m/%Y') if current_val else '—'
+                        alteracoes.append(f"{label}: {antes} → {new_date.strftime('%d/%m/%Y')}")
+                except ValueError:
                     pass
 
     if changed:
         detail_obj.save()
         # Recalculate obra overall progress
         etapa.obra.calcular_percentual()
+
+    return alteracoes
+
+
+def _registrar_historico_apontamento(etapa, apontamento, request, is_update=False, etapa_items_changes=None):
+    """Registra no histórico da etapa todas as informações do apontamento."""
+    ap = apontamento
+    obra = ap.obra
+    func = ap.funcionario
+
+    acao = 'Atualizado' if is_update else 'Criado'
+
+    linhas = [
+        f"Funcionário: {func.nome_completo} ({func.get_funcao_display()})",
+        f"Obra: {obra.nome}",
+        f"Endereço: {obra.endereco}",
+    ]
+    if obra.cliente:
+        linhas.append(f"Cliente: {obra.cliente.nome}")
+    linhas.append(f"Data: {ap.data.strftime('%d/%m/%Y')}")
+    linhas.append(f"Horas Trabalhadas: {ap.horas_trabalhadas}h")
+    linhas.append(f"Clima: {ap.get_clima_display()}")
+    if ap.metragem_executada and ap.metragem_executada > 0:
+        linhas.append(f"Metragem Executada: {ap.metragem_executada} m²")
+    linhas.append(f"Valor Diária: R$ {ap.valor_diaria}")
+    if ap.houve_ociosidade:
+        linhas.append(f"⚠️ Ociosidade: {ap.observacao_ociosidade or 'Sem justificativa'}")
+    if ap.houve_retrabalho:
+        linhas.append(f"⚠️ Retrabalho: {ap.motivo_retrabalho or 'Sem motivo informado'}")
+    if ap.observacoes:
+        linhas.append(f"Observações: {ap.observacoes}")
+
+    # Append etapa items changes if any
+    if etapa_items_changes:
+        linhas.append("")
+        linhas.append("── Itens da Etapa ──")
+        linhas.extend(etapa_items_changes)
+
+    usuario = request.user if request.user and request.user.is_authenticated else None
+
+    EtapaHistorico.objects.create(
+        etapa=etapa,
+        usuario=usuario,
+        origem=f'Apontamento {acao}',
+        descricao='\n'.join(linhas)
+    )
 
 
 @login_required
@@ -425,6 +498,8 @@ def apontamento_list(request):
 
     # Filters from GET
     data = request.GET.get('data')
+    data_inicio_str = request.GET.get('data_inicio')
+    data_fim_str = request.GET.get('data_fim')
     funcionario_id = request.GET.get('funcionario')
     obra_id = request.GET.get('obra')
     etapa_id = request.GET.get('etapa')
@@ -432,7 +507,21 @@ def apontamento_list(request):
     ociosidade = request.GET.get('ociosidade')
     retrabalho = request.GET.get('retrabalho')
 
-    if data:
+    # Period filter: try data_inicio/data_fim first, then fallback to single data
+    if data_inicio_str or data_fim_str:
+        try:
+            data_inicio = datetime.date.fromisoformat(data_inicio_str) if data_inicio_str else None
+            data_fim = datetime.date.fromisoformat(data_fim_str) if data_fim_str else None
+        except ValueError:
+            data_inicio = data_fim = None
+
+        if data_inicio and data_fim:
+            qs = qs.filter(data__gte=data_inicio, data__lte=data_fim)
+        elif data_inicio:
+            qs = qs.filter(data__gte=data_inicio)
+        elif data_fim:
+            qs = qs.filter(data__lte=data_fim)
+    elif data:
         qs = qs.filter(data=data)
     if funcionario_id:
         qs = qs.filter(funcionario_id=funcionario_id)
@@ -480,7 +569,10 @@ def apontamento_list(request):
         'querystring': querystring,
         'totais': totais,
         'funcionarios': Funcionario.objects.filter(ativo=True).order_by('nome_completo'),
-        'obras': Obra.objects.filter(ativo=True).order_by('nome'),
+        'obras': Obra.objects.filter(
+            ativo=True,
+            status__in=['planejamento', 'em_andamento']
+        ).order_by('nome'),
         'title': 'Apontamentos'
     }
     return render(request, 'funcionarios/apontamento_list.html', context)
@@ -493,18 +585,18 @@ def apontamento_create(request, funcionario_id=None):
         form = ApontamentoForm(request.POST, funcionario_id=funcionario_id)
         if form.is_valid():
             ap = form.save(commit=False)
-            if not ap.valor_diaria:
-                ap.valor_diaria = ap.funcionario.valor_diaria
+            ap.valor_diaria = ap.funcionario.valor_diaria
             # Update existing entry instead of creating duplicate for same (funcionario, data, obra)
             existing = ApontamentoFuncionario.objects.filter(
                 funcionario=ap.funcionario, data=ap.data, obra=ap.obra
             ).first()
+            is_update = False
             if existing:
                 existing.etapa = ap.etapa
                 existing.horas_trabalhadas = ap.horas_trabalhadas
                 existing.clima = ap.clima
                 existing.metragem_executada = ap.metragem_executada
-                existing.valor_diaria = ap.valor_diaria
+                existing.valor_diaria = ap.funcionario.valor_diaria
                 existing.houve_ociosidade = ap.houve_ociosidade
                 existing.observacao_ociosidade = ap.observacao_ociosidade
                 existing.houve_retrabalho = ap.houve_retrabalho
@@ -512,14 +604,21 @@ def apontamento_create(request, funcionario_id=None):
                 existing.observacoes = ap.observacoes
                 existing.save()
                 ap = existing
+                is_update = True
                 messages.info(request, f'Apontamento de {ap.funcionario.nome_completo} atualizado (já existia registro nesta data/obra).')
             else:
                 ap.save()
 
             # ---- Auto-update obra: save etapa items from POST ----
+            etapa_items_changes = []
             if ap.etapa and request.POST.get('items_etapa_id'):
-                _update_etapa_items_from_post(ap.etapa, request.POST)
-                messages.info(request, f'📊 Progresso da etapa "{ap.etapa}" atualizado automaticamente.')
+                etapa_items_changes = _update_etapa_items_from_post(ap.etapa, request.POST)
+                if etapa_items_changes:
+                    messages.info(request, f'📊 Progresso da etapa "{ap.etapa}" atualizado automaticamente.')
+
+            # ---- Registrar histórico no EtapaHistorico ----
+            if ap.etapa:
+                _registrar_historico_apontamento(ap.etapa, ap, request, is_update=is_update, etapa_items_changes=etapa_items_changes)
 
             # Notificação de retrabalho/ociosidade
             if ap.houve_retrabalho:
@@ -558,14 +657,21 @@ def apontamento_diario(request):
 
     if obra_id and data_str:
         try:
-            obra = Obra.objects.get(pk=obra_id)
+            obra = Obra.objects.get(
+                pk=obra_id,
+                ativo=True,
+                status__in=['planejamento', 'em_andamento']
+            )
             data = datetime.date.fromisoformat(data_str)
             clima = clima_sel or 'sol'
         except (Obra.DoesNotExist, ValueError):
             pass
 
     if obra and data:
-        etapas = Etapa.objects.filter(obra=obra)
+        etapas = Etapa.objects.filter(
+            obra=obra,
+            status='em_andamento',
+        ).order_by('numero_etapa')
         apontamentos_existentes = ApontamentoFuncionario.objects.filter(
             obra=obra, data=data
         ).select_related('funcionario', 'etapa')
@@ -573,20 +679,13 @@ def apontamento_diario(request):
         # IDs já apontados nesta obra/data
         apontados_ids = set(apontamentos_existentes.values_list('funcionario_id', flat=True))
 
-        # Funcionários apontados em OUTRA obra nesta data (não podem ser selecionados)
-        bloqueados_ids = set(
-            ApontamentoFuncionario.objects.filter(data=data)
-            .exclude(obra=obra)
-            .values_list('funcionario_id', flat=True)
-        )
-
         # Lista de funcionários ativos disponíveis para apontar
         todos_funcionarios = Funcionario.objects.filter(ativo=True).order_by('nome_completo')
         for f in todos_funcionarios:
             funcionarios_disponiveis.append({
                 'obj': f,
                 'ja_apontado': f.pk in apontados_ids,
-                'bloqueado': f.pk in bloqueados_ids,
+                'bloqueado': False,
             })
 
         # Set initial values for cab_form
@@ -608,11 +707,6 @@ def apontamento_diario(request):
                     erros += 1
                     continue
 
-                # Se está bloqueado em outra obra, pula
-                if func.pk in bloqueados_ids:
-                    erros += 1
-                    continue
-
                 # Pega dados da linha
                 horas = request.POST.get(f'horas_{func_id}', '8.0')
                 etapa_id = request.POST.get(f'etapa_{func_id}', '')
@@ -627,7 +721,11 @@ def apontamento_diario(request):
                 etapa_obj = None
                 if etapa_id:
                     try:
-                        etapa_obj = Etapa.objects.get(pk=etapa_id, obra=obra)
+                        etapa_obj = Etapa.objects.get(
+                            pk=etapa_id,
+                            obra=obra,
+                            status='em_andamento',
+                        )
                     except Etapa.DoesNotExist:
                         pass
 
@@ -640,12 +738,14 @@ def apontamento_diario(request):
                     existing.etapa = etapa_obj
                     existing.horas_trabalhadas = horas_dec
                     existing.clima = clima
-                    if not existing.valor_diaria:
-                        existing.valor_diaria = func.valor_diaria
+                    existing.valor_diaria = func.valor_diaria
                     existing.save()
                     atualizados += 1
+                    # Registrar histórico para atualização via registro diário
+                    if etapa_obj:
+                        _registrar_historico_apontamento(etapa_obj, existing, request, is_update=True)
                 else:
-                    ApontamentoFuncionario.objects.create(
+                    ap_novo = ApontamentoFuncionario.objects.create(
                         funcionario=func,
                         obra=obra,
                         etapa=etapa_obj,
@@ -655,6 +755,9 @@ def apontamento_diario(request):
                         valor_diaria=func.valor_diaria,
                     )
                     criados += 1
+                    # Registrar histórico para criação via registro diário
+                    if etapa_obj:
+                        _registrar_historico_apontamento(etapa_obj, ap_novo, request, is_update=False)
 
             if criados or atualizados:
                 msg_parts = []
@@ -688,6 +791,32 @@ def apontamento_delete(request, pk):
     obra_id = ap.obra_id
     data = ap.data
     if request.method == 'POST':
+        # Registrar exclusão no histórico da etapa antes de deletar
+        if ap.etapa:
+            func = ap.funcionario
+            obra = ap.obra
+            linhas = [
+                f"Funcionário: {func.nome_completo} ({func.get_funcao_display()})",
+                f"Obra: {obra.nome}",
+                f"Endereço: {obra.endereco}",
+            ]
+            if obra.cliente:
+                linhas.append(f"Cliente: {obra.cliente.nome}")
+            linhas.append(f"Data: {ap.data.strftime('%d/%m/%Y')}")
+            linhas.append(f"Horas Trabalhadas: {ap.horas_trabalhadas}h")
+            linhas.append(f"Clima: {ap.get_clima_display()}")
+            if ap.metragem_executada and ap.metragem_executada > 0:
+                linhas.append(f"Metragem Executada: {ap.metragem_executada} m²")
+            linhas.append(f"Valor Diária: R$ {ap.valor_diaria}")
+
+            usuario = request.user if request.user and request.user.is_authenticated else None
+            EtapaHistorico.objects.create(
+                etapa=ap.etapa,
+                usuario=usuario,
+                origem='Apontamento Excluído',
+                descricao='\n'.join(linhas)
+            )
+
         ap.delete()
         messages.success(request, 'Apontamento removido.')
         # Redirect back to diario if referer suggests it
@@ -886,6 +1015,37 @@ def fechamento_semana_detail(request, data_inicio):
 
 
 @login_required
+def fechamento_semana_pagar(request, data_inicio):
+    """Marca todos os fechamentos da semana como pagos (POST).
+
+    Apenas usuários com permissão de alteração ou staff podem executar.
+    """
+    if request.method != 'POST':
+        return redirect('funcionarios:fechamento_semana_detail', data_inicio=data_inicio)
+
+    if not (request.user.is_staff or request.user.has_perm('funcionarios.change_fechamentosemanal')):
+        return HttpResponseForbidden('Permissão negada')
+
+    try:
+        dt_inicio = datetime.date.fromisoformat(data_inicio)
+    except ValueError:
+        messages.error(request, 'Data inválida.')
+        return redirect('funcionarios:fechamento_list')
+
+    fechamentos_qs = FechamentoSemanal.objects.filter(data_inicio=dt_inicio)
+    if not fechamentos_qs.exists():
+        messages.warning(request, 'Nenhum fechamento encontrado para esta semana.')
+        return redirect('funcionarios:fechamento_semana_detail', data_inicio=data_inicio)
+
+    hoje = timezone.now().date()
+    with transaction.atomic():
+        updated = fechamentos_qs.exclude(status='pago').update(status='pago', data_pagamento=hoje)
+
+    messages.success(request, f'{updated} fechamento(s) marcado(s) como pago.')
+    return redirect('funcionarios:fechamento_semana_detail', data_inicio=data_inicio)
+
+
+@login_required
 def fechamento_create(request):
     """Cria um fechamento com período flexível e calcula os totais"""
     if request.method == 'POST':
@@ -930,6 +1090,103 @@ def fechamento_detail(request, pk):
         'title': f'Fechamento - {fechamento.funcionario.nome_completo}'
     }
     return render(request, 'funcionarios/fechamento_detail.html', context)
+
+
+@login_required
+def fechamento_delete(request, pk):
+    """Deleta um fechamento semanal com confirmação"""
+    fechamento = get_object_or_404(FechamentoSemanal, pk=pk)
+    
+    if request.method == 'POST':
+        # Validar se o fechamento já foi pago (proteção)
+        if fechamento.status == 'pago':
+            messages.error(request, 'Não é possível excluir um fechamento que já foi pago.')
+            return redirect('funcionarios:fechamento_detail', pk=pk)
+        
+        data_inicio = fechamento.data_inicio
+        nome_funcionario = fechamento.funcionario.nome_completo
+        
+        try:
+            fechamento.delete()
+            messages.success(
+                request,
+                f'Fechamento de {nome_funcionario} ({data_inicio.strftime("%d/%m/%Y")}) foi excluído com sucesso.'
+            )
+            return redirect('funcionarios:fechamento_semana_detail', data_inicio=data_inicio.isoformat())
+        except Exception as e:
+            messages.error(request, f'Erro ao excluir fechamento: {str(e)}')
+            return redirect('funcionarios:fechamento_detail', pk=pk)
+    
+    # GET - mostrar página de confirmação
+    context = {
+        'fechamento': fechamento,
+        'title': 'Confirmar Exclusão'
+    }
+    return render(request, 'funcionarios/fechamento_delete_confirm.html', context)
+
+
+@login_required
+def fechamento_semana_delete(request, data_inicio):
+    """Deleta todos os fechamentos de uma semana com confirmação"""
+    try:
+        dt_inicio = datetime.date.fromisoformat(data_inicio)
+    except ValueError:
+        messages.error(request, 'Data inválida.')
+        return redirect('funcionarios:fechamento_list')
+    
+    # Buscar todos os fechamentos daquela semana
+    fechamentos = FechamentoSemanal.objects.filter(data_inicio=dt_inicio).select_related('funcionario')
+    
+    if not fechamentos.exists():
+        messages.warning(request, 'Nenhum fechamento encontrado para esta semana.')
+        return redirect('funcionarios:fechamento_list')
+    
+    if request.method == 'POST':
+        # Verificar se há fechamentos pagos (proteção)
+        fechamentos_pagos = fechamentos.filter(status='pago')
+        
+        if fechamentos_pagos.exists():
+            qtd_pagos = fechamentos_pagos.count()
+            nomes_pagos = ', '.join([f.funcionario.nome_completo for f in fechamentos_pagos])
+            messages.error(
+                request,
+                f'Não é possível excluir esta semana. {qtd_pagos} fechamento(s) já foi/foram pago(s): {nomes_pagos}'
+            )
+            return redirect('funcionarios:fechamento_semana_detail', data_inicio=data_inicio)
+        
+        qtd_deletados = fechamentos.count()
+        total_valor = fechamentos.aggregate(Sum('total_valor'))['total_valor__sum'] or Decimal('0.00')
+        
+        try:
+            fechamentos.delete()
+            total_valor_str = brl(total_valor)
+            messages.success(
+                request,
+                f'✅ Semana de {dt_inicio.strftime("%d/%m/%Y")} excluída com sucesso! '
+                f'{qtd_deletados} fechamento(s) deletado(s) ({total_valor_str}).'
+            )
+            return redirect('funcionarios:fechamento_list')
+        except Exception as e:
+            messages.error(request, f'Erro ao excluir semana: {str(e)}')
+            return redirect('funcionarios:fechamento_semana_detail', data_inicio=data_inicio)
+    
+    # GET - mostrar página de confirmação
+    totais = fechamentos.aggregate(
+        total_funcionarios=Count('id'),
+        total_dias=Sum('total_dias'),
+        total_valor=Sum('total_valor'),
+        qtd_fechados=Count('id', filter=Q(status='fechado')),
+        qtd_pagos=Count('id', filter=Q(status='pago')),
+    )
+    
+    context = {
+        'data_inicio': dt_inicio,
+        'data_fim': fechamentos.first().data_fim,
+        'fechamentos': fechamentos,
+        'totais': totais,
+        'title': 'Confirmar Exclusão da Semana'
+    }
+    return render(request, 'funcionarios/fechamento_semana_delete_confirm.html', context)
 
 
 @login_required
@@ -1272,13 +1529,51 @@ def apontamentos_api(request):
 
 
 @login_required
+@require_GET
+def obras_autocomplete_api(request):
+    """Autocomplete API for Obra by name. Returns limited list to avoid heavy queries.
+
+    Query params:
+    - q: partial name (required, min 2 chars recommended)
+    - limit: max results (optional, default 10, max 50)
+    """
+    q = request.GET.get('q', '').strip()
+    if not q or len(q) < 1:
+        return JsonResponse({'results': []})
+
+    try:
+        limit = int(request.GET.get('limit', 10))
+    except Exception:
+        limit = 10
+    limit = max(1, min(limit, 50))
+
+    # Basic search: name contains q (case-insensitive). Use only active, planning or in_progress
+    obras_qs = Obra.objects.filter(
+        ativo=True,
+        status__in=['planejamento', 'em_andamento'],
+        nome__icontains=q
+    ).order_by('nome')[:limit]
+
+    results = []
+    for o in obras_qs:
+        results.append({'id': o.pk, 'text': o.nome})
+
+    return JsonResponse({'results': results})
+
+
+@login_required
 def etapas_por_obra_api(request):
     """API para retornar etapas de uma obra (para preencher select dinamicamente)"""
     obra_id = request.GET.get('obra_id')
     if not obra_id:
         return JsonResponse({'etapas': []})
 
-    etapas = Etapa.objects.filter(obra_id=obra_id).order_by('numero_etapa')
+    etapas = Etapa.objects.filter(
+        obra_id=obra_id,
+        obra__ativo=True,
+        obra__status__in=['planejamento', 'em_andamento'],
+        status='em_andamento',
+    ).order_by('numero_etapa')
     data = [{'id': e.id, 'label': e.get_numero_etapa_display()} for e in etapas]
     return JsonResponse({'etapas': data})
 
@@ -1290,7 +1585,12 @@ def itens_etapa_api(request):
     if not etapa_id:
         return JsonResponse({'items': []})
     try:
-        etapa = Etapa.objects.get(pk=etapa_id)
+        etapa = Etapa.objects.get(
+            pk=etapa_id,
+            obra__ativo=True,
+            obra__status__in=['planejamento', 'em_andamento'],
+            status='em_andamento',
+        )
     except Etapa.DoesNotExist:
         return JsonResponse({'items': []})
 

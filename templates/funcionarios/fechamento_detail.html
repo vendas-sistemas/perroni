@@ -134,7 +134,16 @@
 
           <div class="d-flex gap-2 mt-3">
             <a href="{% url 'funcionarios:fechamento_semana_detail' fechamento.data_inicio|date:'Y-m-d' %}" class="btn btn-secondary">Voltar para Semana</a>
-            <a href="{% url 'funcionarios:funcionario_historico' fechamento.funcionario.pk %}" class="btn btn-outline-primary">Ver Calendário</a>
+            <a href="{% url 'funcionarios:funcionario_historico' fechamento.funcionario.pk %}?mes={{ fechamento.data_inicio|date:'Y-m' }}" class="btn btn-outline-primary">Ver Calendário</a>
+            {% if fechamento.status != 'pago' %}
+            <a href="{% url 'funcionarios:fechamento_delete' fechamento.pk %}" class="btn btn-outline-danger">
+              <i class="bi bi-trash"></i> Excluir
+            </a>
+            {% else %}
+            <button class="btn btn-outline-danger" disabled title="Não é possível excluir fechamentos pagos">
+              <i class="bi bi-trash"></i> Excluir
+            </button>
+            {% endif %}
           </div>
         </div>
       </div>

@@ -111,12 +111,12 @@ class MovimentacaoFerramenta(models.Model):
     
     # Tipo de movimentação
     TIPO_CHOICES = [
-        ('entrada_deposito', 'Entrada no Depósito'),
-        ('saida_obra', 'Saída para Obra'),
+        ('entrada_deposito', 'Depósito'),
+        ('saida_obra', 'Obra'),
         ('transferencia', 'Transferência entre Obras'),
         ('retorno_deposito', 'Retorno ao Depósito'),
-        ('manutencao', 'Envio para Manutenção'),
-        ('retorno_manutencao', 'Retorno de Manutenção'),
+        ('manutencao', 'Manutenção'),
+        #('retorno_manutencao', 'Retorno de Manutenção'),
         ('perda', 'Perda/Extravio'),
         ('descarte', 'Descarte'),
     ]
@@ -264,6 +264,8 @@ class ItemConferencia(models.Model):
     # Status da conferência
     STATUS_CHOICES = [
         ('ok', 'OK - Presente'),
+        ('transferida', 'Transferida para outra obra'),
+        ('retorno_deposito', 'Retornou ao depósito'),
         ('ausente', 'Ausente'),
         ('danificada', 'Danificada'),
     ]

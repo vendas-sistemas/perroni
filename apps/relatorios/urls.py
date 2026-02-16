@@ -6,6 +6,7 @@ app_name = 'relatorios'
 urlpatterns = [
     # Dashboard principal de relatórios
     path('', views.relatorio_dashboard, name='dashboard'),
+    path('etapas-por-obra/', views.etapas_por_obra, name='etapas_por_obra'),
 
     # Exportações
     path('exportar/pdf/', views.exportar_relatorio_pdf, name='exportar_pdf'),

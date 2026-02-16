@@ -13,15 +13,15 @@ class FiltroRelatorioForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
     etapa = forms.ModelChoiceField(
-        queryset=Etapa.objects.all(),
+        queryset=Etapa.objects.none(),
         required=False,
         empty_label='Todas as Etapas',
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
     funcionario = forms.ModelChoiceField(
-        queryset=Funcionario.objects.filter(funcao='pedreiro', ativo=True),
+        queryset=Funcionario.objects.filter(ativo=True),
         required=False,
-        empty_label='Todos os Pedreiros',
+        empty_label='Todos os Funcionários',
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
     data_inicio = forms.DateField(
@@ -40,6 +40,18 @@ class FiltroRelatorioForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'}),
         label='Clima',
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        obra_id = self.data.get('obra') or self.initial.get('obra')
+        if obra_id:
+            try:
+                self.fields['etapa'].queryset = Etapa.objects.filter(obra_id=int(obra_id)).order_by('numero_etapa')
+            except (TypeError, ValueError):
+                self.fields['etapa'].queryset = Etapa.objects.none()
+        else:
+            self.fields['etapa'].queryset = Etapa.objects.none()
 
     def get_filtros(self) -> dict:
         """Retorna dict de filtros limpos para passar ao serviço."""

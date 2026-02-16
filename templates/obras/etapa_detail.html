@@ -45,27 +45,6 @@
     </div>
   </div>
   <div class="d-flex gap-2">
-    {% if etapa.numero_etapa == 1 %}
-      <a href="{% url 'obras:etapa1_detail' etapa.pk %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
-        <i class="bi bi-pencil"></i> Editar
-      </a>
-    {% elif etapa.numero_etapa == 2 %}
-      <a href="{% url 'obras:etapa2_detail' etapa.pk %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
-        <i class="bi bi-pencil"></i> Editar
-      </a>
-    {% elif etapa.numero_etapa == 3 %}
-      <a href="{% url 'obras:etapa3_detail' etapa.pk %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
-        <i class="bi bi-pencil"></i> Editar
-      </a>
-    {% elif etapa.numero_etapa == 4 %}
-      <a href="{% url 'obras:etapa4_detail' etapa.pk %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
-        <i class="bi bi-pencil"></i> Editar
-      </a>
-    {% elif etapa.numero_etapa == 5 %}
-      <a href="{% url 'obras:etapa5_detail' etapa.pk %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
-        <i class="bi bi-pencil"></i> Editar
-      </a>
-    {% endif %}
     <a href="{% url 'obras:obra_etapas' etapa.obra.pk %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
       <i class="bi bi-arrow-left"></i> Voltar
     </a>
@@ -76,8 +55,11 @@
   <!-- Left: Info geral -->
   <div class="col-lg-6">
     <div class="card detail-card shadow-sm">
-      <div class="detail-header bg-primary bg-opacity-10">
+      <div class="detail-header bg-primary bg-opacity-10 d-flex justify-content-between align-items-center">
         <h6 class="mb-0 text-primary"><i class="bi bi-info-circle"></i> Informações Gerais</h6>
+        <a href="{% url 'obras:etapa_edit' etapa.pk %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1 px-3">
+          <i class="bi bi-pencil-square"></i> Editar
+        </a>
       </div>
       <div class="card-body">
         <div class="detail-item d-flex justify-content-between">
@@ -99,9 +81,9 @@
         <div class="detail-item d-flex justify-content-between">
           <span class="label"><i class="bi bi-check-circle"></i> Status</span>
           <span class="value">
-            {% if etapa.concluida %}
+            {% if etapa.status == 'concluida' %}
               <span class="badge bg-success"><i class="bi bi-check-lg"></i> Concluída</span>
-            {% elif etapa.data_inicio %}
+            {% elif etapa.status == 'em_andamento' %}
               <span class="badge bg-primary"><i class="bi bi-play-circle"></i> Em andamento</span>
             {% else %}
               <span class="badge bg-secondary">Pendente</span>
@@ -111,8 +93,8 @@
         <!-- Progress bar -->
         <div class="mt-3">
           <div class="progress progress-lg">
-            <div class="progress-bar {% if etapa.concluida %}bg-success{% elif etapa.data_inicio %}bg-primary{% else %}bg-secondary opacity-25{% endif %}"
-                 style="width: {% if etapa.concluida %}100{% elif etapa.data_inicio %}50{% else %}5{% endif %}%;"></div>
+            <div class="progress-bar {% if etapa.status == 'concluida' %}bg-success{% elif etapa.status == 'em_andamento' %}bg-primary{% else %}bg-secondary opacity-25{% endif %}"
+                 style="width: {% if etapa.status == 'concluida' %}100{% elif etapa.status == 'em_andamento' %}50{% else %}5{% endif %}%;"></div>
           </div>
         </div>
       </div>
@@ -138,40 +120,28 @@
           </div>
           <div class="detail-item d-flex justify-content-between">
             <span class="label">Marcação/Escavação</span>
-            <span class="value">{{ detalhe.marcacao_escavacao_dias }} dias</span>
+            <span class="value">{% if detalhe.marcacao_escavacao_conclusao %}{{ detalhe.marcacao_escavacao_conclusao|date:"d/m/Y" }}{% else %}<span class="text-muted">—</span>{% endif %}</span>
           </div>
           <div class="detail-item d-flex justify-content-between">
             <span class="label">Locação Ferragem</span>
-            <span class="value">{{ detalhe.locacao_ferragem_dias }} dias</span>
-          </div>
-          <div class="detail-item d-flex justify-content-between">
-            <span class="label">Alicerce, Reboco e Impermeabilização</span>
-            <span class="value">{{ detalhe.alicerce_percentual }}%</span>
+            <span class="value">{% if detalhe.locacao_ferragem_conclusao %}{{ detalhe.locacao_ferragem_conclusao|date:"d/m/Y" }}{% else %}<span class="text-muted">—</span>{% endif %}</span>
           </div>
           <div class="detail-item d-flex justify-content-between">
             <span class="label">Aterro e Contrapiso</span>
-            <span class="value">{{ detalhe.aterro_contrapiso_dias }} dias</span>
-          </div>
-          <div class="detail-item d-flex justify-content-between">
-            <span class="label">Parede 7 Fiadas</span>
-            <span class="value">{{ detalhe.parede_7fiadas_blocos }} blocos</span>
+            <span class="value">{% if detalhe.aterro_contrapiso_conclusao %}{{ detalhe.aterro_contrapiso_conclusao|date:"d/m/Y" }}{% else %}<span class="text-muted">—</span>{% endif %}</span>
           </div>
           <div class="detail-item d-flex justify-content-between">
             <span class="label">8 Fiadas até Respaldo</span>
-            <span class="value">{{ detalhe.fiadas_respaldo_dias }} dias</span>
+            <span class="value">{% if detalhe.fiadas_respaldo_conclusao %}{{ detalhe.fiadas_respaldo_conclusao|date:"d/m/Y" }}{% else %}<span class="text-muted">—</span>{% endif %}</span>
           </div>
         {% elif etapa.numero_etapa == 2 %}
           <div class="detail-item d-flex justify-content-between">
             <span class="label">Montagem da Laje</span>
-            <span class="value">{{ detalhe.montagem_laje_dias }} dias</span>
-          </div>
-          <div class="detail-item d-flex justify-content-between">
-            <span class="label">Platibanda</span>
-            <span class="value">{{ detalhe.platibanda_blocos }} blocos</span>
+            <span class="value">{% if detalhe.montagem_laje_conclusao %}{{ detalhe.montagem_laje_conclusao|date:"d/m/Y" }}{% else %}<span class="text-muted">—</span>{% endif %}</span>
           </div>
           <div class="detail-item d-flex justify-content-between">
             <span class="label">Cobertura</span>
-            <span class="value">{{ detalhe.cobertura_dias }} dias</span>
+            <span class="value">{% if detalhe.cobertura_conclusao %}{{ detalhe.cobertura_conclusao|date:"d/m/Y" }}{% else %}<span class="text-muted">—</span>{% endif %}</span>
           </div>
         {% elif etapa.numero_etapa == 3 %}
           <div class="detail-item d-flex justify-content-between">
@@ -205,24 +175,24 @@
           </div>
           <div class="detail-item d-flex justify-content-between">
             <span class="label">Pintura Externa 1ª Demão</span>
-            <span class="value">{{ detalhe.pintura_externa_1demao_dias }} dias</span>
+            <span class="value">{% if detalhe.pintura_externa_1demao_conclusao %}{{ detalhe.pintura_externa_1demao_conclusao|date:"d/m/Y" }}{% else %}<span class="text-muted">—</span>{% endif %}</span>
           </div>
           <div class="detail-item d-flex justify-content-between">
             <span class="label">Pintura Interna 1ª Demão</span>
-            <span class="value">{{ detalhe.pintura_interna_1demao_dias }} dias</span>
+            <span class="value">{% if detalhe.pintura_interna_1demao_conclusao %}{{ detalhe.pintura_interna_1demao_conclusao|date:"d/m/Y" }}{% else %}<span class="text-muted">—</span>{% endif %}</span>
           </div>
           <div class="detail-item d-flex justify-content-between">
             <span class="label">Assentamento de Piso</span>
-            <span class="value">{{ detalhe.assentamento_piso_dias }} dias</span>
+            <span class="value">{% if detalhe.assentamento_piso_conclusao %}{{ detalhe.assentamento_piso_conclusao|date:"d/m/Y" }}{% else %}<span class="text-muted">—</span>{% endif %}</span>
           </div>
         {% elif etapa.numero_etapa == 5 %}
           <div class="detail-item d-flex justify-content-between">
             <span class="label">Pintura Externa 2ª Demão</span>
-            <span class="value">{{ detalhe.pintura_externa_2demao_dias }} dias</span>
+            <span class="value">{% if detalhe.pintura_externa_2demao_conclusao %}{{ detalhe.pintura_externa_2demao_conclusao|date:"d/m/Y" }}{% else %}<span class="text-muted">—</span>{% endif %}</span>
           </div>
           <div class="detail-item d-flex justify-content-between">
             <span class="label">Pintura Interna 2ª Demão</span>
-            <span class="value">{{ detalhe.pintura_interna_2demao_dias }} dias</span>
+            <span class="value">{% if detalhe.pintura_interna_2demao_conclusao %}{{ detalhe.pintura_interna_2demao_conclusao|date:"d/m/Y" }}{% else %}<span class="text-muted">—</span>{% endif %}</span>
           </div>
           <div class="detail-item d-flex justify-content-between">
             <span class="label">Louças e Metais</span>
@@ -253,6 +223,48 @@
         {% endif %}
       </div>
     </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card detail-card shadow-sm mt-3">
+  <div class="detail-header" style="background: rgba(13,110,253,.1);">
+    <h6 class="mb-0 text-primary"><i class="bi bi-clock-history"></i> Histórico da Etapa</h6>
+  </div>
+  <div class="card-body">
+    {% if historicos %}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width: 170px;">Data e Hora</th>
+              <th style="width: 240px;">Origem</th>
+              <th>Alterações</th>
+              <th style="width: 180px;">Usuário</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for h in historicos %}
+              <tr>
+                <td>{{ h.data_hora|date:"d/m/Y H:i" }}</td>
+                <td>
+                  {% if 'Apontamento' in h.origem %}
+                    <span class="badge bg-info text-dark"><i class="bi bi-clipboard-check"></i> {{ h.origem }}</span>
+                  {% elif 'Criação' in h.origem %}
+                    <span class="badge bg-success"><i class="bi bi-plus-circle"></i> {{ h.origem }}</span>
+                  {% else %}
+                    {{ h.origem }}
+                  {% endif %}
+                </td>
+                <td><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit;">{{ h.descricao }}</pre></td>
+                <td>{% if h.usuario %}{{ h.usuario.get_full_name|default:h.usuario.username }}{% else %}<span class="text-muted">Sistema</span>{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-muted">Nenhum histórico registrado para esta etapa.</div>
     {% endif %}
   </div>
 </div>

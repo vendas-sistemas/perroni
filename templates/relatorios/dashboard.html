@@ -68,7 +68,7 @@
             {{ form.etapa }}
           </div>
           <div class="col-md-2">
-            <label class="form-label small fw-semibold">Pedreiro</label>
+            <label class="form-label small fw-semibold">Funcionário</label>
             {{ form.funcionario }}
           </div>
           <div class="col-md-1">
@@ -93,6 +93,7 @@
     </div>
   </div>
 
+  {% if filtros_informados %}
   <!-- Exportações -->
   <div class="d-flex gap-2 mb-4 flex-wrap">
     <a href="{% url 'relatorios:exportar_pdf' %}?{{ request.GET.urlencode }}"
@@ -104,8 +105,17 @@
       <i class="bi bi-file-earmark-excel"></i> Exportar Excel
     </a>
   </div>
+  {% endif %}
 
-  {% if not ranking_etapa and not media_dias_etapa and not media_individual %}
+  {% if not filtros_informados %}
+    <div class="card section-card shadow-sm">
+      <div class="card-body empty-state">
+        <i class="bi bi-funnel"></i>
+        <h5>Informe os filtros para carregar o relatório</h5>
+        <p>Selecione ao menos um filtro acima e clique em <strong>Filtrar</strong>.</p>
+      </div>
+    </div>
+  {% elif not ranking_etapa and not media_dias_etapa and not media_individual and not apontamentos_periodo %}
     <div class="card section-card shadow-sm">
       <div class="card-body empty-state">
         <i class="bi bi-clipboard-data"></i>
@@ -281,7 +291,128 @@
     </div>
   </div>
 
+  <!-- ════════════════════════════════════════════ -->
+  <!-- SEÇÃO 4: Apontamentos Detalhados            -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="card section-card shadow-sm mb-4">
+    <div class="card-header bg-white border-0 pt-3">
+      <h5 class="mb-0"><i class="bi bi-journal-text text-secondary"></i> 4. Apontamentos do Período</h5>
+      <small class="text-muted">Mostra o que foi preenchido no dia (ociosidade, retrabalho e observações)</small>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Data</th>
+              <th>Funcionário</th>
+              <th>Obra</th>
+              <th>Etapa</th>
+              <th class="text-center">Ociosidade</th>
+              <th>Obs. Ociosidade</th>
+              <th class="text-center">Retrabalho</th>
+              <th>Motivo Retrabalho</th>
+              <th>Observações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in apontamentos_periodo %}
+            <tr>
+              <td>{{ a.data|date:'d/m/Y' }}</td>
+              <td class="fw-semibold">{{ a.funcionario.nome_completo }}</td>
+              <td>{{ a.obra.nome }}</td>
+              <td>{% if a.etapa %}{{ a.etapa }}{% else %}-{% endif %}</td>
+              <td class="text-center">
+                {% if a.houve_ociosidade %}
+                  <span class="badge bg-warning text-dark">Sim</span>
+                {% else %}
+                  <span class="text-muted">Não</span>
+                {% endif %}
+              </td>
+              <td>{{ a.observacao_ociosidade|default:'-' }}</td>
+              <td class="text-center">
+                {% if a.houve_retrabalho %}
+                  <span class="badge bg-danger">Sim</span>
+                {% else %}
+                  <span class="text-muted">Não</span>
+                {% endif %}
+              </td>
+              <td>{{ a.motivo_retrabalho|default:'-' }}</td>
+              <td>{{ a.observacoes|default:'-' }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" class="text-muted text-center">Sem apontamentos no período</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   {% endif %}
 
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const obraSelect = document.getElementById('id_obra');
+    const etapaSelect = document.getElementById('id_etapa');
+    if (!obraSelect || !etapaSelect) return;
+
+    const defaultOptionText = 'Todas as Etapas';
+
+    function resetEtapas(disabled = true) {
+      etapaSelect.innerHTML = '';
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = defaultOptionText;
+      etapaSelect.appendChild(option);
+      etapaSelect.disabled = disabled;
+    }
+
+    async function carregarEtapas(obraId) {
+      if (!obraId) {
+        resetEtapas(true);
+        return;
+      }
+
+      const etapaSelecionadaAtual = etapaSelect.value;
+      resetEtapas(true);
+
+      try {
+        const response = await fetch(`{% url 'relatorios:etapas_por_obra' %}?obra_id=${encodeURIComponent(obraId)}`);
+        if (!response.ok) throw new Error('Erro ao carregar etapas');
+
+        const payload = await response.json();
+        const etapas = payload.etapas || [];
+
+        etapas.forEach(function (etapa) {
+          const option = document.createElement('option');
+          option.value = etapa.id;
+          option.textContent = etapa.nome;
+          if (String(etapa.id) === String(etapaSelecionadaAtual)) {
+            option.selected = true;
+          }
+          etapaSelect.appendChild(option);
+        });
+
+        etapaSelect.disabled = false;
+      } catch (error) {
+        resetEtapas(true);
+      }
+    }
+
+    if (!obraSelect.value) {
+      resetEtapas(true);
+    } else {
+      etapaSelect.disabled = false;
+    }
+
+    obraSelect.addEventListener('change', function () {
+      carregarEtapas(this.value);
+    });
+  });
+</script>
 {% endblock %}

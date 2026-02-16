@@ -6,16 +6,49 @@ from .models import (
 
 
 class EtapaForm(forms.ModelForm):
+    STATUS_CHOICES = [
+        ('pendente', 'Pendente'),
+        ('em_andamento', 'Em andamento'),
+        ('concluida', 'Concluída'),
+    ]
+
     class Meta:
         model = Etapa
-        fields = ['numero_etapa', 'percentual_valor', 'data_inicio', 'data_termino', 'concluida']
+        fields = ['percentual_valor', 'data_inicio', 'data_termino', 'status']
         widgets = {
-            'data_inicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'data_termino': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'percentual_valor': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'concluida': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'numero_etapa': forms.Select(attrs={'class': 'form-select'})
+            'data_inicio': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
+            'data_termino': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
+            'percentual_valor': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'max': '100'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.order_fields(['data_inicio', 'data_termino', 'status', 'percentual_valor'])
+        self.fields['data_inicio'].input_formats = ['%Y-%m-%d']
+        self.fields['data_termino'].input_formats = ['%Y-%m-%d']
+
+    def clean(self):
+        cleaned_data = super().clean()
+        data_inicio = cleaned_data.get('data_inicio')
+        data_termino = cleaned_data.get('data_termino')
+
+        if data_inicio and data_termino and data_termino < data_inicio:
+            self.add_error('data_termino', 'A data de término deve ser maior ou igual à data de início.')
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if commit:
+            instance.save()
+        return instance
 
 
 class Etapa1FundacaoForm(forms.ModelForm):
@@ -92,8 +125,8 @@ class ObraForm(forms.ModelForm):
             'nome': forms.TextInput(attrs={'class': 'form-control'}),
             'endereco': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'cliente': forms.TextInput(attrs={'class': 'form-control'}),
-            'data_inicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'data_previsao_termino': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_inicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
+            'data_previsao_termino': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
             'status': forms.Select(attrs={'class': 'form-select'}),
             'percentual_concluido': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),

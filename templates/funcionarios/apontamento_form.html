@@ -28,7 +28,10 @@
               </div>
               <div class="col-12 col-md-6">
                 <label class="form-label">Obra *</label>
+                <!-- text input for autocomplete; actual obra id stored in hidden field id_obra -->
+                {{ form.obra_nome }}
                 {{ form.obra }}
+                <div id="obra-suggestions" class="list-group position-relative" style="z-index:1050;"></div>
                 {% for error in form.obra.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
               </div>
               <div class="col-12 col-md-4">
@@ -53,11 +56,6 @@
                 <label class="form-label">Metragem Executada (m²)</label>
                 {{ form.metragem_executada }}
                 <div class="form-text">Área executada no dia.</div>
-              </div>
-              <div class="col-6 col-md-4">
-                <label class="form-label">Valor Diária</label>
-                {{ form.valor_diaria }}
-                <div class="form-text">Automático se vazio.</div>
               </div>
             </div>
 
@@ -138,9 +136,52 @@ document.addEventListener('DOMContentLoaded', function() {
   const etapaItemsTitle = document.getElementById('etapa-items-title');
   const itemsEtapaIdInput = document.getElementById('items_etapa_id');
 
+  // Autocomplete textbox and suggestion handling
+  const obraText = document.getElementById('id_obra_nome');
+  const suggestionsBox = document.getElementById('obra-suggestions');
+
+  function debounce(fn, wait){
+    let t;
+    return function(...args){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,args), wait); };
+  }
+
+  function clearSuggestions(){ suggestionsBox.innerHTML = ''; suggestionsBox.style.display = 'none'; }
+
+  function selectObra(id, text){
+    if(obraSelect) obraSelect.value = id; // hidden select contains id
+    if(obraText) obraText.value = text;
+    clearSuggestions();
+    // explicitly load etapas for this obra id (don't rely only on change event)
+    loadEtapasForObra(id);
+  }
+
+  if (obraText) {
+    obraText.addEventListener('input', debounce(function(e){
+      const q = this.value.trim();
+      if(q.length < 1){ clearSuggestions(); return; }
+      fetch(`{% url 'funcionarios:obras_autocomplete_api' %}?q=` + encodeURIComponent(q) + '&limit=10')
+        .then(r => r.json())
+        .then(data => {
+          suggestionsBox.innerHTML = '';
+          if(!data.results || data.results.length === 0){ clearSuggestions(); return; }
+          data.results.forEach(r => {
+            const a = document.createElement('button');
+            a.type = 'button';
+            a.className = 'list-group-item list-group-item-action';
+            a.textContent = r.text;
+            a.addEventListener('click', ()=> selectObra(r.id, r.text));
+            suggestionsBox.appendChild(a);
+          });
+          suggestionsBox.style.display = 'block';
+        }).catch(()=> clearSuggestions());
+    }, 250));
+
+    // If user blurs, hide suggestions shortly after (allow click)
+    obraText.addEventListener('blur', function(){ setTimeout(clearSuggestions, 150); });
+  }
+
   if (obraSelect && etapaSelect) {
-    obraSelect.addEventListener('change', function() {
-      const obraId = this.value;
+    function loadEtapasForObra(obraId){
       // Reset etapa
       etapaSelect.innerHTML = '<option value="">---------</option>';
       hideEtapaItems();
@@ -170,7 +211,8 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(() => {
           if(etapaHint) etapaHint.textContent = 'Erro ao carregar etapas.';
         });
-    });
+    }
+    obraSelect.addEventListener('change', function(){ loadEtapasForObra(this.value); });
 
     // ── Dynamic Etapa Items loading when Etapa changes ──
     etapaSelect.addEventListener('change', function() {
@@ -183,10 +225,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // If obra is already selected (e.g. after validation error), trigger load
+    // If a hidden obra id is present (e.g. form re-render after error), set text
     if (obraSelect.value) {
+      // Try to set obra text from the server-rendered helper field value
+      const currentText = document.getElementById('id_obra_nome') ? document.getElementById('id_obra_nome').value : '';
+      if(currentText && document.getElementById('id_obra_nome').value === currentText){
+        // nothing
+      }
       const currentEtapaVal = etapaSelect.value;
       obraSelect.dispatchEvent(new Event('change'));
-      // Re-select the etapa after options are loaded
       if (currentEtapaVal) {
         setTimeout(() => {
           etapaSelect.value = currentEtapaVal;
@@ -239,19 +286,34 @@ document.addEventListener('DOMContentLoaded', function() {
             </label>
           </div>`;
       } else {
-        const unit = item.type === 'decimal' ? 'step="0.01"' : 'step="1"';
-        const currentStr = item.value != 0 && item.value != '0' && item.value != '0.00'
-          ? `<span class="text-muted small">(Atual: <strong>${item.value}</strong>)</span>` 
-          : '';
-        col.innerHTML = `
-          <div class="border rounded p-3 h-100">
-            <label class="form-label mb-1" for="item_${item.name}">
-              ${item.label} ${currentStr}
-            </label>
-            <input type="number" class="form-control form-control-sm" 
-                   name="item_${item.name}" id="item_${item.name}" 
-                   ${unit} min="0" placeholder="Incremento hoje" value="">
-          </div>`;
+        if (item.type === 'date') {
+          const currentStr = item.value
+            ? `<span class="text-muted small">(Atual: <strong>${item.value}</strong>)</span>`
+            : '';
+          col.innerHTML = `
+            <div class="border rounded p-3 h-100">
+              <label class="form-label mb-1" for="item_${item.name}">
+                ${item.label} ${currentStr}
+              </label>
+              <input type="date" class="form-control form-control-sm"
+                     name="item_${item.name}" id="item_${item.name}"
+                     value="${item.value || ''}">
+            </div>`;
+        } else {
+          const unit = item.type === 'decimal' ? 'step="0.01"' : 'step="1"';
+          const currentStr = item.value != 0 && item.value != '0' && item.value != '0.00'
+            ? `<span class="text-muted small">(Atual: <strong>${item.value}</strong>)</span>` 
+            : '';
+          col.innerHTML = `
+            <div class="border rounded p-3 h-100">
+              <label class="form-label mb-1" for="item_${item.name}">
+                ${item.label} ${currentStr}
+              </label>
+              <input type="number" class="form-control form-control-sm" 
+                     name="item_${item.name}" id="item_${item.name}" 
+                     ${unit} min="0" placeholder="Incremento hoje" value="">
+            </div>`;
+        }
       }
       etapaItemsContainer.appendChild(col);
     });

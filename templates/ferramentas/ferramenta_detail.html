@@ -63,6 +63,69 @@
             </tbody>
           </table>
 
+          <hr>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">Histórico de Movimentações</h5>
+            <a href="{% url 'ferramentas:movimentacao_create' %}?f={{ ferramenta.pk }}" class="btn btn-sm btn-outline-primary">Nova movimentação</a>
+          </div>
+
+          {% if movimentacoes %}
+          <div class="table-responsive">
+            <table class="table table-sm align-middle">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Tipo</th>
+                  <th>Origem</th>
+                  <th>Destino</th>
+                  <th>Responsável</th>
+                  <th>Observações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for mov in movimentacoes %}
+                <tr>
+                  <td>{{ mov.data_movimentacao|date:'d/m/Y H:i' }}</td>
+                  <td>{{ mov.get_tipo_display }}</td>
+                  <td>{{ mov.origem|default:'-' }}</td>
+                  <td>{{ mov.destino|default:'-' }}</td>
+                  <td>{{ mov.responsavel.get_full_name|default:mov.responsavel.username }}</td>
+                  <td>{{ mov.observacoes|default:'-' }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          {% if movimentacoes.paginator.num_pages > 1 %}
+          <nav aria-label="Paginação do histórico">
+            <ul class="pagination pagination-sm mb-0">
+              {% if movimentacoes.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ movimentacoes.previous_page_number }}">Anterior</a>
+              </li>
+              {% else %}
+              <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+              {% endif %}
+
+              <li class="page-item disabled">
+                <span class="page-link">Página {{ movimentacoes.number }} de {{ movimentacoes.paginator.num_pages }}</span>
+              </li>
+
+              {% if movimentacoes.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ movimentacoes.next_page_number }}">Próxima</a>
+              </li>
+              {% else %}
+              <li class="page-item disabled"><span class="page-link">Próxima</span></li>
+              {% endif %}
+            </ul>
+          </nav>
+          {% endif %}
+          {% else %}
+          <div class="alert alert-light border mb-0">Nenhuma movimentação registrada para esta ferramenta.</div>
+          {% endif %}
+
         </div>
       </div>
     </div>

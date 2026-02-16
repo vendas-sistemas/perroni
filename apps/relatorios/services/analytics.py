@@ -188,3 +188,24 @@ def gerar_relatorio_completo(filtros: dict | None = None):
         'media_dias_etapa': media_dias_por_etapa(filtros),
         'media_individual': media_rendimento_individual(filtros),
     }
+
+
+def apontamentos_periodo(filtros: dict | None = None, limite: int = 300):
+    """Lista apontamentos detalhados do período com textos digitados."""
+    qs = ApontamentoFuncionario.objects.select_related('funcionario', 'obra', 'etapa')
+
+    if filtros:
+        if filtros.get('obra_id'):
+            qs = qs.filter(obra_id=filtros['obra_id'])
+        if filtros.get('etapa_id'):
+            qs = qs.filter(etapa_id=filtros['etapa_id'])
+        if filtros.get('funcionario_id'):
+            qs = qs.filter(funcionario_id=filtros['funcionario_id'])
+        if filtros.get('data_inicio'):
+            qs = qs.filter(data__gte=filtros['data_inicio'])
+        if filtros.get('data_fim'):
+            qs = qs.filter(data__lte=filtros['data_fim'])
+        if filtros.get('clima'):
+            qs = qs.filter(clima=filtros['clima'])
+
+    return qs.order_by('-data', '-id')[:limite]

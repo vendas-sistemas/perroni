@@ -24,7 +24,10 @@ urlpatterns = [
     path('fechamentos/criar/', views.fechamento_create, name='fechamento_create'),
     path('fechamentos/auto/', views.fechamento_auto, name='fechamento_auto'),
     path('fechamentos/semana/<str:data_inicio>/', views.fechamento_semana_detail, name='fechamento_semana_detail'),
+    path('fechamentos/semana/<str:data_inicio>/pagar/', views.fechamento_semana_pagar, name='fechamento_semana_pagar'),
+    path('fechamentos/semana/<str:data_inicio>/excluir/', views.fechamento_semana_delete, name='fechamento_semana_delete'),
     path('fechamentos/<int:pk>/', views.fechamento_detail, name='fechamento_detail'),
+    path('fechamentos/<int:pk>/excluir/', views.fechamento_delete, name='fechamento_delete'),
 
     # Visão por obra
     path('obra/<int:pk>/mao-de-obra/', views.obra_mao_de_obra, name='obra_mao_de_obra'),
@@ -36,4 +39,5 @@ urlpatterns = [
     path('api/itens-etapa/', views.itens_etapa_api, name='itens_etapa_api'),
     path('api/itens-obra/', views.itens_obra_api, name='itens_obra_api'),
     path('set-theme/', views.set_theme, name='set_theme'),
+    path('api/obras-autocomplete/', views.obras_autocomplete_api, name='obras_autocomplete_api'),
 ]

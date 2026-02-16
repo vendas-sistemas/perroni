@@ -8,6 +8,7 @@ import os
 import sys
 import django
 import random
+import argparse
 from datetime import datetime, timedelta
 
 # Setup Django
@@ -120,18 +121,15 @@ def gerar_obras(quantidade):
 
 def main():
     try:
-        quantidade = input("Quantas obras deseja criar? ").strip()
-        
-        if not quantidade.isdigit():
-            print("❌ Favor informar um número inteiro válido.")
+        parser = argparse.ArgumentParser(description='Gerar obras de teste')
+        parser.add_argument('quantidade', type=int, help='Quantas obras gerar')
+        args = parser.parse_args()
+
+        if args.quantidade <= 0:
+            print('❌ A quantidade deve ser maior que 0.')
             sys.exit(1)
-        
-        quantidade = int(quantidade)
-        if quantidade <= 0:
-            print("❌ A quantidade deve ser maior que 0.")
-            sys.exit(1)
-        
-        gerar_obras(quantidade)
+
+        gerar_obras(args.quantidade)
         
     except KeyboardInterrupt:
         print("\n\n⏸️  Operação cancelada pelo usuário.")

@@ -1,12 +1,59 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 from decimal import Decimal
 from datetime import timedelta
 
 
-class Obra(models.Model):
+class SoftDeleteQuerySet(models.QuerySet):
+    def delete(self):
+        return self.update(deleted_at=timezone.now())
+
+    def hard_delete(self):
+        return super().delete()
+
+    def alive(self):
+        return self.filter(deleted_at__isnull=True)
+
+    def dead(self):
+        return self.filter(deleted_at__isnull=False)
+
+
+class AllObjectsManager(models.Manager.from_queryset(SoftDeleteQuerySet)):
+    """Manager that exposes SoftDeleteQuerySet methods directly (dead, alive, hard_delete)."""
+    pass
+
+
+class ActiveManager(AllObjectsManager):
+    def get_queryset(self):
+        return super().get_queryset().alive()
+
+
+class SoftDeleteModel(models.Model):
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    objects = ActiveManager()
+    all_objects = AllObjectsManager()
+
+    class Meta:
+        abstract = True
+
+    def delete(self, using=None, keep_parents=False):
+        self.deleted_at = timezone.now()
+        self.save(update_fields=['deleted_at'])
+
+    def restore(self):
+        self.deleted_at = None
+        self.save(update_fields=['deleted_at'])
+
+    def hard_delete(self, using=None, keep_parents=False):
+        super().delete(using=using, keep_parents=keep_parents)
+
+
+class Obra(SoftDeleteModel):
     """Model principal para cadastro de obras"""
     
     # Informações básicas
@@ -114,6 +161,19 @@ class Etapa(models.Model):
         decimal_places=2,
         verbose_name="Percentual da Etapa"
     )
+
+    STATUS_CHOICES = [
+        ('pendente', 'Pendente'),
+        ('em_andamento', 'Em andamento'),
+        ('concluida', 'Concluída'),
+    ]
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pendente',
+        verbose_name="Status"
+    )
     
     data_inicio = models.DateField(null=True, blank=True, verbose_name="Data de Início")
     data_termino = models.DateField(null=True, blank=True, verbose_name="Data de Término")
@@ -132,7 +192,45 @@ class Etapa(models.Model):
         # Auto-preenche o percentual baseado no número da etapa
         if not self.percentual_valor:
             self.percentual_valor = self.PERCENTUAIS_ETAPA.get(self.numero_etapa, Decimal('0.00'))
+
+        # Status é a fonte de verdade para estado da etapa
+        self.concluida = self.status == 'concluida'
+
         super().save(*args, **kwargs)
+
+
+class EtapaHistorico(models.Model):
+    """Histórico de alterações informadas nas etapas."""
+
+    etapa = models.ForeignKey(
+        Etapa,
+        on_delete=models.CASCADE,
+        related_name='historicos',
+        verbose_name="Etapa"
+    )
+
+    data_hora = models.DateTimeField(auto_now_add=True, verbose_name="Data e Hora")
+
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='historicos_etapa',
+        verbose_name="Usuário"
+    )
+
+    origem = models.CharField(max_length=120, verbose_name="Origem da Alteração")
+
+    descricao = models.TextField(verbose_name="Descrição da Alteração")
+
+    class Meta:
+        verbose_name = "Histórico de Etapa"
+        verbose_name_plural = "Históricos de Etapa"
+        ordering = ['-data_hora']
+
+    def __str__(self):
+        return f"Etapa {self.etapa.numero_etapa} - {self.data_hora.strftime('%d/%m/%Y %H:%M')}"
 
 
 # ========== ETAPA 1 - FUNDAÇÃO (29.9%) ==========
@@ -159,43 +257,32 @@ class Etapa1Fundacao(models.Model):
         verbose_name="Instalação de Energia e Água"
     )
     
-    # Marcação e Escavação (Dias)
-    marcacao_escavacao_dias = models.PositiveIntegerField(
-        default=0,
-        verbose_name="Marcação e Escavação (dias)"
+    # Marcação e Escavação — data de conclusão
+    marcacao_escavacao_conclusao = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Marcação e Escavação (conclusão)"
     )
-    
-    # Locação de Ferragem e concretagem (Dias)
-    locacao_ferragem_dias = models.PositiveIntegerField(
-        default=0,
-        verbose_name="Locação de Ferragem (dias)"
+
+    # Locação de Ferragem — data de conclusão
+    locacao_ferragem_conclusao = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Locação de Ferragem (conclusão)"
     )
-    
-    # Levantar alicerce, rebocar e impermeabilizar (%)
-    alicerce_percentual = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        default=Decimal('0.00'),
-        validators=[MinValueValidator(0), MaxValueValidator(100)],
-        verbose_name="Alicerce, Reboco e Impermeabilização (%)"
+
+    # Aterro e Contrapiso — data de conclusão
+    aterro_contrapiso_conclusao = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Aterro e Contrapiso (conclusão)"
     )
-    
-    # Aterrar e fazer o contra piso (Dia)
-    aterro_contrapiso_dias = models.PositiveIntegerField(
-        default=0,
-        verbose_name="Aterro e Contrapiso (dias)"
-    )
-    
-    # Parede - 7 fiadas (Unidade de bloco)
-    parede_7fiadas_blocos = models.PositiveIntegerField(
-        default=0,
-        verbose_name="Parede 7 Fiadas (blocos)"
-    )
-    
-    # 8 Fiadas até respaldo (Dia)
-    fiadas_respaldo_dias = models.PositiveIntegerField(
-        default=0,
-        verbose_name="8 Fiadas até Respaldo (dias)"
+
+    # 8 Fiadas até Respaldo — data de conclusão
+    fiadas_respaldo_conclusao = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="8 Fiadas até Respaldo (conclusão)"
     )
     
     class Meta:
@@ -218,22 +305,18 @@ class Etapa2Estrutura(models.Model):
         verbose_name="Etapa"
     )
     
-    # Montagem da Laje e Concretagem (Dias)
-    montagem_laje_dias = models.PositiveIntegerField(
-        default=0,
-        verbose_name="Montagem da Laje (dias)"
+    # Montagem da Laje — data de conclusão
+    montagem_laje_conclusao = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Montagem da Laje (conclusão)"
     )
-    
-    # Platibanda (Unidade de blocos)
-    platibanda_blocos = models.PositiveIntegerField(
-        default=0,
-        verbose_name="Platibanda (blocos)"
-    )
-    
-    # Cobertura completa (Dias)
-    cobertura_dias = models.PositiveIntegerField(
-        default=0,
-        verbose_name="Cobertura Completa (dias)"
+
+    # Cobertura completa — data de conclusão
+    cobertura_conclusao = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Cobertura Completa (conclusão)"
     )
     
     class Meta:
@@ -410,23 +493,26 @@ class Etapa4Acabamentos(models.Model):
         default=False,
         verbose_name="Portas e Janelas"
     )
-    
-    # Pintura Externa 1º demão (dias)
-    pintura_externa_1demao_dias = models.PositiveIntegerField(
-        default=0,
-        verbose_name="Pintura Externa 1ª Demão (dias)"
+
+    # Pintura Externa 1ª Demão — data de conclusão
+    pintura_externa_1demao_conclusao = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Pintura Externa 1ª Demão (conclusão)"
     )
-    
-    # Pintura Interna 1º demão (dias)
-    pintura_interna_1demao_dias = models.PositiveIntegerField(
-        default=0,
-        verbose_name="Pintura Interna 1ª Demão (dias)"
+
+    # Pintura Interna 1ª Demão — data de conclusão
+    pintura_interna_1demao_conclusao = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Pintura Interna 1ª Demão (conclusão)"
     )
-    
-    # Assentamento de piso (dias)
-    assentamento_piso_dias = models.PositiveIntegerField(
-        default=0,
-        verbose_name="Assentamento de Piso (dias)"
+
+    # Assentamento de piso — data de conclusão
+    assentamento_piso_conclusao = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Assentamento de Piso (conclusão)"
     )
     
     class Meta:
@@ -449,16 +535,18 @@ class Etapa5Finalizacao(models.Model):
         verbose_name="Etapa"
     )
     
-    # Pintura Externa 2º demão (dias)
-    pintura_externa_2demao_dias = models.PositiveIntegerField(
-        default=0,
-        verbose_name="Pintura Externa 2ª Demão (dias)"
+    # Pintura Externa 2ª Demão — data de conclusão
+    pintura_externa_2demao_conclusao = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Pintura Externa 2ª Demão (conclusão)"
     )
-    
-    # Pintura Interna 2º demão (dias)
-    pintura_interna_2demao_dias = models.PositiveIntegerField(
-        default=0,
-        verbose_name="Pintura Interna 2ª Demão (dias)"
+
+    # Pintura Interna 2ª Demão — data de conclusão
+    pintura_interna_2demao_conclusao = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Pintura Interna 2ª Demão (conclusão)"
     )
     
     # Instalação das Louças e Metais

@@ -2,12 +2,13 @@ import datetime
 
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 
 from apps.relatorios.forms import FiltroRelatorioForm
-from apps.relatorios.services.analytics import gerar_relatorio_completo
+from apps.relatorios.services.analytics import gerar_relatorio_completo, apontamentos_periodo
 from apps.relatorios.services.exports import exportar_pdf, exportar_excel
 from apps.funcionarios.models import ApontamentoFuncionario
+from apps.obras.models import Etapa
 from django.shortcuts import get_object_or_404
 import csv
 
@@ -23,16 +24,28 @@ def relatorio_dashboard(request):
     """
     form = FiltroRelatorioForm(request.GET or None)
     filtros = form.get_filtros() if form.is_valid() else {}
+    filtros_informados = bool(filtros)
 
-    dados = gerar_relatorio_completo(filtros)
+    if filtros_informados:
+        dados = gerar_relatorio_completo(filtros)
+        apontamentos = apontamentos_periodo(filtros)
+    else:
+        dados = {
+            'ranking_etapa': [],
+            'media_dias_etapa': [],
+            'media_individual': [],
+        }
+        apontamentos = []
 
     context = {
         'form': form,
         'ranking_etapa': dados['ranking_etapa'],
         'media_dias_etapa': dados['media_dias_etapa'],
         'media_individual': dados['media_individual'],
+        'apontamentos_periodo': apontamentos,
         'title': 'Relatórios de Produção',
         'filtros_aplicados': filtros,
+        'filtros_informados': filtros_informados,
     }
     return render(request, 'relatorios/dashboard.html', context)
 
@@ -120,3 +133,26 @@ def relatorio_funcionario_diario(request):
         ])
 
     return response
+
+
+@login_required
+def etapas_por_obra(request):
+    """Retorna etapas de uma obra em JSON para filtro dinâmico."""
+    obra_id = request.GET.get('obra_id')
+    if not obra_id:
+        return JsonResponse({'etapas': []})
+
+    try:
+        obra_id = int(obra_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'etapas': []})
+
+    etapas = Etapa.objects.filter(obra_id=obra_id).order_by('numero_etapa')
+    data = [
+        {
+            'id': e.id,
+            'nome': e.get_numero_etapa_display(),
+        }
+        for e in etapas
+    ]
+    return JsonResponse({'etapas': data})

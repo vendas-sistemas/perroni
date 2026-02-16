@@ -74,10 +74,10 @@
         </div>
       </div>
 
-      <!-- Classificação e Status -->
+      <!-- Classificação -->
       <div class="card shadow-sm mb-3">
         <div class="card-header bg-primary bg-opacity-10 py-2">
-          <h6 class="mb-0"><i class="bi bi-diagram-3 section-icon text-primary me-1"></i> Classificação e Status</h6>
+          <h6 class="mb-0"><i class="bi bi-diagram-3 section-icon text-primary me-1"></i> Classificação</h6>
         </div>
         <div class="card-body">
           <div class="row g-3">
@@ -89,19 +89,19 @@
               {% for error in form.categoria.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
             </div>
             <div class="col-12 col-sm-6">
-              <label for="{{ form.status.id_for_label }}" class="form-label small fw-semibold">
-                <i class="bi bi-flag text-muted"></i> {{ form.status.label }}
-              </label>
-              {{ form.status }}
-              {% for error in form.status.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              {% if ferramenta %}
+              <label class="form-label small fw-semibold"><i class="bi bi-flag text-muted"></i> Status Atual</label>
+              <input type="text" class="form-control" value="{{ ferramenta.get_status_display }}" readonly>
+              {% endif %}
             </div>
             <div class="col-12">
-              <label for="{{ form.obra_atual.id_for_label }}" class="form-label small fw-semibold">
-                <i class="bi bi-building text-muted"></i> {{ form.obra_atual.label }}
-              </label>
-              {{ form.obra_atual }}
-              {% if form.obra_atual.help_text %}<div class="form-text">{{ form.obra_atual.help_text }}</div>{% endif %}
-              {% for error in form.obra_atual.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              <div class="alert alert-info mb-0 py-2 px-3 small">
+                <i class="bi bi-info-circle"></i>
+                Status e localização da ferramenta são atualizados apenas por <strong>movimentações</strong> para manter o histórico completo.
+                {% if ferramenta %}
+                <a class="ms-1" href="{% url 'ferramentas:movimentacao_create' %}?f={{ ferramenta.pk }}">Registrar movimentação agora</a>.
+                {% endif %}
+              </div>
             </div>
           </div>
         </div>

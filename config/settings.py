@@ -68,6 +68,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'config.authorization_middleware.ModulePermissionMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -88,6 +89,8 @@ TEMPLATES = [
                 'django.template.context_processors.media',
                 # Recent obras for navbar quick access
                 'apps.obras.context_processors.recent_obras',
+                # Navigation permissions by module
+                'config.context_processors.navigation_permissions',
             ],
         },
     },

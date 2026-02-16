@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluídos - Obras{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4">Excluídos - Obras</h1>
+  <a href="{% url 'obras:obra_list' %}" class="btn btn-sm btn-outline-secondary">Voltar à lista</a>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>Obra</th>
+          <th>Cliente</th>
+          <th>Deletado em</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for obra in object_list %}
+        <tr>
+          <td>{{ obra.nome }}</td>
+          <td>{{ obra.cliente }}</td>
+          <td>{{ obra.deleted_at|date:"d/m/Y H:i" }}</td>
+          <td>
+            <form method="post" action="{% url 'obras:obra_restore' obra.pk %}" style="display:inline;">
+              {% csrf_token %}
+              <button class="btn btn-sm btn-success">Restaurar</button>
+            </form>
+            <form method="post" action="{% url 'obras:obra_hard_delete' obra.pk %}" style="display:inline; margin-left:6px;">
+              {% csrf_token %}
+              <button class="btn btn-sm btn-danger" onclick="return confirm('Excluir permanentemente? A ação é irreversível.')">Excluir permanentemente</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">Nenhum item excluído.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

@@ -43,13 +43,17 @@ class EtapaAdmin(admin.ModelAdmin):
 
 @admin.register(Etapa1Fundacao)
 class Etapa1FundacaoAdmin(admin.ModelAdmin):
-    list_display = ['etapa', 'limpeza_terreno', 'instalacao_energia_agua', 'alicerce_percentual']
+    list_display = [
+        'etapa', 'limpeza_terreno', 'instalacao_energia_agua',
+        'marcacao_escavacao_conclusao', 'locacao_ferragem_conclusao',
+        'aterro_contrapiso_conclusao', 'fiadas_respaldo_conclusao'
+    ]
     search_fields = ['etapa__obra__nome']
 
 
 @admin.register(Etapa2Estrutura)
 class Etapa2EstruturaAdmin(admin.ModelAdmin):
-    list_display = ['etapa', 'montagem_laje_dias', 'platibanda_blocos', 'cobertura_dias']
+    list_display = ['etapa', 'montagem_laje_conclusao', 'cobertura_conclusao']
     search_fields = ['etapa__obra__nome']
 
 
@@ -61,11 +65,18 @@ class Etapa3InstalacoesAdmin(admin.ModelAdmin):
 
 @admin.register(Etapa4Acabamentos)
 class Etapa4AcabamentosAdmin(admin.ModelAdmin):
-    list_display = ['etapa', 'portas_janelas', 'pintura_externa_1demao_dias', 'assentamento_piso_dias']
+    list_display = [
+        'etapa', 'portas_janelas',
+        'pintura_externa_1demao_conclusao',
+        'pintura_interna_1demao_conclusao',
+        'assentamento_piso_conclusao'
+    ]
     search_fields = ['etapa__obra__nome']
 
 
 @admin.register(Etapa5Finalizacao)
 class Etapa5FinalizacaoAdmin(admin.ModelAdmin):
-    list_display = ['etapa', 'pintura_externa_2demao_dias', 'loucas_metais', 'eletrica']
+    list_display = [
+        'etapa', 'pintura_externa_2demao_conclusao', 'pintura_interna_2demao_conclusao', 'loucas_metais', 'eletrica'
+    ]
     search_fields = ['etapa__obra__nome']

@@ -16,18 +16,18 @@ class ApontamentoForm(forms.ModelForm):
             'clima', 'metragem_executada',
             'houve_ociosidade', 'observacao_ociosidade',
             'houve_retrabalho', 'motivo_retrabalho',
-            'valor_diaria', 'observacoes'
+            'observacoes'
         ]
         widgets = {
             'data': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'horas_trabalhadas': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5', 'min': '0.5', 'max': '24'}),
             'metragem_executada': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'placeholder': 'm² executados'}),
-            'valor_diaria': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'observacao_ociosidade': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Descreva o motivo da ociosidade...'}),
             'motivo_retrabalho': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Descreva o motivo do retrabalho...'}),
             'funcionario': forms.Select(attrs={'class': 'form-select'}),
-            'obra': forms.Select(attrs={'class': 'form-select'}),
+            # obra will be a hidden field in the form; a text input with autocomplete is provided in the template
+            'obra': forms.HiddenInput(),
             'etapa': forms.Select(attrs={'class': 'form-select'}),
             'clima': forms.Select(attrs={'class': 'form-select'}),
             'houve_ociosidade': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -38,6 +38,18 @@ class ApontamentoForm(forms.ModelForm):
         obra_id = kwargs.pop('obra_id', None)
         funcionario_id = kwargs.pop('funcionario_id', None)
         super().__init__(*args, **kwargs)
+
+        obras_permitidas = Obra.objects.filter(
+            ativo=True,
+            status__in=['planejamento', 'em_andamento']
+        ).order_by('nome')
+        self.fields['obra'].queryset = obras_permitidas
+        # Add a helper text field for autocomplete (not saved directly)
+        self.fields['obra_nome'] = forms.CharField(
+            required=False,
+            widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Informe o nome da obra'}),
+            label='Obra'
+        )
         # default date to today
         if not self.instance.pk and not self.initial.get('data'):
             self.fields['data'].initial = datetime.date.today()
@@ -45,44 +57,55 @@ class ApontamentoForm(forms.ModelForm):
         if funcionario_id:
             self.fields['funcionario'].initial = funcionario_id
             self.fields['funcionario'].disabled = True  # Make it read-only
+        # If instance has an obra, populate the helper field
+        if self.instance and getattr(self.instance, 'obra', None):
+            try:
+                self.fields['obra_nome'].initial = self.instance.obra.nome
+            except Exception:
+                pass
         # Filter etapas by obra if provided
         if obra_id:
-            self.fields['etapa'].queryset = Etapa.objects.filter(obra_id=obra_id)
+            self.fields['etapa'].queryset = Etapa.objects.filter(
+                obra_id=obra_id,
+                status='em_andamento',
+            ).order_by('numero_etapa')
         elif self.instance and self.instance.pk and self.instance.obra_id:
-            self.fields['etapa'].queryset = Etapa.objects.filter(obra_id=self.instance.obra_id)
+            self.fields['etapa'].queryset = Etapa.objects.filter(
+                obra_id=self.instance.obra_id,
+                status='em_andamento',
+            ).order_by('numero_etapa')
         elif self.data and self.data.get('obra'):
             try:
-                self.fields['etapa'].queryset = Etapa.objects.filter(obra_id=int(self.data['obra']))
+                self.fields['etapa'].queryset = Etapa.objects.filter(
+                    obra_id=int(self.data['obra']),
+                    status='em_andamento',
+                ).order_by('numero_etapa')
             except (ValueError, TypeError):
                 self.fields['etapa'].queryset = Etapa.objects.none()
         else:
             self.fields['etapa'].queryset = Etapa.objects.none()
         self.fields['etapa'].required = False
-        self.fields['valor_diaria'].required = False
         self.fields['observacao_ociosidade'].required = False
         self.fields['motivo_retrabalho'].required = False
 
     def clean(self):
         cleaned = super().clean()
-        funcionario = cleaned.get('funcionario')
-        data = cleaned.get('data')
         obra = cleaned.get('obra')
-
-        if funcionario and data:
-            qs = ApontamentoFuncionario.objects.filter(funcionario=funcionario, data=data)
-            if self.instance and self.instance.pk:
-                qs = qs.exclude(pk=self.instance.pk)
-            if qs.exists():
-                different_obras = [a for a in qs if (obra and a.obra_id != obra.id)] if obra else [a for a in qs if a.obra_id is not None]
-                if different_obras:
-                    existing = qs.first()
-                    existing_obra = existing.obra.nome if existing.obra else '(sem obra)'
-                    raise ValidationError(f"Funcionário já está apontado em {existing_obra} na data {data.strftime('%d/%m/%Y')}. Remova ou edite o apontamento existente ou mova-o para outra obra.")
         
         if cleaned.get('houve_ociosidade') and not cleaned.get('observacao_ociosidade'):
             self.add_error('observacao_ociosidade', 'Justificativa obrigatória quando há ociosidade.')
         if cleaned.get('houve_retrabalho') and not cleaned.get('motivo_retrabalho'):
             self.add_error('motivo_retrabalho', 'Motivo obrigatório quando há retrabalho.')
+
+        if obra and obra.status not in ('planejamento', 'em_andamento'):
+            self.add_error('obra', 'Apontamento permitido somente para obras em Planejamento ou Em Andamento.')
+
+        etapa = cleaned.get('etapa')
+        if etapa:
+            if obra and etapa.obra_id != obra.id:
+                self.add_error('etapa', 'A etapa selecionada não pertence à obra informada.')
+            elif etapa.status != 'em_andamento':
+                self.add_error('etapa', 'Selecione apenas etapas em andamento para apontamento.')
         
         return cleaned
 
@@ -90,7 +113,10 @@ class ApontamentoForm(forms.ModelForm):
 class ApontamentoDiarioCabecalhoForm(forms.Form):
     """Cabeçalho do apontamento diário: obra, data e clima"""
     obra = forms.ModelChoiceField(
-        queryset=Obra.objects.filter(ativo=True),
+        queryset=Obra.objects.filter(
+            ativo=True,
+            status__in=['planejamento', 'em_andamento']
+        ).order_by('nome'),
         widget=forms.Select(attrs={'class': 'form-select'}),
         label="Obra"
     )

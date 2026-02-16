@@ -13,6 +13,8 @@ from django.db import transaction
 from django.shortcuts import render
 from django.http import Http404
 from django.utils import timezone
+import random
+from decimal import Decimal
 
 
 @login_required
@@ -115,7 +117,16 @@ def ferramenta_list(request):
 def ferramenta_detail(request, pk):
     """Detalhes de uma ferramenta"""
     ferramenta = get_object_or_404(Ferramenta, pk=pk)
-    movimentacoes = ferramenta.movimentacoes.all()[:10]
+    movimentacoes_qs = ferramenta.movimentacoes.select_related('responsavel', 'obra_origem', 'obra_destino').all()
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+    paginator = Paginator(movimentacoes_qs, 10)
+    page = request.GET.get('page')
+    try:
+        movimentacoes = paginator.page(page)
+    except PageNotAnInteger:
+        movimentacoes = paginator.page(1)
+    except EmptyPage:
+        movimentacoes = paginator.page(paginator.num_pages)
     context = {
         'ferramenta': ferramenta,
         'movimentacoes': movimentacoes,
@@ -130,7 +141,36 @@ def ferramenta_create(request):
     if request.method == 'POST':
         form = FerramentaForm(request.POST, request.FILES)
         if form.is_valid():
+            # If codigo missing, generate a unique code
+            codigo = form.cleaned_data.get('codigo')
+            if not codigo:
+                prefixes = ['FRR', 'TLS', 'SEG', 'MED', 'OTR']
+                tentativa = 0
+                codigo = None
+                existing = set(Ferramenta.objects.values_list('codigo', flat=True))
+                while tentativa < 20:
+                    prefix = random.choice(prefixes)
+                    numero = random.randint(10000, 99999)
+                    candidate = f"{prefix}-{numero}"
+                    if candidate not in existing:
+                        codigo = candidate
+                        break
+                    tentativa += 1
+                if not codigo:
+                    # fallback to timestamp-based code
+                    codigo = f"FERR-{int(timezone.now().timestamp())}"
+                # inject into form instance
+                form.instance.codigo = codigo
+
             ferramenta = form.save()
+            MovimentacaoFerramenta.objects.create(
+                ferramenta=ferramenta,
+                tipo='entrada_deposito',
+                origem='Cadastro inicial',
+                destino='Depósito',
+                responsavel=request.user,
+                observacoes='Movimentação inicial criada automaticamente no cadastro da ferramenta.'
+            )
             messages.success(request, 'Ferramenta criada com sucesso.')
             return redirect('ferramentas:ferramenta_detail', pk=ferramenta.pk)
     else:

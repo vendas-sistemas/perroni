@@ -39,9 +39,14 @@
 <!-- Header -->
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
   <h1 class="h3 mb-0"><i class="bi bi-building text-primary"></i> Obras</h1>
-  <a href="{% url 'obras:obra_create' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
-    <i class="bi bi-plus-circle-fill"></i> Nova Obra
-  </a>
+  <div class="d-flex gap-2">
+    <a href="{% url 'obras:obra_create' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-plus-circle-fill"></i> Nova Obra
+    </a>
+    <a href="{% url 'obras:excluidos' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-trash"></i> Excluídos
+    </a>
+  </div>
 </div>
 
 <!-- Summary Cards -->
@@ -255,6 +260,15 @@
           <td class="text-center small">{{ obra.data_inicio|date:"d/m/Y" }}</td>
           <td class="text-center small">{{ obra.data_previsao_termino|date:"d/m/Y"|default:"—" }}</td>
           <td class="text-center">
+            <form method="post" action="{% url 'obras:obra_delete' obra.pk %}" style="display:inline;">
+              {% csrf_token %}
+              <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Mover esta obra para a lixeira?')" title="Excluir"> 
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+            <a href="{% url 'obras:obra_update' obra.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar">
+              <i class="bi bi-pencil"></i>
+            </a>
             <a href="{% url 'obras:obra_etapas' obra.pk %}" class="btn btn-sm btn-outline-primary" title="Ver etapas">
               <i class="bi bi-layers"></i>
             </a>
@@ -306,6 +320,9 @@
           <span><i class="bi bi-calendar-check"></i> {{ obra.data_previsao_termino|date:"d/m/Y" }}</span>
           {% endif %}
         </div>
+        <a href="{% url 'obras:obra_update' obra.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar">
+          <i class="bi bi-pencil"></i> Editar
+        </a>
         <a href="{% url 'obras:obra_etapas' obra.pk %}" class="btn btn-sm btn-outline-primary" title="Ver etapas">
           <i class="bi bi-layers"></i> Etapas
         </a>

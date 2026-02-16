@@ -21,70 +21,83 @@
   <div class="row g-3">
     {% for s in semanas %}
     <div class="col-12">
-      <a href="{% url 'funcionarios:fechamento_semana_detail' s.data_inicio|date:'Y-m-d' %}" class="text-decoration-none">
-        <div class="card shadow-sm border-start border-4 {% if s.status_geral == 'pago' %}border-success{% elif s.status_geral == 'fechado' %}border-primary{% elif s.status_geral == 'parcial' %}border-warning{% else %}border-secondary{% endif %} hover-card">
-          <div class="card-body py-3">
-            <div class="row align-items-center">
-              <!-- Período -->
-              <div class="col-12 col-md-3 mb-2 mb-md-0">
-                <div class="d-flex align-items-center gap-2">
-                  <div class="bg-light rounded-3 p-2 text-center" style="min-width: 56px;">
-                    <div class="fw-bold text-primary" style="font-size: 1.4rem; line-height: 1;">{{ s.data_inicio|date:'d' }}</div>
-                    <div class="text-muted" style="font-size: 0.7rem; text-transform: uppercase;">{{ s.data_inicio|date:'M' }}</div>
-                  </div>
-                  <div>
-                    <div class="text-dark fw-semibold">
-                      {{ s.data_inicio|date:'d/m/Y' }} — {{ s.data_fim|date:'d/m/Y' }}
-                    </div>
-                    <small class="text-muted">
-                      <i class="bi bi-people-fill"></i> {{ s.total_funcionarios }} funcionário{{ s.total_funcionarios|pluralize:"s" }}
-                    </small>
-                  </div>
+      <div class="card shadow-sm border-start border-4 {% if s.status_geral == 'pago' %}border-success{% elif s.status_geral == 'fechado' %}border-primary{% elif s.status_geral == 'parcial' %}border-warning{% else %}border-secondary{% endif %} hover-card position-relative">
+        <div class="card-body py-3">
+          <a href="{% url 'funcionarios:fechamento_semana_detail' s.data_inicio|date:'Y-m-d' %}" class="stretched-link text-decoration-none text-reset"></a>
+          
+          <div class="row align-items-center">
+            <!-- Período -->
+            <div class="col-12 col-md-3 mb-2 mb-md-0">
+              <div class="d-flex align-items-center gap-2">
+                <div class="bg-light rounded-3 p-2 text-center" style="min-width: 56px;">
+                  <div class="fw-bold text-primary" style="font-size: 1.4rem; line-height: 1;">{{ s.data_inicio|date:'d' }}</div>
+                  <div class="text-muted" style="font-size: 0.7rem; text-transform: uppercase;">{{ s.data_inicio|date:'M' }}</div>
                 </div>
-              </div>
-
-              <!-- Métricas -->
-              <div class="col col-md-2 text-center">
-                <div class="text-muted" style="font-size: 0.75rem;">Diárias</div>
-                <div class="fw-bold fs-5 text-dark">{{ s.total_dias }}</div>
-              </div>
-              <div class="col col-md-2 text-center">
-                <div class="text-muted" style="font-size: 0.75rem;">Valor Total</div>
-                <div class="fw-bold fs-5 text-success">{{ s.total_valor|brl }}</div>
-              </div>
-
-              <!-- Indicadores e Status -->
-              <div class="col-12 col-md-3 mt-2 mt-md-0">
-                <div class="d-flex align-items-center justify-content-md-end gap-2 flex-wrap">
-                  {% if s.total_ociosidade %}
-                  <span class="badge bg-warning text-dark" title="Dias com ociosidade">
-                    <i class="bi bi-pause-circle"></i> {{ s.total_ociosidade }}
-                  </span>
-                  {% endif %}
-                  {% if s.total_retrabalho %}
-                  <span class="badge bg-danger" title="Dias com retrabalho">
-                    <i class="bi bi-arrow-repeat"></i> {{ s.total_retrabalho }}
-                  </span>
-                  {% endif %}
-
-                  {% if s.status_geral == 'pago' %}
-                    <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle"></i> Pago</span>
-                  {% elif s.status_geral == 'parcial' %}
-                    <span class="badge bg-warning text-dark px-3 py-2">
-                      <i class="bi bi-hourglass-split"></i> Parcial
-                      <small>({{ s.qtd_pagos }}✓ {{ s.qtd_fechados }}●)</small>
-                    </span>
-                  {% else %}
-                    <span class="badge bg-primary px-3 py-2"><i class="bi bi-lock"></i> Fechado</span>
-                  {% endif %}
-
-                  <i class="bi bi-chevron-right text-muted ms-1"></i>
+                <div>
+                  <div class="text-dark fw-semibold">
+                    {{ s.data_inicio|date:'d/m/Y' }} — {{ s.data_fim|date:'d/m/Y' }}
+                  </div>
+                  <small class="text-muted">
+                    <i class="bi bi-people-fill"></i> {{ s.total_funcionarios }} funcionário{{ s.total_funcionarios|pluralize:"s" }}
+                  </small>
                 </div>
               </div>
             </div>
+
+            <!-- Métricas -->
+            <div class="col col-md-2 text-center">
+              <div class="text-muted" style="font-size: 0.75rem;">Diárias</div>
+              <div class="fw-bold fs-5 text-dark">{{ s.total_dias }}</div>
+            </div>
+            <div class="col col-md-2 text-center">
+              <div class="text-muted" style="font-size: 0.75rem;">Valor Total</div>
+              <div class="fw-bold fs-5 text-success">{{ s.total_valor|brl }}</div>
+            </div>
+
+            <!-- Indicadores e Status -->
+            <div class="col-12 col-md-3 mt-2 mt-md-0">
+              <div class="d-flex align-items-center justify-content-md-end gap-2 flex-wrap">
+                {% if s.total_ociosidade %}
+                <span class="badge bg-warning text-dark" title="Dias com ociosidade">
+                  <i class="bi bi-pause-circle"></i> {{ s.total_ociosidade }}
+                </span>
+                {% endif %}
+                {% if s.total_retrabalho %}
+                <span class="badge bg-danger" title="Dias com retrabalho">
+                  <i class="bi bi-arrow-repeat"></i> {{ s.total_retrabalho }}
+                </span>
+                {% endif %}
+
+                {% if s.status_geral == 'pago' %}
+                  <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle"></i> Pago</span>
+                {% elif s.status_geral == 'parcial' %}
+                  <span class="badge bg-warning text-dark px-3 py-2">
+                    <i class="bi bi-hourglass-split"></i> Parcial
+                    <small>({{ s.qtd_pagos }}✓ {{ s.qtd_fechados }}●)</small>
+                  </span>
+                {% else %}
+                  <span class="badge bg-primary px-3 py-2"><i class="bi bi-lock"></i> Fechado</span>
+                {% endif %}
+
+                <i class="bi bi-chevron-right text-muted ms-1"></i>
+              </div>
+            </div>
+
+            <!-- Botão Excluir -->
+            <div class="col-12 col-md-auto mt-2 mt-md-0 position-relative" style="z-index: 10;">
+              {% if s.status_geral != 'pago' %}
+              <a href="{% url 'funcionarios:fechamento_semana_delete' s.data_inicio|date:'Y-m-d' %}" class="btn btn-sm btn-outline-danger" title="Excluir semana inteira">
+                <i class="bi bi-trash"></i>
+              </a>
+              {% else %}
+              <button class="btn btn-sm btn-outline-danger" disabled title="Não é possível excluir semanas totalmente pagas">
+                <i class="bi bi-trash"></i>
+              </button>
+              {% endif %}
+            </div>
           </div>
         </div>
-      </a>
+      </div>
     </div>
     {% endfor %}
   </div>

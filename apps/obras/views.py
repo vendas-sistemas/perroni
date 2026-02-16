@@ -1,7 +1,12 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.views.decorators.http import require_POST
+from django.utils import timezone
+import datetime
+from django.contrib.auth.models import User
 from .models import Obra, Etapa
+from apps.funcionarios.models import ApontamentoFuncionario
 from django.http import HttpResponse
 import csv
 from decimal import Decimal
@@ -13,7 +18,7 @@ from .forms import (
 )
 from .models import (
     Etapa1Fundacao, Etapa2Estrutura, Etapa3Instalacoes,
-    Etapa4Acabamentos, Etapa5Finalizacao
+    Etapa4Acabamentos, Etapa5Finalizacao, EtapaHistorico
 )
 from django.shortcuts import Http404
 from django.urls import reverse
@@ -21,6 +26,63 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from apps.clientes.models import Cliente
 import re
+
+
+def _format_historico_valor(valor):
+    if valor is None or valor == '':
+        return '—'
+    if isinstance(valor, bool):
+        return 'Sim' if valor else 'Não'
+    if isinstance(valor, datetime.date):
+        return valor.strftime('%d/%m/%Y')
+    return str(valor)
+
+
+def _registrar_historico_etapa(etapa, usuario, origem, form):
+    if not getattr(form, 'changed_data', None):
+        return
+
+    linhas = []
+    for campo in form.changed_data:
+        field_obj = form.fields.get(campo)
+        label = field_obj.label if field_obj and field_obj.label else campo.replace('_', ' ').capitalize()
+        valor_anterior = _format_historico_valor(form.initial.get(campo))
+        valor_novo = _format_historico_valor(form.cleaned_data.get(campo))
+        linhas.append(f"{label}: {valor_anterior} → {valor_novo}")
+
+    if linhas:
+        EtapaHistorico.objects.create(
+            etapa=etapa,
+            usuario=usuario if usuario and usuario.is_authenticated else None,
+            origem=origem,
+            descricao='\n'.join(linhas)
+        )
+
+
+def _resolver_usuario_historico(request, form=None):
+    """Resolve o usuário para o histórico, priorizando usuário explicitamente informado no fluxo."""
+    if form and getattr(form, 'cleaned_data', None):
+        for chave in ('usuario', 'responsavel', 'fiscal', 'executor'):
+            valor = form.cleaned_data.get(chave)
+            if isinstance(valor, User):
+                return valor
+
+    if request.user and request.user.is_authenticated:
+        return request.user
+
+    return None
+
+
+def _registrar_historico_inicial_etapa(etapa, usuario, origem='Criação da etapa'):
+    EtapaHistorico.objects.create(
+        etapa=etapa,
+        usuario=usuario if usuario and usuario.is_authenticated else None,
+        origem=origem,
+        descricao=(
+            f"Etapa criada com status inicial: {etapa.get_status_display()}\n"
+            f"Percentual: {etapa.percentual_valor}%"
+        )
+    )
 
 
 @login_required
@@ -62,7 +124,8 @@ def obra_list(request):
     if data_termino_ate:
         qs = qs.filter(data_previsao_termino__lte=data_termino_ate)
 
-    qs = qs.order_by('-created_at')
+    # Order by start date (newest first). Fall back to creation time for ties.
+    qs = qs.order_by('-data_inicio', '-created_at')
 
     # Contadores (antes da paginação)
     all_active = Obra.objects.filter(ativo=True)
@@ -130,9 +193,25 @@ def obra_list(request):
 def obra_detail(request, pk):
     """Detalhes de uma obra"""
     obra = get_object_or_404(Obra, pk=pk)
+
+    # Optional: show apontamentos for a specific date when ?data=YYYY-MM-DD is provided
+    data_str = request.GET.get('data')
+    apontamentos_do_dia = None
+    if data_str:
+        try:
+            data = datetime.date.fromisoformat(data_str)
+            apontamentos_do_dia = ApontamentoFuncionario.objects.filter(
+                obra=obra,
+                data=data
+            ).select_related('funcionario', 'etapa').order_by('funcionario__nome_completo')
+        except ValueError:
+            apontamentos_do_dia = None
+
     context = {
         'obra': obra,
-        'title': f'Obra: {obra.nome}'
+        'title': f'Obra: {obra.nome}',
+        'apontamentos_do_dia': apontamentos_do_dia,
+        'apontamento_data': data_str or ''
     }
     return render(request, 'obras/obra_detail.html', context)
 
@@ -144,15 +223,21 @@ def obra_create(request):
         form = ObraForm(request.POST)
         if form.is_valid():
             obra = form.save()
+            usuario_hist = _resolver_usuario_historico(request, form)
             # Criar 5 etapas básicas se não existirem
             try:
                 for num, _label in Etapa.ETAPA_CHOICES:
                     # Verifica se etapa já existe
                     if not Etapa.objects.filter(obra=obra, numero_etapa=num).exists():
-                        Etapa.objects.create(
+                        etapa = Etapa.objects.create(
                             obra=obra,
                             numero_etapa=num,
                             percentual_valor=Etapa.PERCENTUAIS_ETAPA.get(num)
+                        )
+                        _registrar_historico_inicial_etapa(
+                            etapa,
+                            usuario_hist,
+                            origem='Criação automática da etapa'
                         )
                 messages.success(request, 'Obra criada com sucesso. Etapas carregadas automaticamente.')
             except Exception as e:
@@ -198,6 +283,48 @@ def obra_update(request, pk):
 
 
 @login_required
+@require_POST
+def obra_delete(request, pk):
+    """Soft-delete: move obra para excluídos (marca `deleted_at` e desativa `ativo`)."""
+    obra = get_object_or_404(Obra, pk=pk)
+    # soft-delete timestamp
+    obra.delete()
+    # manter compatibilidade com flag `ativo` usada nas views
+    obra.ativo = False
+    obra.save(update_fields=['ativo'])
+    messages.success(request, 'Obra movida para Excluídos.')
+    return redirect(request.META.get('HTTP_REFERER', 'obras:obra_list'))
+
+
+@login_required
+def obras_trash(request):
+    """Lista itens excluídos (objetos deletados)."""
+    trashed = Obra.all_objects.dead().order_by('-deleted_at')
+    context = {'object_list': trashed, 'title': 'Excluídos - Obras'}
+    return render(request, 'obras/obra_trash_list.html', context)
+
+
+@login_required
+@require_POST
+def obra_restore(request, pk):
+    obra = get_object_or_404(Obra.all_objects, pk=pk)
+    obra.restore()
+    obra.ativo = True
+    obra.save(update_fields=['ativo'])
+    messages.success(request, 'Obra restaurada.')
+    return redirect(request.META.get('HTTP_REFERER', 'obras:excluidos'))
+
+
+@login_required
+@require_POST
+def obra_hard_delete(request, pk):
+    obra = get_object_or_404(Obra.all_objects, pk=pk)
+    obra.hard_delete()
+    messages.success(request, 'Obra excluída permanentemente.')
+    return redirect(request.META.get('HTTP_REFERER', 'obras:excluidos'))
+
+
+@login_required
 def obra_etapas(request, pk):
     """Gerencia etapas de uma obra"""
     obra = get_object_or_404(Obra, pk=pk)
@@ -238,6 +365,7 @@ def etapa_detail(request, pk):
     context = {
         'etapa': etapa,
         'detalhe': detalhe,
+        'historicos': etapa.historicos.select_related('usuario').all()[:100],
         'title': f'Etapa {etapa.numero_etapa} - {etapa.obra.nome}'
     }
     return render(request, 'obras/etapa_detail.html', context)
@@ -250,6 +378,8 @@ def etapa_edit(request, pk):
         form = EtapaForm(request.POST, instance=etapa)
         if form.is_valid():
             form.save()
+            usuario_hist = _resolver_usuario_historico(request, form)
+            _registrar_historico_etapa(etapa, usuario_hist, 'Informações gerais da etapa', form)
             messages.success(request, 'Etapa atualizada com sucesso.')
             return redirect(reverse('obras:etapa_detail', args=[etapa.pk]))
         else:
@@ -271,6 +401,8 @@ def etapa1_detail(request, pk):
         form = Etapa1FundacaoForm(request.POST, instance=detalhe)
         if form.is_valid():
             form.save()
+            usuario_hist = _resolver_usuario_historico(request, form)
+            _registrar_historico_etapa(etapa, usuario_hist, 'Detalhes da Etapa 1 - Fundação', form)
             messages.success(request, 'Detalhes da etapa 1 (Fundação) atualizados com sucesso.')
             return redirect(reverse('obras:etapa1_detail', args=[etapa.pk]))
     else:
@@ -289,6 +421,8 @@ def etapa2_detail(request, pk):
         form = Etapa2EstruturaForm(request.POST, instance=detalhe)
         if form.is_valid():
             form.save()
+            usuario_hist = _resolver_usuario_historico(request, form)
+            _registrar_historico_etapa(etapa, usuario_hist, 'Detalhes da Etapa 2 - Estrutura', form)
             messages.success(request, 'Detalhes da etapa 2 (Estrutura) atualizados com sucesso.')
             return redirect(reverse('obras:etapa2_detail', args=[etapa.pk]))
     else:
@@ -307,6 +441,8 @@ def etapa3_detail(request, pk):
         form = Etapa3InstalacoesForm(request.POST, instance=detalhe)
         if form.is_valid():
             form.save()
+            usuario_hist = _resolver_usuario_historico(request, form)
+            _registrar_historico_etapa(etapa, usuario_hist, 'Detalhes da Etapa 3 - Instalações', form)
             messages.success(request, 'Detalhes da etapa 3 (Instalações) atualizados com sucesso.')
             return redirect(reverse('obras:etapa3_detail', args=[etapa.pk]))
     else:
@@ -325,6 +461,8 @@ def etapa4_detail(request, pk):
         form = Etapa4AcabamentosForm(request.POST, instance=detalhe)
         if form.is_valid():
             form.save()
+            usuario_hist = _resolver_usuario_historico(request, form)
+            _registrar_historico_etapa(etapa, usuario_hist, 'Detalhes da Etapa 4 - Acabamentos', form)
             messages.success(request, 'Detalhes da etapa 4 (Acabamentos) atualizados com sucesso.')
             return redirect(reverse('obras:etapa4_detail', args=[etapa.pk]))
     else:
@@ -343,6 +481,8 @@ def etapa5_detail(request, pk):
         form = Etapa5FinalizacaoForm(request.POST, instance=detalhe)
         if form.is_valid():
             form.save()
+            usuario_hist = _resolver_usuario_historico(request, form)
+            _registrar_historico_etapa(etapa, usuario_hist, 'Detalhes da Etapa 5 - Finalização', form)
             messages.success(request, 'Detalhes da etapa 5 (Finalização) atualizados com sucesso.')
             return redirect(reverse('obras:etapa5_detail', args=[etapa.pk]))
     else:

@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load obras_extras %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-10">
+      <div class="card border-danger shadow-lg">
+        <div class="card-body p-5">
+          <!-- Ícone de Alerta -->
+          <div class="mb-4 text-center">
+            <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 4rem;"></i>
+          </div>
+
+          <!-- Título -->
+          <h3 class="card-title mb-2 text-center text-danger">Confirmar Exclusão da Semana</h3>
+          <p class="text-center text-muted mb-4">
+            Você está prestes a deletar TODOS os fechamentos da semana
+          </p>
+
+          <!-- Informações da Semana -->
+          <div class="card bg-light mb-4">
+            <div class="card-body">
+              <div class="row g-3 text-center">
+                <div class="col-md-3">
+                  <strong>Período:</strong>
+                  <p class="mb-0">{{ data_inicio|date:'d/m/Y' }} — {{ data_fim|date:'d/m/Y' }}</p>
+                </div>
+                <div class="col-md-3">
+                  <strong>Funcionários:</strong>
+                  <p class="mb-0">{{ totais.total_funcionarios }}</p>
+                </div>
+                <div class="col-md-3">
+                  <strong>Total de Dias:</strong>
+                  <p class="mb-0">{{ totais.total_dias }}</p>
+                </div>
+                <div class="col-md-3">
+                  <strong>Total a Pagar:</strong>
+                  <p class="mb-0 text-danger fw-bold">{{ totais.total_valor|brl }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lista de Fechamentos -->
+          <h5 class="mb-3">Fechamentos que serão deletados:</h5>
+          <div class="table-responsive mb-4">
+            <table class="table table-sm table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>Funcionário</th>
+                  <th class="text-center">Dias</th>
+                  <th class="text-end">Valor</th>
+                  <th class="text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for f in fechamentos %}
+                <tr>
+                  <td>{{ f.funcionario.nome_completo }}</td>
+                  <td class="text-center">{{ f.total_dias }}</td>
+                  <td class="text-end">{{ f.total_valor|brl }}</td>
+                  <td class="text-center">
+                    {% if f.status == 'pago' %}
+                      <span class="badge bg-success">Pago</span>
+                    {% else %}
+                      <span class="badge bg-primary">Fechado</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+              <tfoot class="table-light fw-bold">
+                <tr>
+                  <td>TOTAL</td>
+                  <td class="text-center">{{ totais.total_dias }}</td>
+                  <td class="text-end">{{ totais.total_valor|brl }}</td>
+                  <td class="text-center">
+                    <span class="badge bg-secondary">{{ totais.total_funcionarios }}</span>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <!-- Avisos -->
+          <div class="alert alert-danger mb-4" role="alert">
+            <i class="bi bi-exclamation-circle-fill me-2"></i>
+            <strong>Atenção!</strong> 
+            <ul class="mb-0 mt-2">
+              <li>Esta ação não pode ser desfeita.</li>
+              <li>Todos os {{ totais.total_funcionarios }} fechamento(s) da semana serão deletados.</li>
+              <li>O valor total de <strong>{{ totais.total_valor|brl }}</strong> será perdido.</li>
+            </ul>
+          </div>
+
+          <!-- Botões -->
+          <div class="row g-2">
+            <div class="col-6">
+              <form method="post" class="h-100">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-lg w-100 h-100">
+                  <i class="bi bi-trash-fill me-2"></i> Sim, Excluir Semana Inteira
+                </button>
+              </form>
+            </div>
+            <div class="col-6">
+              <a href="{% url 'funcionarios:fechamento_semana_detail' data_inicio|date:'Y-m-d' %}" class="btn btn-secondary btn-lg w-100">
+                <i class="bi bi-x-circle me-2"></i> Cancelar
+              </a>
+            </div>
+          </div>
+
+          <hr class="my-4">
+          <p class="text-muted small mb-0 text-center">
+            💡 Se apenas alguns funcionários foram pagos, delete-os individualmente na página de detalhe da semana.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

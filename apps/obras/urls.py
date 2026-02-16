@@ -18,4 +18,8 @@ urlpatterns = [
     path('etapa/<int:pk>/acabamentos/', views.etapa4_detail, name='etapa4_detail'),
     path('etapa/<int:pk>/finalizacao/', views.etapa5_detail, name='etapa5_detail'),
     path('etapa/<int:pk>/editar/', views.etapa_edit, name='etapa_edit'),
+    path('excluidos/', views.obras_trash, name='excluidos'),
+    path('<int:pk>/delete/', views.obra_delete, name='obra_delete'),
+    path('<int:pk>/restore/', views.obra_restore, name='obra_restore'),
+    path('<int:pk>/hard-delete/', views.obra_hard_delete, name='obra_hard_delete'),
 ]

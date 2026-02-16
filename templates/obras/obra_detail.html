@@ -64,4 +64,34 @@
     </aside>
   </div>
 
+  {% if apontamentos_do_dia %}
+    <div class="card mt-3">
+      <div class="card-body">
+        <h5 class="card-title">Apontamentos em {{ apontamento_data|date:'d/m/Y' }}</h5>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Funcionário</th>
+                <th>Etapa</th>
+                <th>Horas</th>
+                <th>Observações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in apontamentos_do_dia %}
+                <tr>
+                  <td><a href="{% url 'funcionarios:funcionario_detail' a.funcionario.pk %}">{{ a.funcionario.nome_completo }}</a></td>
+                  <td>{% if a.etapa %}<a href="{% url 'obras:etapa_detail' a.etapa.pk %}">{{ a.etapa }}</a>{% else %}—{% endif %}</td>
+                  <td>{{ a.horas_trabalhadas }}h</td>
+                  <td class="small text-muted">{{ a.observacoes|default:'—' }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
 {% endblock %}

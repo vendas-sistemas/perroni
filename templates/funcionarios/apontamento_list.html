@@ -63,8 +63,12 @@
     <div class="card-body">
       <!-- Filters -->
       <form method="get" class="row g-2 mb-3">
-        <div class="col-6 col-md-2">
-          <input type="date" name="data" class="form-control form-control-sm" value="{{ request.GET.data }}" placeholder="Data">
+        <div class="col-12 col-md-3">
+          <div class="d-flex gap-1">
+            <input type="date" name="data_inicio" class="form-control form-control-sm" value="{{ request.GET.data_inicio }}" placeholder="Início">
+            <input type="date" name="data_fim" class="form-control form-control-sm" value="{{ request.GET.data_fim }}" placeholder="Fim">
+          </div>
+          <small class="text-muted">Período início / fim</small>
         </div>
         <div class="col-6 col-md-2">
           <select name="funcionario" class="form-select form-select-sm">
@@ -127,8 +131,20 @@
                   <a href="{% url 'funcionarios:funcionario_historico' a.funcionario.pk %}">{{ a.funcionario.nome_completo }}</a>
                   <br><small class="text-muted">{{ a.funcionario.get_funcao_display }}</small>
                 </td>
-                <td>{{ a.obra.nome }}</td>
-                <td>{{ a.etapa|default:"-" }}</td>
+                <td>
+                  {% if a.obra %}
+                    <a href="{% url 'obras:obra_detail' a.obra.pk %}?data={{ a.data|date:'Y-m-d' }}">{{ a.obra.nome }}</a>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td>
+                  {% if a.etapa %}
+                    <a href="{% url 'funcionarios:apontamento_list' %}?etapa={{ a.etapa.pk }}&data={{ a.data|date:'Y-m-d' }}">{{ a.etapa }}</a>
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
                 <td>{{ a.data|date:'d/m/Y' }}</td>
                 <td>{{ a.horas_trabalhadas }}h</td>
                 <td>

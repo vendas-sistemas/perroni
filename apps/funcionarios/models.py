@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
 from apps.obras.models import Obra, Etapa
@@ -195,10 +195,37 @@ class ApontamentoFuncionario(models.Model):
         return f"{self.funcionario.nome_completo} - {self.obra.nome} - {self.data.strftime('%d/%m/%Y')}"
     
     def save(self, *args, **kwargs):
+        diaria_base = self.funcionario.valor_diaria or Decimal('0.00')
+
         # Auto-preenche valor da diária se não foi informado
-        if not self.valor_diaria:
-            self.valor_diaria = self.funcionario.valor_diaria
-        super().save(*args, **kwargs)
+        if self.valor_diaria is None:
+            self.valor_diaria = diaria_base
+
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            self._normalizar_valor_diaria_dia(diaria_base)
+
+    def _normalizar_valor_diaria_dia(self, diaria_base):
+        """Garante 1 diária por funcionário/dia (independente da quantidade de obras)."""
+        qs_dia = type(self).objects.filter(
+            funcionario=self.funcionario,
+            data=self.data,
+        ).order_by('created_at', 'pk')
+
+        apontamento_principal_id = qs_dia.values_list('pk', flat=True).first()
+        if not apontamento_principal_id:
+            return
+
+        type(self).objects.filter(pk=apontamento_principal_id).exclude(
+            valor_diaria=diaria_base
+        ).update(valor_diaria=diaria_base)
+
+        type(self).objects.filter(
+            funcionario=self.funcionario,
+            data=self.data,
+        ).exclude(pk=apontamento_principal_id).exclude(
+            valor_diaria=Decimal('0.00')
+        ).update(valor_diaria=Decimal('0.00'))
     
     @property
     def valor_proporcional(self):
@@ -284,11 +311,18 @@ class FechamentoSemanal(models.Model):
             data__gte=self.data_inicio,
             data__lte=self.data_fim
         )
-        
-        # Count distinct days (one diária per date), not number of rows
-        self.total_dias = apontamentos.values('data').distinct().count()
+        # Count distinct days (one diária per date)
+        dates_qs = apontamentos.values_list('data', flat=True).distinct()
+        self.total_dias = dates_qs.count()
+
+        # Total hours is sum of all apontamento rows
         self.total_horas = sum(a.horas_trabalhadas for a in apontamentos) or Decimal('0.0')
-        self.total_valor = sum(a.valor_proporcional for a in apontamentos) or Decimal('0.00')
+
+        # Calculate total_valor as one full diária per distinct date (employee
+        # is paid per day regardless of hours or number of obras)
+        diaria_base = self.funcionario.valor_diaria or Decimal('0.00')
+        self.total_valor = (diaria_base * Decimal(self.total_dias)).quantize(Decimal('0.01'))
+
         # Count distinct dates where there was ociosidade / retrabalho
         self.dias_ociosidade = apontamentos.filter(houve_ociosidade=True).values('data').distinct().count()
         self.dias_retrabalho = apontamentos.filter(houve_retrabalho=True).values('data').distinct().count()
@@ -314,18 +348,25 @@ class FechamentoSemanal(models.Model):
         """Retorna obras e etapas em que o funcionário atuou na semana"""
         apontamentos = self.get_apontamentos()
         obras_etapas = {}
-        seen_days = set()  # track (obra, data) to count one diária per day
+        # For each obra, track distinct dates (to count dias) and sum hours across rows
         for a in apontamentos:
-            key = a.obra.nome
+            key = a.obra.nome if a.obra else '—'
             if key not in obras_etapas:
-                obras_etapas[key] = {'dias': 0, 'horas': Decimal('0.0'), 'etapas': set()}
-            day_key = (key, a.data)
-            if day_key not in seen_days:
+                obras_etapas[key] = {'dias_set': set(), 'dias': 0, 'horas': Decimal('0.0'), 'etapas': set()}
+            # Always add hours
+            obras_etapas[key]['horas'] += a.horas_trabalhadas or Decimal('0.0')
+            # Count distinct days per obra
+            if a.data not in obras_etapas[key]['dias_set']:
+                obras_etapas[key]['dias_set'].add(a.data)
                 obras_etapas[key]['dias'] += 1
-                obras_etapas[key]['horas'] += a.horas_trabalhadas
-                seen_days.add(day_key)
             if a.etapa:
                 obras_etapas[key]['etapas'].add(a.etapa.get_numero_etapa_display())
+
+        # Cleanup: convert etapas set to sorted list and remove dias_set
+        for k, v in obras_etapas.items():
+            v['etapas'] = sorted(list(v['etapas']))
+            v.pop('dias_set', None)
+
         return obras_etapas
 
 

@@ -16,6 +16,12 @@
         Semana {{ data_inicio|date:'d/m/Y' }} — {{ data_fim|date:'d/m/Y' }}
       </h3>
     </div>
+    <div class="d-flex align-items-center gap-2">
+      <form method="post" action="{% url 'funcionarios:fechamento_semana_pagar' data_inicio|date:'Y-m-d' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Marcar TODOS os fechamentos desta semana como PAGO?');">Pagar Colaboradores</button>
+      </form>
+    </div>
   </div>
 
   <!-- Cards de resumo -->
@@ -198,9 +204,16 @@
               {% endif %}
             </td>
             <td class="text-center">
-              <a href="{% url 'funcionarios:fechamento_detail' f.pk %}" class="btn btn-sm btn-outline-secondary" title="Ver detalhes">
-                <i class="bi bi-eye"></i>
-              </a>
+              <div class="d-flex justify-content-center gap-1">
+                <a href="{% url 'funcionarios:fechamento_detail' f.pk %}" class="btn btn-sm btn-outline-secondary" title="Ver detalhes">
+                  <i class="bi bi-eye"></i>
+                </a>
+                {% if f.status != 'pago' %}
+                <a href="{% url 'funcionarios:fechamento_delete' f.pk %}" class="btn btn-sm btn-outline-danger" title="Excluir fechamento">
+                  <i class="bi bi-trash"></i>
+                </a>
+                {% endif %}
+              </div>
             </td>
           </tr>
           {% empty %}

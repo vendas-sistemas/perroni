@@ -116,7 +116,7 @@
     <div class="col-6 col-md-4 col-lg-2">
       <div class="card kpi-card bg-secondary bg-opacity-10">
         <div class="card-body text-center py-2">
-          <div class="kpi-value">{{ total_metragem }} m²</div>
+          <div class="kpi-value">{{ total_metragem|decimal_br }} m²</div>
           <div class="kpi-label">Metragem Total</div>
         </div>
       </div>
@@ -169,7 +169,7 @@
                   <td class="text-center">{{ o.dias }}</td>
                   <td class="text-center">{{ o.horas }}h</td>
                   <td class="text-end fw-semibold">{{ o.valor|brl }}</td>
-                  <td class="text-center">{{ o.metragem }}</td>
+                  <td class="text-center">{{ o.metragem|decimal_br }}</td>
                 </tr>
                 {% endfor %}
               </tbody>
@@ -188,7 +188,7 @@
             <div class="border rounded p-2 text-center" style="min-width: 120px;">
               <div class="fw-bold small">{{ ep.etapa_nome }}</div>
               <div class="text-muted small">{{ ep.dias }} dia{{ ep.dias|pluralize:"s" }}</div>
-              {% if ep.metragem %}<div class="small text-primary">{{ ep.metragem }} m²</div>{% endif %}
+              {% if ep.metragem %}<div class="small text-primary">{{ ep.metragem|decimal_br }} m²</div>{% endif %}
             </div>
             {% endfor %}
           </div>
