@@ -89,19 +89,28 @@
               {% for error in form.categoria.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
             </div>
             <div class="col-12 col-sm-6">
-              {% if ferramenta %}
-              <label class="form-label small fw-semibold"><i class="bi bi-flag text-muted"></i> Status Atual</label>
-              <input type="text" class="form-control" value="{{ ferramenta.get_status_display }}" readonly>
+              <label for="{{ form.quantidade_total.id_for_label }}" class="form-label small fw-semibold">
+                <i class="bi bi-stack text-muted"></i> {{ form.quantidade_total.label }}
+              </label>
+              {{ form.quantidade_total }}
+              {% if form.quantidade_total.help_text %}
+              <div class="form-text">{{ form.quantidade_total.help_text }}</div>
               {% endif %}
+              {% for error in form.quantidade_total.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
             </div>
             <div class="col-12">
+              {% if ferramenta %}
+              <div class="alert alert-warning mb-0 py-2 px-3 small">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <strong>Atenção:</strong> Para aumentar ou reduzir quantidades, use <a href="{% url 'ferramentas:movimentacao_create' %}?f={{ ferramenta.pk }}" class="alert-link fw-bold">Movimentar Ferramenta</a>.
+                A quantidade total é calculada automaticamente com base nas movimentações.
+              </div>
+              {% else %}
               <div class="alert alert-info mb-0 py-2 px-3 small">
                 <i class="bi bi-info-circle"></i>
-                Status e localização da ferramenta são atualizados apenas por <strong>movimentações</strong> para manter o histórico completo.
-                {% if ferramenta %}
-                <a class="ms-1" href="{% url 'ferramentas:movimentacao_create' %}?f={{ ferramenta.pk }}">Registrar movimentação agora</a>.
-                {% endif %}
+                Após cadastrar, use <strong>movimentações</strong> para controlar entradas, saídas e transferências mantendo histórico completo.
               </div>
+              {% endif %}
             </div>
           </div>
         </div>
@@ -127,14 +136,14 @@
               {% for error in form.data_aquisicao.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
             </div>
             <div class="col-12 col-sm-6">
-              <label for="{{ form.valor_aquisicao.id_for_label }}" class="form-label small fw-semibold">
-                <i class="bi bi-currency-dollar text-muted"></i> {{ form.valor_aquisicao.label }}
+              <label for="{{ form.valor_unitario.id_for_label }}" class="form-label small fw-semibold">
+                <i class="bi bi-currency-dollar text-muted"></i> {{ form.valor_unitario.label }}
               </label>
               <div class="input-group">
                 <span class="input-group-text">R$</span>
-                {{ form.valor_aquisicao }}
+                {{ form.valor_unitario }}
               </div>
-              {% for error in form.valor_aquisicao.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              {% for error in form.valor_unitario.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
             </div>
           </div>
         </div>

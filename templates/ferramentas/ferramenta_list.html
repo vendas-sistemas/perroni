@@ -104,7 +104,6 @@
     <div class="d-flex flex-wrap align-items-center gap-3">
       <!-- Search -->
       <form method="get" class="d-flex search-box flex-grow-1" action="">
-        {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
         {% if categoria_filter %}<input type="hidden" name="categoria" value="{{ categoria_filter }}">{% endif %}
         <input type="hidden" name="per_page" value="{{ per_page }}">
         <div class="input-group input-group-sm">
@@ -112,32 +111,12 @@
           <input type="text" name="q" value="{{ busca }}" class="form-control border-start-0"
                  placeholder="Buscar por nome ou código...">
           {% if busca %}
-          <a href="?{% if status_filter %}status={{ status_filter }}&{% endif %}{% if categoria_filter %}categoria={{ categoria_filter }}&{% endif %}per_page={{ per_page }}" class="btn btn-outline-secondary btn-sm">
+          <a href="?{% if categoria_filter %}categoria={{ categoria_filter }}&{% endif %}per_page={{ per_page }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-x-lg"></i>
           </a>
           {% endif %}
         </div>
       </form>
-      <!-- Status badges -->
-      <div class="d-flex flex-wrap gap-1 align-items-center">
-        <span class="text-muted small me-1 d-none d-sm-inline">Status:</span>
-        <a href="?{% if busca %}q={{ busca }}&{% endif %}{% if categoria_filter %}categoria={{ categoria_filter }}&{% endif %}per_page={{ per_page }}"
-           class="badge text-decoration-none px-2 py-2 {% if not status_filter %}bg-dark{% else %}bg-light text-dark border{% endif %}">
-          Todos
-        </a>
-        <a href="?status=deposito{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}&per_page={{ per_page }}"
-           class="badge text-decoration-none px-2 py-2 {% if status_filter == 'deposito' %}badge-deposito{% else %}bg-light text-dark border{% endif %}">
-          <i class="bi bi-box-seam"></i> Depósito
-        </a>
-        <a href="?status=em_obra{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}&per_page={{ per_page }}"
-           class="badge text-decoration-none px-2 py-2 {% if status_filter == 'em_obra' %}badge-em_obra{% else %}bg-light text-dark border{% endif %}">
-          <i class="bi bi-building"></i> Em Obra
-        </a>
-        <a href="?status=manutencao{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}&per_page={{ per_page }}"
-           class="badge text-decoration-none px-2 py-2 {% if status_filter == 'manutencao' %}badge-manutencao{% else %}bg-light text-dark border{% endif %}">
-          <i class="bi bi-wrench"></i> Manutenção
-        </a>
-      </div>
       <!-- Categoria dropdown -->
       <div class="dropdown">
         <button class="btn btn-sm {% if categoria_filter %}btn-secondary{% else %}btn-outline-secondary{% endif %} dropdown-toggle d-flex align-items-center gap-1" type="button" data-bs-toggle="dropdown">
@@ -149,12 +128,12 @@
           {% endif %}
         </button>
         <ul class="dropdown-menu">
-          <li><a class="dropdown-item" href="?{% if busca %}q={{ busca }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}per_page={{ per_page }}">Todas</a></li>
+          <li><a class="dropdown-item" href="?{% if busca %}q={{ busca }}&{% endif %}per_page={{ per_page }}">Todas</a></li>
           <li><hr class="dropdown-divider"></li>
           {% for k,v in category_choices %}
           <li>
             <a class="dropdown-item {% if categoria_filter == k %}active{% endif %}"
-               href="?categoria={{ k }}{% if busca %}&q={{ busca }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}">{{ v }}</a>
+               href="?categoria={{ k }}{% if busca %}&q={{ busca }}{% endif %}&per_page={{ per_page }}">{{ v }}</a>
           </li>
           {% endfor %}
         </ul>
@@ -170,11 +149,11 @@
   </small>
   <div class="d-flex align-items-center gap-1">
     <small class="text-muted me-1">Exibir:</small>
-    <a href="?per_page=10{% if status_filter %}&status={{ status_filter }}{% endif %}{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}"
+    <a href="?per_page=10{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}"
        class="badge text-decoration-none px-2 py-1 {% if per_page == 10 %}bg-dark{% else %}bg-light text-dark border{% endif %}">10</a>
-    <a href="?per_page=15{% if status_filter %}&status={{ status_filter }}{% endif %}{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}"
+    <a href="?per_page=15{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}"
        class="badge text-decoration-none px-2 py-1 {% if per_page == 15 %}bg-dark{% else %}bg-light text-dark border{% endif %}">15</a>
-    <a href="?per_page=20{% if status_filter %}&status={{ status_filter }}{% endif %}{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}"
+    <a href="?per_page=20{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}"
        class="badge text-decoration-none px-2 py-1 {% if per_page == 20 %}bg-dark{% else %}bg-light text-dark border{% endif %}">20</a>
   </div>
 </div>
@@ -199,24 +178,19 @@
               {% if current_order == 'nome' %}<i class="bi bi-chevron-{% if current_dir == 'asc' %}up{% else %}down{% endif %} small"></i>{% endif %}
             </a>
           </th>
-          <th class="text-center" style="width: 150px;">
+          <th class="text-center" style="width: 120px;">
             <a class="sort-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}order=categoria&dir={% if current_order == 'categoria' and current_dir == 'asc' %}desc{% else %}asc{% endif %}">
               Categoria
               {% if current_order == 'categoria' %}<i class="bi bi-chevron-{% if current_dir == 'asc' %}up{% else %}down{% endif %} small"></i>{% endif %}
             </a>
           </th>
-          <th class="text-center" style="width: 130px;">
-            <a class="sort-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}order=status&dir={% if current_order == 'status' and current_dir == 'asc' %}desc{% else %}asc{% endif %}">
-              Status
-              {% if current_order == 'status' %}<i class="bi bi-chevron-{% if current_dir == 'asc' %}up{% else %}down{% endif %} small"></i>{% endif %}
+          <th class="text-center" style="width: 80px;">
+            <a class="sort-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}order=quantidade&dir={% if current_order == 'quantidade' and current_dir == 'asc' %}desc{% else %}asc{% endif %}">
+              <i class="bi bi-stack"></i> Total
+              {% if current_order == 'quantidade' %}<i class="bi bi-chevron-{% if current_dir == 'asc' %}up{% else %}down{% endif %} small"></i>{% endif %}
             </a>
           </th>
-          <th style="width: 180px;">
-            <a class="sort-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}order=obra&dir={% if current_order == 'obra' and current_dir == 'asc' %}desc{% else %}asc{% endif %}">
-              <i class="bi bi-building"></i> Obra Atual
-              {% if current_order == 'obra' %}<i class="bi bi-chevron-{% if current_dir == 'asc' %}up{% else %}down{% endif %} small"></i>{% endif %}
-            </a>
-          </th>
+          <th class="text-center" style="width: 280px;">Distribuição</th>
           <th class="text-center" style="width: 130px;">Ações</th>
         </tr>
       </thead>
@@ -239,22 +213,25 @@
           </td>
           <td class="text-center small">{{ f.get_categoria_display }}</td>
           <td class="text-center">
-            <span class="badge badge-{{ f.status }} px-2 py-1">
-              {% if f.status == 'deposito' %}<i class="bi bi-box-seam"></i>
-              {% elif f.status == 'em_obra' %}<i class="bi bi-building"></i>
-              {% elif f.status == 'manutencao' %}<i class="bi bi-wrench-adjustable"></i>
-              {% elif f.status == 'perdida' %}<i class="bi bi-exclamation-triangle"></i>
-              {% elif f.status == 'descartada' %}<i class="bi bi-trash"></i>
-              {% endif %}
-              {{ f.get_status_display }}
-            </span>
+            <span class="badge bg-primary px-2 py-1">{{ f.quantidade_total }}</span>
           </td>
           <td class="small">
-            {% if f.obra_atual %}
-              <i class="bi bi-geo-alt text-muted"></i> {{ f.obra_atual.nome }}
-            {% else %}
-              <span class="text-muted">—</span>
-            {% endif %}
+            <div class="d-flex gap-2 justify-content-center align-items-center flex-wrap">
+              <span class="badge badge-deposito" title="Depósito">
+                <i class="bi bi-box-seam"></i> {{ f.quantidade_deposito }}
+              </span>
+              <span class="badge badge-em_obra" title="Em Obras">
+                <i class="bi bi-building"></i> {{ f.quantidade_em_obras }}
+              </span>
+              <span class="badge badge-manutencao" title="Manutenção">
+                <i class="bi bi-wrench-adjustable"></i> {{ f.quantidade_manutencao }}
+              </span>
+              {% if f.quantidade_perdida > 0 %}
+              <span class="badge badge-perdida" title="Perdida">
+                <i class="bi bi-exclamation-triangle"></i> {{ f.quantidade_perdida }}
+              </span>
+              {% endif %}
+            </div>
           </td>
           <td class="text-center">
             <div class="d-flex justify-content-center gap-1">
@@ -294,14 +271,8 @@
           </a>
           <div class="d-flex flex-wrap gap-2 mt-1 small">
             <span class="badge bg-light text-dark border font-monospace">{{ f.codigo }}</span>
-            <span class="badge badge-{{ f.status }} px-2 py-1">
-              {% if f.status == 'deposito' %}<i class="bi bi-box-seam"></i>
-              {% elif f.status == 'em_obra' %}<i class="bi bi-building"></i>
-              {% elif f.status == 'manutencao' %}<i class="bi bi-wrench-adjustable"></i>
-              {% elif f.status == 'perdida' %}<i class="bi bi-exclamation-triangle"></i>
-              {% elif f.status == 'descartada' %}<i class="bi bi-trash"></i>
-              {% endif %}
-              {{ f.get_status_display }}
+            <span class="badge bg-primary px-2 py-1">
+              <i class="bi bi-stack"></i> Total: {{ f.quantidade_total }}
             </span>
           </div>
         </div>
@@ -314,10 +285,13 @@
           </a>
         </div>
       </div>
-      <div class="d-flex flex-wrap gap-3 mt-2 small text-muted">
-        <span><i class="bi bi-tag"></i> {{ f.get_categoria_display }}</span>
-        {% if f.obra_atual %}
-        <span><i class="bi bi-geo-alt"></i> {{ f.obra_atual.nome }}</span>
+      <div class="d-flex flex-wrap gap-2 mt-2 small">
+        <span class="text-muted"><i class="bi bi-tag"></i> {{ f.get_categoria_display }}</span>
+        <span class="badge badge-deposito"><i class="bi bi-box-seam"></i> {{ f.quantidade_deposito }}</span>
+        <span class="badge badge-em_obra"><i class="bi bi-building"></i> {{ f.quantidade_em_obras }}</span>
+        <span class="badge badge-manutencao"><i class="bi bi-wrench-adjustable"></i> {{ f.quantidade_manutencao }}</span>
+        {% if f.quantidade_perdida > 0 %}
+        <span class="badge badge-perdida"><i class="bi bi-exclamation-triangle"></i> {{ f.quantidade_perdida }}</span>
         {% endif %}
       </div>
     </div>
@@ -373,7 +347,7 @@
   <div class="card-body text-center py-5 text-muted">
     <i class="bi bi-tools fs-1"></i>
     <p class="mt-2 mb-0">Nenhuma ferramenta encontrada.</p>
-    {% if busca or status_filter or categoria_filter %}
+    {% if busca or categoria_filter %}
     <a href="{% url 'ferramentas:ferramenta_list' %}" class="btn btn-sm btn-outline-primary mt-3">
       <i class="bi bi-arrow-counterclockwise"></i> Limpar filtros
     </a>

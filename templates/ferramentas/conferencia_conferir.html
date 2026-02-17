@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Cabeçalho da Conferência -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h3 class="mb-0">
+                        <i class="bi bi-clipboard-check"></i> 
+                        Conferência de Ferramentas
+                    </h3>
+                </div>
+                <div class="col-md-4 text-end">
+                    <a href="{% url 'ferramentas:conferencia_list' %}" class="btn btn-light btn-sm">
+                        <i class="bi bi-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>🏗️ Obra:</strong> 
+                    <span class="text-primary">{{ conferencia.obra.nome }}</span>
+                </div>
+                <div class="col-md-4">
+                    <strong>👤 Fiscal:</strong> 
+                    {{ conferencia.fiscal.get_full_name|default:conferencia.fiscal.username }}
+                </div>
+                <div class="col-md-4">
+                    <strong>📅 Data:</strong> 
+                    {{ conferencia.data_conferencia|date:"d/m/Y H:i" }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" id="form-conferencia">
+        {% csrf_token %}
+        
+        <!-- Instruções -->
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <h5 class="alert-heading">
+                <i class="bi bi-info-circle"></i> Instruções
+            </h5>
+            <p class="mb-1">
+                ✅ Informe a <strong>quantidade encontrada</strong> de cada ferramenta.<br>
+                ✅ O sistema calculará automaticamente se há <strong>falta</strong> ou <strong>sobra</strong>.<br>
+                ✅ Total de ferramentas para conferir: <strong class="text-primary">{{ itens.count }}</strong><br>
+                ✅ Quantidade total esperada: <strong class="text-primary">{{ total_esperado }}</strong> unidade(s)
+            </p>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- Tabela de Conferência -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">
+                    <i class="bi bi-list-check"></i> 
+                    Ferramentas na Obra
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-dark sticky-top">
+                            <tr>
+                                <th style="width: 5%">#</th>
+                                <th style="width: 10%">Código</th>
+                                <th style="width: 25%">Ferramenta</th>
+                                <th style="width: 12%">Categoria</th>
+                                <th style="width: 8%" class="text-center">Qtd. Esperada</th>
+                                <th style="width: 12%" class="text-center">Qtd. Encontrada</th>
+                                <th style="width: 8%" class="text-center">Diferença</th>
+                                <th style="width: 20%">Observações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in itens %}
+                            <tr id="row-{{ item.id }}">
+                                <td class="text-center">{{ forloop.counter }}</td>
+                                
+                                <td>
+                                    <code>{{ item.ferramenta.codigo }}</code>
+                                </td>
+                                
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if item.ferramenta.foto %}
+                                        <img src="{{ item.ferramenta.foto.url }}" 
+                                             alt="{{ item.ferramenta.nome }}"
+                                             class="img-thumbnail me-2"
+                                             style="width: 50px; height: 50px; object-fit: cover;">
+                                        {% endif %}
+                                        <div>
+                                            <strong>{{ item.ferramenta.nome }}</strong>
+                                        </div>
+                                    </div>
+                                </td>
+                                
+                                <td>
+                                    <span class="badge bg-secondary">
+                                        {{ item.ferramenta.get_categoria_display }}
+                                    </span>
+                                </td>
+                                
+                                <td class="text-center">
+                                    <span class="badge bg-info fs-6">
+                                        {{ item.quantidade_esperada }}
+                                    </span>
+                                </td>
+                                
+                                <td class="text-center">
+                                    <input type="number" 
+                                           name="quantidade_encontrada_{{ item.id }}"
+                                           class="form-control form-control-sm text-center quantidade-input"
+                                           min="0"
+                                           value="{{ item.quantidade_encontrada }}"
+                                           data-esperada="{{ item.quantidade_esperada }}"
+                                           data-item-id="{{ item.id }}"
+                                           required
+                                           style="width: 80px; margin: 0 auto; font-weight: bold; font-size: 1.1em;">
+                                </td>
+                                
+                                <td class="text-center">
+                                    <span id="diferenca-{{ item.id }}" class="badge fs-6">
+                                        <!-- Preenchido via JavaScript -->
+                                    </span>
+                                </td>
+                                
+                                <td>
+                                    <textarea name="obs_{{ item.id }}" 
+                                              class="form-control form-control-sm"
+                                              rows="1"
+                                              placeholder="Ex: Ferramenta danificada..."
+                                              style="resize: vertical; min-height: 38px;">{{ item.observacoes }}</textarea>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-5">
+                                    <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                                    <p class="mt-2">Nenhuma ferramenta para conferir nesta obra.</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Observações Gerais -->
+        <div class="card shadow-sm mt-4">
+            <div class="card-header bg-light">
+                <h6 class="mb-0">
+                    <i class="bi bi-chat-left-text"></i> 
+                    Observações Gerais da Conferência
+                </h6>
+            </div>
+            <div class="card-body">
+                <textarea name="observacoes_gerais" 
+                          class="form-control"
+                          rows="3"
+                          placeholder="Observações gerais sobre esta conferência (opcional)...">{{ conferencia.observacoes_gerais }}</textarea>
+            </div>
+        </div>
+
+        <!-- Botões de Ação -->
+        <div class="row mt-4 mb-5">
+            <div class="col-12">
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="bi bi-check-circle"></i> 
+                        ✅ Salvar Conferência
+                    </button>
+                    <a href="{% url 'ferramentas:conferencia_list' %}" 
+                       class="btn btn-secondary btn-lg">
+                        <i class="bi bi-x-circle"></i> 
+                        Cancelar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.quantidade-input:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    background-color: #fff3cd;
+}
+
+.table > tbody > tr > td {
+    vertical-align: middle;
+}
+
+@keyframes pulseRed {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.diferenca-falta {
+    animation: pulseRed 2s ease-in-out infinite;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function atualizarDiferenca(input) {
+        const itemId = input.dataset.itemId;
+        const esperada = parseInt(input.dataset.esperada);
+        const encontrada = parseInt(input.value) || 0;
+        const diferenca = encontrada - esperada;
+        
+        const diferencaSpan = document.getElementById(`diferenca-${itemId}`);
+        const row = document.getElementById(`row-${itemId}`);
+        
+        diferencaSpan.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'diferenca-falta');
+        row.classList.remove('table-success', 'table-danger', 'table-warning');
+        
+        if (diferenca === 0) {
+            diferencaSpan.textContent = '✅ OK';
+            diferencaSpan.classList.add('bg-success');
+            row.classList.add('table-success');
+        } else if (diferenca < 0) {
+            diferencaSpan.textContent = `❌ -${Math.abs(diferenca)}`;
+            diferencaSpan.classList.add('bg-danger', 'diferenca-falta');
+            row.classList.add('table-danger');
+        } else {
+            diferencaSpan.textContent = `⚠️ +${diferenca}`;
+            diferencaSpan.classList.add('bg-warning', 'text-dark');
+            row.classList.add('table-warning');
+        }
+    }
+    
+    document.querySelectorAll('.quantidade-input').forEach(input => {
+        atualizarDiferenca(input);
+        input.addEventListener('input', function() { atualizarDiferenca(this); });
+        input.addEventListener('change', function() { atualizarDiferenca(this); });
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const inputs = document.querySelectorAll('.quantidade-input');
+                const index = Array.from(inputs).indexOf(this);
+                if (index + 1 < inputs.length) {
+                    inputs[index + 1].focus();
+                    inputs[index + 1].select();
+                }
+            }
+        });
+        input.addEventListener('focus', function() { this.select(); });
+    });
+    
+    document.getElementById('form-conferencia').addEventListener('submit', function(e) {
+        const inputs = document.querySelectorAll('.quantidade-input');
+        let algumPreenchido = false;
+        
+        for (let input of inputs) {
+            if (parseInt(input.value) > 0) {
+                algumPreenchido = true;
+                break;
+            }
+        }
+        
+        if (!algumPreenchido) {
+            e.preventDefault();
+            alert('⚠️ Atenção: Você não preencheu nenhuma quantidade encontrada!\n\nPor favor, confira as ferramentas antes de salvar.');
+            return false;
+        }
+        
+        if (!confirm('✅ Deseja salvar esta conferência?\n\nVerifique se todas as quantidades estão corretas.')) {
+            e.preventDefault();
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

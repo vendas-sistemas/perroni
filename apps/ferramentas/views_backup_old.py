@@ -1,13 +1,9 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.db import models
-from .models import (
-    Ferramenta, ConferenciaFerramenta, MovimentacaoFerramenta, 
-    ItemConferencia, LocalizacaoFerramenta
-)
+from .models import Ferramenta, ConferenciaFerramenta, MovimentacaoFerramenta, ItemConferencia
 from .forms import FerramentaForm, MovimentacaoForm, ConferenciaForm, ItemConferenciaForm
 from django.contrib import messages
-from apps.obras.models import Obra
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views import generic
 from django.urls import reverse_lazy
@@ -30,6 +26,8 @@ def ferramenta_list(request):
     codigo = request.GET.get('codigo')
     nome = request.GET.get('nome')
     categoria = request.GET.get('categoria')
+    status_filter = request.GET.get('status')
+    obra = request.GET.get('obra')
     busca = request.GET.get('q', '').strip()
 
     if busca:
@@ -43,6 +41,10 @@ def ferramenta_list(request):
         qs = qs.filter(nome__icontains=nome)
     if categoria:
         qs = qs.filter(categoria=categoria)
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+    if obra:
+        qs = qs.filter(obra_atual__nome__icontains=obra)
 
     # Ordering
     order = request.GET.get('order', 'nome')
@@ -51,7 +53,8 @@ def ferramenta_list(request):
         'codigo': 'codigo',
         'nome': 'nome',
         'categoria': 'categoria',
-        'quantidade': 'quantidade_total'
+        'status': 'status',
+        'obra': 'obra_atual__nome'
     }
     order_field = allowed.get(order, 'nome')
     if direction == 'desc':
@@ -61,21 +64,9 @@ def ferramenta_list(request):
     # Contadores
     all_active = Ferramenta.objects.filter(ativo=True)
     total_ferramentas = all_active.count()
-    
-    # Somar quantidades por localização
-    from django.db.models import Sum
-    total_deposito = LocalizacaoFerramenta.objects.filter(
-        local_tipo='deposito', ferramenta__ativo=True
-    ).aggregate(total=Sum('quantidade'))['total'] or 0
-    
-    total_em_obra = LocalizacaoFerramenta.objects.filter(
-        local_tipo='obra', ferramenta__ativo=True
-    ).aggregate(total=Sum('quantidade'))['total'] or 0
-    
-    total_manutencao = LocalizacaoFerramenta.objects.filter(
-        local_tipo='manutencao', ferramenta__ativo=True
-    ).aggregate(total=Sum('quantidade'))['total'] or 0
-    
+    total_deposito = all_active.filter(status='deposito').count()
+    total_em_obra = all_active.filter(status='em_obra').count()
+    total_manutencao = all_active.filter(status='manutencao').count()
     total_resultado = qs.count()
 
     # Pagination
@@ -109,7 +100,9 @@ def ferramenta_list(request):
         'paginator': paginator,
         'per_page': per_page,
         'category_choices': [(k, v) for k, v in Ferramenta._meta.get_field('categoria').choices],
+        'status_choices': [(k, v) for k, v in Ferramenta._meta.get_field('status').choices],
         'busca': busca,
+        'status_filter': status_filter or '',
         'categoria_filter': categoria or '',
         'total_ferramentas': total_ferramentas,
         'total_deposito': total_deposito,
@@ -169,28 +162,16 @@ def ferramenta_create(request):
                 # inject into form instance
                 form.instance.codigo = codigo
 
-            ferramenta = form.save(commit=False)
-            
-            # Guardar quantidade informada
-            quantidade_inicial = ferramenta.quantidade_total
-            
-            # Zerar quantidade_total (será incrementada pela movimentação)
-            ferramenta.quantidade_total = 0
-            ferramenta.save()
-            
-            # Registrar entrada no depósito (isso cria LocalizacaoFerramenta e incrementa quantidade_total)
-            if quantidade_inicial > 0:
-                MovimentacaoFerramenta.objects.create(
-                    ferramenta=ferramenta,
-                    quantidade=quantidade_inicial,
-                    tipo='entrada_deposito',
-                    origem_tipo='compra',
-                    destino_tipo='deposito',
-                    responsavel=request.user,
-                    observacoes='Entrada inicial criada automaticamente no cadastro da ferramenta.'
-                )
-            
-            messages.success(request, f'Ferramenta {ferramenta.codigo} criada com sucesso.')
+            ferramenta = form.save()
+            MovimentacaoFerramenta.objects.create(
+                ferramenta=ferramenta,
+                tipo='entrada_deposito',
+                origem='Cadastro inicial',
+                destino='Depósito',
+                responsavel=request.user,
+                observacoes='Movimentação inicial criada automaticamente no cadastro da ferramenta.'
+            )
+            messages.success(request, 'Ferramenta criada com sucesso.')
             return redirect('ferramentas:ferramenta_detail', pk=ferramenta.pk)
     else:
         form = FerramentaForm()
@@ -261,191 +242,20 @@ def conferencia_detail(request, pk):
 
 @login_required
 def conferencia_create(request):
-    """
-    Cria conferência e AUTOMATICAMENTE popula com as ferramentas da obra.
-    Não precisa mais adicionar itens manualmente!
-    """
+    """Cria conferência diária"""
     if request.method == 'POST':
         form = ConferenciaForm(request.POST)
         if form.is_valid():
-            with transaction.atomic():
-                # Salvar conferência
-                conf = form.save(commit=False)
-                conf.fiscal = request.user
-                conf.data_conferencia = timezone.localtime()
-                conf.save()
-                
-                # BUSCAR AUTOMATICAMENTE ferramentas que DEVERIAM estar na obra
-                obra = conf.obra
-                
-                # Ferramentas que estão nesta obra (usando LocalizacaoFerramenta)
-                localizacoes_na_obra = LocalizacaoFerramenta.objects.filter(
-                    local_tipo='obra',
-                    obra=obra,
-                    quantidade__gt=0  # Apenas localizações com quantidade > 0
-                ).select_related('ferramenta')
-                
-                # CRIAR AUTOMATICAMENTE os itens de conferência
-                itens_criados = 0
-                for loc in localizacoes_na_obra:
-                    ItemConferencia.objects.create(
-                        conferencia=conf,
-                        ferramenta=loc.ferramenta,
-                        quantidade_esperada=loc.quantidade,  # Quantidade que deveria ter
-                        quantidade_encontrada=0,  # Fiscal vai preencher
-                        status='',  # Será calculado automaticamente no save()
-                        observacoes=''
-                    )
-                    itens_criados += 1
-                
-                if itens_criados == 0:
-                    messages.warning(
-                        request,
-                        f'Conferência criada, mas não há ferramentas registradas em {obra.nome}. '
-                        f'Verifique se as ferramentas foram movimentadas corretamente.'
-                    )
-                else:
-                    messages.success(
-                        request, 
-                        f'✅ Conferência criada com {itens_criados} ferramenta(s) para conferir!'
-                    )
-                
-                # Redirecionar para página de CONFERIR (não de listar)
-                return redirect('ferramentas:conferencia_conferir', pk=conf.pk)
+            conf = form.save(commit=False)
+            conf.fiscal = request.user
+            conf.data_conferencia = timezone.localtime()
+            conf.save()
+            messages.success(request, 'Conferência criada.')
+            return redirect('ferramentas:conferencia_list')
     else:
         form = ConferenciaForm()
-    
-    # Adicionar informações úteis ao contexto
-    obras_com_ferramentas = {}
-    for obra in Obra.objects.filter(ativo=True):
-        qtd = LocalizacaoFerramenta.objects.filter(
-            local_tipo='obra',
-            obra=obra,
-            quantidade__gt=0
-        ).count()
-        if qtd > 0:
-            obras_com_ferramentas[obra.id] = qtd
-    
-    return render(request, 'ferramentas/conferencia_form.html', {
-        'form': form,
-        'title': 'Nova Conferência',
-        'obras_com_ferramentas': obras_com_ferramentas
-    })
 
-
-@login_required
-def conferencia_conferir(request, pk):
-    """
-    Tela onde o fiscal confere as ferramentas.
-    Mostra lista de TODAS as ferramentas que deveriam estar na obra.
-    Fiscal marca quantidade encontrada e o sistema calcula o status automaticamente.
-    """
-    conferencia = get_object_or_404(
-        ConferenciaFerramenta.objects.select_related('obra', 'fiscal'),
-        pk=pk
-    )
-    itens = conferencia.itens.select_related('ferramenta').order_by('ferramenta__nome')
-    
-    if request.method == 'POST':
-        # Processar formulário de conferência
-        with transaction.atomic():
-            itens_processados = 0
-            
-            for item in itens:
-                qtd_key = f'quantidade_encontrada_{item.id}'
-                obs_key = f'obs_{item.id}'
-                
-                # Pegar quantidade encontrada
-                try:
-                    qtd_encontrada = int(request.POST.get(qtd_key, 0))
-                    if qtd_encontrada < 0:
-                        qtd_encontrada = 0
-                except (ValueError, TypeError):
-                    qtd_encontrada = 0
-                
-                item.quantidade_encontrada = qtd_encontrada
-                item.observacoes = request.POST.get(obs_key, '').strip()
-                
-                # O status é calculado automaticamente no save() do model
-                item.save()
-                itens_processados += 1
-                
-                # Se FALTOU ferramentas, criar observação automática
-                if item.status == 'falta' and not item.observacoes:
-                    diferenca = abs(item.diferenca)
-                    item.observacoes = f'Faltam {diferenca} unidade(s)'
-                    item.save(update_fields=['observacoes'])
-                
-                # Se SOBROU ferramentas, criar observação automática
-                elif item.status == 'sobra' and not item.observacoes:
-                    diferenca = item.diferenca
-                    item.observacoes = f'Sobraram {diferenca} unidade(s) não registradas'
-                    item.save(update_fields=['observacoes'])
-            
-            # Atualizar observações gerais da conferência
-            obs_gerais = request.POST.get('observacoes_gerais', '').strip()
-            if obs_gerais:
-                conferencia.observacoes_gerais = obs_gerais
-                conferencia.save(update_fields=['observacoes_gerais'])
-            
-            messages.success(
-                request, 
-                f'✅ Conferência salva com sucesso! {itens_processados} item(ns) conferido(s).'
-            )
-            
-            # Mostrar alerta se há divergências
-            if conferencia.tem_divergencias:
-                messages.warning(
-                    request,
-                    f'⚠️ Atenção: {conferencia.total_divergencias} divergência(s) encontrada(s)!'
-                )
-            
-            return redirect('ferramentas:conferencia_detail', pk=conferencia.pk)
-    
-    # Estatísticas para a tela
-    total_esperado = sum(item.quantidade_esperada for item in itens)
-    
-    context = {
-        'conferencia': conferencia,
-        'itens': itens,
-        'total_esperado': total_esperado,
-        'title': f'Conferir Ferramentas - {conferencia.obra.nome}'
-    }
-    return render(request, 'ferramentas/conferencia_conferir.html', context)
-
-
-@login_required
-def conferencia_list(request):
-    """Lista conferências de ferramentas com informações de divergências"""
-    conferencias = ConferenciaFerramenta.objects.all().select_related(
-        'obra', 'fiscal'
-    ).prefetch_related('itens')
-    
-    # Filtros
-    obra_id = request.GET.get('obra')
-    if obra_id:
-        conferencias = conferencias.filter(obra_id=obra_id)
-    
-    fiscal_id = request.GET.get('fiscal')
-    if fiscal_id:
-        conferencias = conferencias.filter(fiscal_id=fiscal_id)
-    
-    # Adicionar informações de divergência
-    conferencias_com_info = []
-    for conf in conferencias:
-        conferencias_com_info.append({
-            'conferencia': conf,
-            'total_itens': conf.total_itens,
-            'total_divergencias': conf.total_divergencias,
-            'tem_divergencias': conf.tem_divergencias
-        })
-    
-    context = {
-        'conferencias_info': conferencias_com_info,
-        'obras': Obra.objects.filter(ativo=True).order_by('nome'),
-        'title': 'Conferências de Ferramentas'
-    }
-    return render(request, 'ferramentas/conferencia_list.html', context)
+    return render(request, 'ferramentas/conferencia_form.html', {'form': form, 'title': 'Nova Conferência'})
 
 
 class ConferenciaCreateView(LoginRequiredMixin, generic.CreateView):
@@ -474,18 +284,6 @@ class ItemConferenciaCreateView(LoginRequiredMixin, generic.CreateView):
         if conferencia_pk:
             initial['conferencia'] = conferencia_pk
         return initial
-    
-    def get_form_kwargs(self):
-        """Passa a obra para o form se houver conferência"""
-        kwargs = super().get_form_kwargs()
-        conferencia_pk = self.kwargs.get('conferencia_pk')
-        if conferencia_pk:
-            try:
-                conf = ConferenciaFerramenta.objects.get(pk=conferencia_pk)
-                kwargs['obra'] = conf.obra
-            except ConferenciaFerramenta.DoesNotExist:
-                pass
-        return kwargs
 
     def form_valid(self, form):
         obj = form.save(commit=False)
@@ -542,23 +340,10 @@ class ConferenciaWithItemsCreateView(LoginRequiredMixin, View):
                 conferencia.fiscal = request.user
                 conferencia.data_conferencia = timezone.localtime()
                 conferencia.save()
-                
-                # Salvar itens com quantidade_esperada preenchida
                 items = formset.save(commit=False)
                 for item in items:
                     item.conferencia = conferencia
-                    # Auto-preencher quantidade_esperada se não preenchido
-                    if not item.quantidade_esperada and item.ferramenta:
-                        try:
-                            loc = item.ferramenta.localizacoes.get(
-                                local_tipo='obra',
-                                obra=conferencia.obra
-                            )
-                            item.quantidade_esperada = loc.quantidade
-                        except LocalizacaoFerramenta.DoesNotExist:
-                            item.quantidade_esperada = 0
                     item.save()
-                
                 for obj in formset.deleted_objects:
                     obj.delete()
             messages.success(request, 'Conferência e itens salvos com sucesso.')

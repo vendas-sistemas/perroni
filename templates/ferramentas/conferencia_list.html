@@ -18,24 +18,32 @@
               <th>Cliente</th>
               <th>Fiscal</th>
               <th>Data</th>
+              <th class="text-center">Status</th>
               <th class="text-end">Ações</th>
             </tr>
           </thead>
           <tbody>
-            {% for c in conferencias %}
+            {% for info in conferencias_info %}
             <tr>
-              <td>{{ c.obra.nome }}</td>
-              <td>{{ c.obra.cliente }}</td>
-              <td>{{ c.fiscal.get_full_name|default:c.fiscal.username }}</td>
-              <td><a href="{% url 'ferramentas:conferencia_detail' c.pk %}">{{ c.data_conferencia|date:"d/m/Y H:i" }}</a></td>
+              <td>{{ info.conferencia.obra.nome }}</td>
+              <td>{{ info.conferencia.obra.cliente }}</td>
+              <td>{{ info.conferencia.fiscal.get_full_name|default:info.conferencia.fiscal.username }}</td>
+              <td>{{ info.conferencia.data_conferencia|date:"d/m/Y H:i" }}</td>
+              <td class="text-center">
+                {% if info.tem_divergencias %}
+                  <span class="badge bg-warning text-dark">⚠️ {{ info.total_divergencias }} divergência(s)</span>
+                {% else %}
+                  <span class="badge bg-success">✓ OK</span>
+                {% endif %}
+              </td>
               <td class="text-end">
-                <a href="{% url 'ferramentas:conferencia_detail' c.pk %}" class="btn btn-sm btn-outline-primary">Ver</a>
-                <a href="{% url 'ferramentas:itemconferencia_create' c.pk %}" class="btn btn-sm btn-outline-secondary ms-2">Editar Itens</a>
+                <a href="{% url 'ferramentas:conferencia_detail' info.conferencia.pk %}" class="btn btn-sm btn-outline-primary">Ver</a>
+                <a href="{% url 'ferramentas:conferencia_conferir' info.conferencia.pk %}" class="btn btn-sm btn-outline-secondary ms-2">Conferir</a>
               </td>
             </tr>
             {% empty %}
             <tr>
-              <td colspan="5" class="text-center">Nenhuma conferência encontrada.</td>
+              <td colspan="6" class="text-center">Nenhuma conferência encontrada.</td>
             </tr>
             {% endfor %}
           </tbody>
