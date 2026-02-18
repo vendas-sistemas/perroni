@@ -284,7 +284,33 @@ class Etapa1Fundacao(models.Model):
         blank=True,
         verbose_name="8 Fiadas até Respaldo (conclusão)"
     )
-    
+
+    # ========== CAMPOS NOVOS ==========
+
+    # Levantar Alicerce — percentual de conclusão
+    levantar_alicerce_percentual = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00')), MaxValueValidator(Decimal('100.00'))],
+        verbose_name="Levantar Alicerce (%)",
+        help_text="Percentual de conclusão do levantamento do alicerce"
+    )
+
+    # Rebocar Alicerce
+    rebocar_alicerce_concluido = models.BooleanField(
+        default=False,
+        verbose_name="Rebocar Alicerce Concluído"
+    )
+
+    # Impermeabilizar Alicerce
+    impermeabilizar_alicerce_concluido = models.BooleanField(
+        default=False,
+        verbose_name="Impermeabilizar Alicerce Concluído"
+    )
+
+    # ========== FIM CAMPOS NOVOS ==========
+
     class Meta:
         verbose_name = "Etapa 1 - Fundação"
         verbose_name_plural = "Etapas 1 - Fundação"
@@ -318,7 +344,13 @@ class Etapa2Estrutura(models.Model):
         blank=True,
         verbose_name="Cobertura Completa (conclusão)"
     )
-    
+
+    # Platibanda — quantidade de blocos
+    platibanda_blocos = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Platibanda (Unidades de Blocos)"
+    )
+
     class Meta:
         verbose_name = "Etapa 2 - Estrutura"
         verbose_name_plural = "Etapas 2 - Estrutura"

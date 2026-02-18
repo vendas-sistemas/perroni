@@ -41,6 +41,9 @@ ETAPA_FIELDS_META = {
             ('locacao_ferragem_conclusao', 'date', 'Locação de Ferragem (conclusão)'),
             ('aterro_contrapiso_conclusao', 'date', 'Aterro e Contrapiso (conclusão)'),
             ('fiadas_respaldo_conclusao', 'date', '8 Fiadas até Respaldo (conclusão)'),
+            ('levantar_alicerce_percentual', 'decimal', 'Levantar Alicerce (%)'),
+            ('rebocar_alicerce_concluido', 'boolean', 'Rebocar Alicerce Concluído'),
+            ('impermeabilizar_alicerce_concluido', 'boolean', 'Impermeabilizar Alicerce Concluído'),
         ]
     },
     2: {
@@ -49,6 +52,7 @@ ETAPA_FIELDS_META = {
         'fields': [
             ('montagem_laje_conclusao', 'date', 'Montagem da Laje (conclusão)'),
             ('cobertura_conclusao', 'date', 'Cobertura Completa (conclusão)'),
+            ('platibanda_blocos', 'integer', 'Platibanda (Unidades de Blocos)'),
         ]
     },
     3: {
@@ -586,28 +590,9 @@ def apontamento_create(request, funcionario_id=None):
         if form.is_valid():
             ap = form.save(commit=False)
             ap.valor_diaria = ap.funcionario.valor_diaria
-            # Update existing entry instead of creating duplicate for same (funcionario, data, obra)
-            existing = ApontamentoFuncionario.objects.filter(
-                funcionario=ap.funcionario, data=ap.data, obra=ap.obra
-            ).first()
+            # ✅ SEMPRE criar novo registro (permite múltiplos apontamentos mesmo func/dia/obra)
+            ap.save()
             is_update = False
-            if existing:
-                existing.etapa = ap.etapa
-                existing.horas_trabalhadas = ap.horas_trabalhadas
-                existing.clima = ap.clima
-                existing.metragem_executada = ap.metragem_executada
-                existing.valor_diaria = ap.funcionario.valor_diaria
-                existing.houve_ociosidade = ap.houve_ociosidade
-                existing.observacao_ociosidade = ap.observacao_ociosidade
-                existing.houve_retrabalho = ap.houve_retrabalho
-                existing.motivo_retrabalho = ap.motivo_retrabalho
-                existing.observacoes = ap.observacoes
-                existing.save()
-                ap = existing
-                is_update = True
-                messages.info(request, f'Apontamento de {ap.funcionario.nome_completo} atualizado (já existia registro nesta data/obra).')
-            else:
-                ap.save()
 
             # ---- Auto-update obra: save etapa items from POST ----
             etapa_items_changes = []
@@ -729,35 +714,20 @@ def apontamento_diario(request):
                     except Etapa.DoesNotExist:
                         pass
 
-                # Verifica se já existe
-                existing = ApontamentoFuncionario.objects.filter(
-                    funcionario=func, data=data, obra=obra
-                ).first()
-
-                if existing:
-                    existing.etapa = etapa_obj
-                    existing.horas_trabalhadas = horas_dec
-                    existing.clima = clima
-                    existing.valor_diaria = func.valor_diaria
-                    existing.save()
-                    atualizados += 1
-                    # Registrar histórico para atualização via registro diário
-                    if etapa_obj:
-                        _registrar_historico_apontamento(etapa_obj, existing, request, is_update=True)
-                else:
-                    ap_novo = ApontamentoFuncionario.objects.create(
-                        funcionario=func,
-                        obra=obra,
-                        etapa=etapa_obj,
-                        data=data,
-                        horas_trabalhadas=horas_dec,
-                        clima=clima,
-                        valor_diaria=func.valor_diaria,
-                    )
-                    criados += 1
-                    # Registrar histórico para criação via registro diário
-                    if etapa_obj:
-                        _registrar_historico_apontamento(etapa_obj, ap_novo, request, is_update=False)
+                # ✅ SEMPRE criar novo (permite múltiplos turnos/períodos no mesmo dia)
+                ap_novo = ApontamentoFuncionario.objects.create(
+                    funcionario=func,
+                    obra=obra,
+                    etapa=etapa_obj,
+                    data=data,
+                    horas_trabalhadas=horas_dec,
+                    clima=clima,
+                    valor_diaria=func.valor_diaria,
+                )
+                criados += 1
+                # Registrar histórico
+                if etapa_obj:
+                    _registrar_historico_apontamento(etapa_obj, ap_novo, request, is_update=False)
 
             if criados or atualizados:
                 msg_parts = []

@@ -187,9 +187,11 @@ class ApontamentoFuncionario(models.Model):
     class Meta:
         verbose_name = "Apontamento de Funcionário"
         verbose_name_plural = "Apontamentos de Funcionários"
-        ordering = ['-data']
-        # Nota: removido unique_together para permitir múltiplos apontamentos
-        # por funcionário na mesma data (mesma obra pode ter vários registros).
+        ordering = ['-data', '-created_at']
+        # ✅ PERMITE múltiplos registros do mesmo funcionário no mesmo dia
+        # ✅ PERMITE mesmo funcionário ir e voltar da mesma obra no mesmo dia
+        # Cada apontamento é único e registra um período trabalhado
+        # Sem unique_together = registros ilimitados
     
     def __str__(self):
         return f"{self.funcionario.nome_completo} - {self.obra.nome} - {self.data.strftime('%d/%m/%Y')}"
