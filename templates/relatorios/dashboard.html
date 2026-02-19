@@ -107,15 +107,7 @@
   </div>
   {% endif %}
 
-  {% if not filtros_informados %}
-    <div class="card section-card shadow-sm">
-      <div class="card-body empty-state">
-        <i class="bi bi-funnel"></i>
-        <h5>Informe os filtros para carregar o relatório</h5>
-        <p>Selecione ao menos um filtro acima e clique em <strong>Filtrar</strong>.</p>
-      </div>
-    </div>
-  {% elif not ranking_por_etapas and not media_dias_etapa and not media_individual and not apontamentos_periodo %}
+  {% if not ranking_por_etapas and not media_dias_etapa and not media_individual and not apontamentos_periodo %}
     <div class="card section-card shadow-sm">
       <div class="card-body empty-state">
         <i class="bi bi-clipboard-data"></i>
@@ -283,7 +275,7 @@
               <td>{{ forloop.counter }}</td>
               <td class="fw-semibold">{{ r.nome }}</td>
               <td class="text-center">
-                <span class="badge bg-primary fs-6">{{ r.media_metragem }}</span>
+                <span class="badge bg-primary fs-6">{{ r.media_producao }}</span>
               </td>
               <td class="text-center">{{ r.total_dias }}</td>
               <td class="text-center">

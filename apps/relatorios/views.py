@@ -27,18 +27,10 @@ def relatorio_dashboard(request):
     filtros = form.get_filtros() if form.is_valid() else {}
     filtros_informados = bool(filtros)
 
-    if filtros_informados:
-        # USAR NOVO SISTEMA COM INDICADORES
-        dados = gerar_relatorio_completo_indicadores(filtros)
-        apontamentos = apontamentos_periodo(filtros)
-    else:
-        dados = {
-            'ranking_por_etapas': [],
-            'media_dias_etapa': [],
-            'media_individual': [],
-            'rankings_indicadores': {},
-        }
-        apontamentos = []
+    # ✅ SEMPRE MOSTRAR DADOS (com ou sem filtros)
+    # Se não há filtros, mostrar TODOS os dados
+    dados = gerar_relatorio_completo_indicadores(filtros if filtros_informados else None)
+    apontamentos = apontamentos_periodo(filtros if filtros_informados else None)
 
     context = {
         'form': form,

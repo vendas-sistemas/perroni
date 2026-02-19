@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="card shadow-sm" style="border:none; border-radius:.75rem">
+    <div class="card-header bg-info text-white">
+      <h3 class="mb-2">
+        <i class="bi bi-graph-up"></i> Médias de Rendimento Individual
+      </h3>
+      <h5 class="mb-0">{{ funcionario.nome_completo }}</h5>
+      <small>Período: {{ data_inicio|date:"d/m/Y" }} a {{ data_fim|date:"d/m/Y" }}</small>
+    </div>
+    
+    <div class="card-body">
+      
+      <!-- Resumo Geral -->
+      <div class="alert alert-info">
+        <div class="row">
+          <div class="col-md-6">
+            <strong>📅 Dias trabalhados:</strong> {{ total_dias_trabalhados }} dias
+          </div>
+          <div class="col-md-6">
+            <strong>🏗️ Obras trabalhadas:</strong> {{ total_obras }} obras
+          </div>
+        </div>
+      </div>
+      
+      <hr>
+      
+      {% if medias_por_etapa %}
+      
+      <!-- Etapa 1 -->
+      {% if medias_por_etapa.1 %}
+      <div class="mb-4">
+        <h4 class="text-primary">
+          <i class="bi bi-1-circle-fill"></i> ETAPA 1 - FUNDAÇÃO
+        </h4>
+        <div class="row">
+          {% for media in medias_por_etapa.1 %}
+          <div class="col-md-4 mb-3">
+            <div class="card border-primary">
+              <div class="card-body text-center">
+                <h6 class="text-muted mb-2">{{ media.nome }}</h6>
+                <h2 class="text-primary mb-0">{{ media.media }}</h2>
+                <p class="text-muted mb-2">{{ media.unidade }}/dia</p>
+                <hr>
+                <small class="text-muted">
+                  Total: {{ media.total_producao }} {{ media.unidade }}<br>
+                  Em {{ media.total_dias }} dias
+                </small>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      
+      <!-- Etapa 2 -->
+      {% if medias_por_etapa.2 %}
+      <div class="mb-4">
+        <h4 class="text-success">
+          <i class="bi bi-2-circle-fill"></i> ETAPA 2 - ESTRUTURA
+        </h4>
+        <div class="row">
+          {% for media in medias_por_etapa.2 %}
+          <div class="col-md-4 mb-3">
+            <div class="card border-success">
+              <div class="card-body text-center">
+                <h6 class="text-muted mb-2">{{ media.nome }}</h6>
+                <h2 class="text-success mb-0">{{ media.media }}</h2>
+                <p class="text-muted mb-2">{{ media.unidade }}/dia</p>
+                <hr>
+                <small class="text-muted">
+                  Total: {{ media.total_producao }} {{ media.unidade }}<br>
+                  Em {{ media.total_dias }} dias
+                </small>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      
+      <!-- Etapa 3 -->
+      {% if medias_por_etapa.3 %}
+      <div class="mb-4">
+        <h4 class="text-warning">
+          <i class="bi bi-3-circle-fill"></i> ETAPA 3 - INSTALAÇÕES
+        </h4>
+        <div class="row">
+          {% for media in medias_por_etapa.3 %}
+          <div class="col-md-4 mb-3">
+            <div class="card border-warning">
+              <div class="card-body text-center">
+                <h6 class="text-muted mb-2">{{ media.nome }}</h6>
+                <h2 class="text-warning mb-0">{{ media.media }}</h2>
+                <p class="text-muted mb-2">{{ media.unidade }}/dia</p>
+                <hr>
+                <small class="text-muted">
+                  Total: {{ media.total_producao }} {{ media.unidade }}<br>
+                  Em {{ media.total_dias }} dias
+                </small>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      
+      {% else %}
+      <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+        Nenhuma produção registrada para este pedreiro no período selecionado.
+      </div>
+      {% endif %}
+      
+      <!-- Botões -->
+      <hr>
+      <div class="d-flex gap-2">
+        <a href="{% url 'funcionarios:funcionario_detail' funcionario.pk %}" 
+           class="btn btn-secondary">
+          <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+        <button onclick="window.print()" class="btn btn-primary">
+          <i class="bi bi-printer"></i> Imprimir
+        </button>
+      </div>
+      
+    </div>
+  </div>
+</div>
+{% endblock %}

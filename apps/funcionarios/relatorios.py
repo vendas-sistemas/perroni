@@ -285,7 +285,7 @@ class RelatorioProducao:
         
         # Indicadores de conclusão
         indicadores_conclusao = [
-            ('respaldo_conclusao', 1, '8 Fiadas até Respaldo'),
+            ('respaldo_conclusao', 2, '8 Fiadas até Respaldo'),  # ✅ Corrigido: etapa 2, não 1
             ('laje_conclusao', 2, 'Montagem da Laje'),
             ('cobertura_conclusao', 2, 'Cobertura Completa'),
         ]

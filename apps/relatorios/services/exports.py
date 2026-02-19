@@ -17,7 +17,7 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-from apps.relatorios.services.analytics import gerar_relatorio_completo
+from apps.relatorios.services.analytics_indicadores import gerar_relatorio_completo_indicadores
 
 
 # ═══════════════════════════════════════════
@@ -54,7 +54,7 @@ def _table_style():
 
 def exportar_pdf(filtros: dict | None = None) -> io.BytesIO:
     """Gera relatório completo em PDF e retorna BytesIO."""
-    dados = gerar_relatorio_completo(filtros)
+    dados = gerar_relatorio_completo_indicadores(filtros)
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,
@@ -95,7 +95,7 @@ def exportar_pdf(filtros: dict | None = None) -> io.BytesIO:
         header = ['#', 'Pedreiro', 'Média m²/dia', 'Dias Trab.']
         rows = [header]
         for i, m in enumerate(etapa['melhores'], 1):
-            rows.append([str(i), m['nome'], f"{m['media_metragem']:.2f}", str(m['total_dias'])])
+            rows.append([str(i), m['nome'], f"{m['media_producao']:.2f}", str(m['total_dias'])])
         t = Table(rows, repeatRows=1)
         t.setStyle(t_style)
         elements.append(t)
@@ -105,7 +105,7 @@ def exportar_pdf(filtros: dict | None = None) -> io.BytesIO:
         elements.append(Paragraph('Top 3 Piores', styles['Heading4']))
         rows_p = [header]
         for i, p in enumerate(etapa['piores'], 1):
-            rows_p.append([str(i), p['nome'], f"{p['media_metragem']:.2f}", str(p['total_dias'])])
+            rows_p.append([str(i), p['nome'], f"{p['media_producao']:.2f}", str(p['total_dias'])])
         t2 = Table(rows_p, repeatRows=1)
         t2.setStyle(t_style)
         elements.append(t2)
@@ -132,7 +132,7 @@ def exportar_pdf(filtros: dict | None = None) -> io.BytesIO:
         rows3.append([
             str(i),
             r['nome'],
-            f"{r['media_metragem']:.2f}",
+            f"{r['media_producao']:.2f}",
             str(r['total_dias']),
             str(r['total_ociosidade']),
             str(r['total_retrabalho']),
@@ -181,7 +181,7 @@ def _auto_width(ws):
 
 def exportar_excel(filtros: dict | None = None) -> io.BytesIO:
     """Gera relatório completo em Excel e retorna BytesIO."""
-    dados = gerar_relatorio_completo(filtros)
+    dados = gerar_relatorio_completo_indicadores(filtros)
     wb = openpyxl.Workbook()
 
     # ── Aba 1: Ranking ──
@@ -203,7 +203,7 @@ def exportar_excel(filtros: dict | None = None) -> io.BytesIO:
         for i, m in enumerate(etapa['melhores'], 1):
             ws1.cell(row=row, column=1, value=i).alignment = _CELL_ALIGN
             ws1.cell(row=row, column=2, value=m['nome']).alignment = _CELL_ALIGN
-            ws1.cell(row=row, column=3, value=m['media_metragem']).alignment = _CELL_ALIGN
+            ws1.cell(row=row, column=3, value=m['media_producao']).alignment = _CELL_ALIGN
             ws1.cell(row=row, column=4, value=m['total_dias']).alignment = _CELL_ALIGN
             for c in range(1, 5):
                 ws1.cell(row=row, column=c).border = _THIN_BORDER
@@ -217,7 +217,7 @@ def exportar_excel(filtros: dict | None = None) -> io.BytesIO:
         for i, p in enumerate(etapa['piores'], 1):
             ws1.cell(row=row, column=1, value=i).alignment = _CELL_ALIGN
             ws1.cell(row=row, column=2, value=p['nome']).alignment = _CELL_ALIGN
-            ws1.cell(row=row, column=3, value=p['media_metragem']).alignment = _CELL_ALIGN
+            ws1.cell(row=row, column=3, value=p['media_producao']).alignment = _CELL_ALIGN
             ws1.cell(row=row, column=4, value=p['total_dias']).alignment = _CELL_ALIGN
             for c in range(1, 5):
                 ws1.cell(row=row, column=c).border = _THIN_BORDER
@@ -246,7 +246,7 @@ def exportar_excel(filtros: dict | None = None) -> io.BytesIO:
     for i, r in enumerate(dados['media_individual'], 2):
         ws3.cell(row=i, column=1, value=i - 1).alignment = _CELL_ALIGN
         ws3.cell(row=i, column=2, value=r['nome']).alignment = _CELL_ALIGN
-        ws3.cell(row=i, column=3, value=r['media_metragem']).alignment = _CELL_ALIGN
+        ws3.cell(row=i, column=3, value=r['media_producao']).alignment = _CELL_ALIGN
         ws3.cell(row=i, column=4, value=r['total_dias']).alignment = _CELL_ALIGN
         ws3.cell(row=i, column=5, value=r['total_ociosidade']).alignment = _CELL_ALIGN
         ws3.cell(row=i, column=6, value=r['total_retrabalho']).alignment = _CELL_ALIGN

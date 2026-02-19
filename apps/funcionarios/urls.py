@@ -11,6 +11,7 @@ urlpatterns = [
     path('<int:pk>/editar/', views.funcionario_update, name='funcionario_update'),
     path('<int:pk>/inativar/', views.funcionario_inativar, name='funcionario_inativar'),
     path('<int:pk>/historico/', views.funcionario_historico, name='funcionario_historico'),
+    path('<int:pk>/medias/', views.funcionario_medias_individuais, name='funcionario_medias_individuais'),  # ✅ CORREÇÃO PROBLEMA 3
 
     # Apontamentos
     path('apontamentos/', views.apontamento_list, name='apontamento_list'),

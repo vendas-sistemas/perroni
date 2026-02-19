@@ -514,6 +514,7 @@ class ApontamentoDiarioLote(models.Model):
         """
         Retorna dicionário com valores dos campos da etapa para processamento.
         Usado para criar RegistroProducao.
+        ✅ Filtra campos vazios (0, None) para evitar registros desnecessários.
         """
         if not self.etapa:
             return {}
@@ -524,20 +525,31 @@ class ApontamentoDiarioLote(models.Model):
         try:
             if numero_etapa == 1 and hasattr(self.etapa, 'fundacao'):
                 fund = self.etapa.fundacao
-                campos['alicerce_percentual'] = fund.levantar_alicerce_percentual
-                campos['parede_7fiadas_blocos'] = fund.parede_7fiadas_blocos
+                # ✅ Só adicionar se valor > 0
+                if fund.levantar_alicerce_percentual and fund.levantar_alicerce_percentual > 0:
+                    campos['alicerce_percentual'] = fund.levantar_alicerce_percentual
+                if fund.parede_7fiadas_blocos and fund.parede_7fiadas_blocos > 0:
+                    campos['parede_7fiadas_blocos'] = fund.parede_7fiadas_blocos
                     
             elif numero_etapa == 2 and hasattr(self.etapa, 'estrutura'):
                 est = self.etapa.estrutura
-                campos['respaldo_conclusao'] = est.respaldo_conclusao if hasattr(est, 'respaldo_conclusao') else 0
-                campos['laje_conclusao'] = est.laje_conclusao if hasattr(est, 'laje_conclusao') else 0
-                campos['platibanda_metros'] = est.platibanda_blocos if hasattr(est, 'platibanda_blocos') else 0
-                campos['cobertura_conclusao'] = est.cobertura_conclusao if hasattr(est, 'cobertura_conclusao') else 0
+                # ✅ Só adicionar se valor > 0
+                if hasattr(est, 'respaldo_conclusao') and est.respaldo_conclusao and est.respaldo_conclusao > 0:
+                    campos['respaldo_conclusao'] = est.respaldo_conclusao
+                if hasattr(est, 'laje_conclusao') and est.laje_conclusao and est.laje_conclusao > 0:
+                    campos['laje_conclusao'] = est.laje_conclusao
+                if hasattr(est, 'platibanda_blocos') and est.platibanda_blocos and est.platibanda_blocos > 0:
+                    campos['platibanda_metros'] = est.platibanda_blocos
+                if hasattr(est, 'cobertura_conclusao') and est.cobertura_conclusao and est.cobertura_conclusao > 0:
+                    campos['cobertura_conclusao'] = est.cobertura_conclusao
                     
             elif numero_etapa == 3 and hasattr(self.etapa, 'instalacoes'):
                 inst = self.etapa.instalacoes
-                campos['reboco_externo_m2'] = inst.reboco_externo_m2
-                campos['reboco_interno_m2'] = inst.reboco_interno_m2
+                # ✅ Só adicionar se valor > 0
+                if inst.reboco_externo_m2 and inst.reboco_externo_m2 > 0:
+                    campos['reboco_externo_m2'] = inst.reboco_externo_m2
+                if inst.reboco_interno_m2 and inst.reboco_interno_m2 > 0:
+                    campos['reboco_interno_m2'] = inst.reboco_interno_m2
                 
             elif numero_etapa == 4 and hasattr(self.etapa, 'acabamentos'):
                 acab = self.etapa.acabamentos
@@ -622,11 +634,15 @@ class ApontamentoDiarioLote(models.Model):
         
         # Criar registros de produção individuais
         # Usar valores do DIA (se disponíveis) ao invés de valores ACUMULADOS da etapa
-        if hasattr(self, '_valores_dia') and self._valores_dia:
+        if hasattr(self, '_valores_dia'):
+            # Se _valores_dia existe, usar APENAS ele (mesmo que vazio)
+            # Vazio significa que nenhum campo foi preenchido no dia (não criar registros)
             campos_dict = self._valores_dia
         else:
+            # Fallback: usar valores acumulados da etapa (compatibilidade com código antigo)
             campos_dict = self.get_campos_etapa_dict()
         
+        # ✅ Só criar registros se houver campos com valores
         if campos_dict:
             self._criar_registro_producao(
                 funcionario=func_lote.funcionario,
@@ -706,24 +722,35 @@ class ApontamentoDiarioLote(models.Model):
     def _criar_registro_producao(self, funcionario, obra, etapa, data, detalhes_producao):
         """Cria registros de produção individuais com base nos campos da etapa e seus valores"""
         
-        # Mapeamento de campos de etapa para indicadores de relatório
+        # ✅ CORREÇÃO PROBLEMA 2: Mapeamento COMPLETO de campos de etapa para indicadores
         mapeamento_campos = {
+            # Etapa 1 - Fundação
             'alicerce_percentual': 'alicerce_percentual',
-            'levantar_alicerce_percentual': 'alicerce_percentual',  # NOVO: mapeamento alternativo
+            'levantar_alicerce_percentual': 'alicerce_percentual',
             'parede_7fiadas_blocos': 'parede_7fiadas',
+            
+            # Etapa 2 - Estrutura (CORRIGIDO E EXPANDIDO)
             'respaldo_conclusao': 'respaldo_conclusao',
+            'fiadas_respaldo_dias': 'respaldo_conclusao',  # Alias
             'laje_conclusao': 'laje_conclusao',
+            'montagem_laje_dias': 'laje_conclusao',  # Alias
+            'montagem_laje_conclusao': 'laje_conclusao',  # Alias adicional
             'platibanda_metros': 'platibanda',
+            'platibanda_blocos': 'platibanda',  # Alias
             'cobertura_conclusao': 'cobertura_conclusao',
+            'cobertura_dias': 'cobertura_conclusao',  # Alias
+            
+            # Etapa 3 - Instalações
             'reboco_externo_m2': 'reboco_externo',
             'reboco_interno_m2': 'reboco_interno',
         }
         
-        # Para cada campo que foi preenchido neste apontamento, criar um registro de produção
+        # ✅ CORREÇÃO PROBLEMA 1: Para cada campo que foi preenchido, criar registro APENAS SE > 0
         for campo_etapa, indicador in mapeamento_campos.items():
             if campo_etapa in detalhes_producao and detalhes_producao[campo_etapa]:
                 quantidade_campo = Decimal(str(detalhes_producao[campo_etapa]))
                 
+                # Só criar registro se quantidade > 0 (evita registros vazios)
                 if quantidade_campo > 0:
                     # Buscar funcionários do lote para dividir a produção
                     funcionarios_lote = self.funcionarios.all()

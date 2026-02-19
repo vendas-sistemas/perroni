@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from .models import Funcionario, ApontamentoFuncionario, FechamentoSemanal
-from .models import ApontamentoDiarioLote, FuncionarioLote
+from .models import ApontamentoDiarioLote, FuncionarioLote, RegistroProducao
 from .forms import (
     FuncionarioForm, ApontamentoForm, FechamentoForm,
     ApontamentoDiarioCabecalhoForm, ApontamentoDiarioLoteForm,
@@ -1394,6 +1394,95 @@ def funcionario_historico(request, pk):
     return render(request, 'funcionarios/funcionario_historico.html', context)
 
 
+@login_required
+def funcionario_medias_individuais(request, pk):
+    """
+    ✅ CORREÇÃO PROBLEMA 3: Mostra médias de rendimento individual de um pedreiro por indicador.
+    """
+    funcionario = get_object_or_404(Funcionario, pk=pk, funcao='pedreiro')
+    
+    # Período (padrão: últimos 90 dias)
+    hoje = timezone.now().date()
+    data_inicio = request.GET.get('data_inicio')
+    data_fim = request.GET.get('data_fim')
+    
+    if data_inicio and data_fim:
+        try:
+            data_inicio = datetime.datetime.strptime(data_inicio, '%Y-%m-%d').date()
+            data_fim = datetime.datetime.strptime(data_fim, '%Y-%m-%d').date()
+        except ValueError:
+            data_inicio = hoje - datetime.timedelta(days=90)
+            data_fim = hoje
+    else:
+        data_inicio = hoje - datetime.timedelta(days=90)
+        data_fim = hoje
+    
+    # Buscar produções do pedreiro
+    producoes = RegistroProducao.objects.filter(
+        funcionario=funcionario,
+        data__range=[data_inicio, data_fim]
+    )
+    
+    # Calcular médias por indicador
+    from collections import defaultdict
+    medias_por_etapa = defaultdict(list)
+    
+    # Mapear indicadores para etapas
+    INDICADOR_ETAPA = {
+        'alicerce_percentual': (1, 'Levantar Alicerce', '%'),
+        'parede_7fiadas': (1, 'Parede 7 Fiadas', 'blocos'),
+        'respaldo_conclusao': (2, 'Respaldo', '%'),
+        'laje_conclusao': (2, 'Laje', '%'),
+        'platibanda': (2, 'Platibanda', 'blocos'),
+        'cobertura_conclusao': (2, 'Cobertura', '%'),
+        'reboco_externo': (3, 'Reboco Externo', 'm²'),
+        'reboco_interno': (3, 'Reboco Interno', 'm²'),
+    }
+    
+    for indicador_code in producoes.values_list('indicador', flat=True).distinct():
+        prods = producoes.filter(indicador=indicador_code)
+        
+        if prods.exists():
+            # Calcular média CORRETA (evitando o problema de divisão errada)
+            total_producao = sum(float(p.quantidade) for p in prods)
+            total_dias = prods.values('data').distinct().count()
+            
+            if total_dias > 0:
+                media = total_producao / total_dias
+            else:
+                media = 0
+            
+            etapa_num, nome, unidade = INDICADOR_ETAPA.get(
+                indicador_code, 
+                (0, indicador_code, '')
+            )
+            
+            medias_por_etapa[etapa_num].append({
+                'codigo': indicador_code,
+                'nome': nome,
+                'media': round(media, 2),
+                'unidade': unidade,
+                'total_producao': round(total_producao, 2),
+                'total_dias': total_dias,
+            })
+    
+    # Calcular totais gerais
+    total_dias_trabalhados = producoes.values('data').distinct().count()
+    total_obras = producoes.values('obra').distinct().count()
+    
+    context = {
+        'funcionario': funcionario,
+        'medias_por_etapa': dict(medias_por_etapa),
+        'data_inicio': data_inicio,
+        'data_fim': data_fim,
+        'total_dias_trabalhados': total_dias_trabalhados,
+        'total_obras': total_obras,
+        'title': f'Médias - {funcionario.nome_completo}'
+    }
+    
+    return render(request, 'funcionarios/funcionario_medias_individuais.html', context)
+
+
 # ==================== APIs ====================
 
 @login_required
@@ -1683,6 +1772,11 @@ def apontamento_lote_create(request):
                     for key, value in request.POST.items():
                         if key.startswith('campo_'):
                             campo_nome = key.replace('campo_', '')
+                            
+                            # ✅ CORREÇÃO PROBLEMA 1: Só processar se valor foi realmente informado
+                            # Ignorar campos vazios, zero ou espaços em branco
+                            if not value or value.strip() == '' or value.strip() == '0' or value.strip() == '0.00':
+                                continue  # Pula este campo, não cria registro!
                             
                             # Verificar se o campo existe no model
                             if hasattr(detalhes, campo_nome):
