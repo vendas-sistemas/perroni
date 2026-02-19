@@ -29,6 +29,10 @@ urlpatterns = [
     path('fechamentos/<int:pk>/', views.fechamento_detail, name='fechamento_detail'),
     path('fechamentos/<int:pk>/excluir/', views.fechamento_delete, name='fechamento_delete'),
 
+    # Apontamentos em Lote
+    path('apontamento-lote/criar/', views.apontamento_lote_create, name='apontamento_lote_create'),
+    path('apontamento-lote/', views.apontamento_lote_list, name='apontamento_lote_list'),
+
     # Visão por obra
     path('obra/<int:pk>/mao-de-obra/', views.obra_mao_de_obra, name='obra_mao_de_obra'),
 
@@ -36,6 +40,7 @@ urlpatterns = [
     path('api/check-fechamento/', views.check_fechamento_api, name='check_fechamento_api'),
     path('api/apontamentos/', views.apontamentos_api, name='apontamentos_api'),
     path('api/etapas-por-obra/', views.etapas_por_obra_api, name='etapas_por_obra_api'),
+    path('api/campos-etapa/', views.api_campos_etapa, name='api_campos_etapa'),
     path('api/itens-etapa/', views.itens_etapa_api, name='itens_etapa_api'),
     path('api/itens-obra/', views.itens_obra_api, name='itens_obra_api'),
     path('set-theme/', views.set_theme, name='set_theme'),

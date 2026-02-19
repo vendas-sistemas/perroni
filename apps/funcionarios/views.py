@@ -1,9 +1,10 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from .models import Funcionario, ApontamentoFuncionario, FechamentoSemanal
+from .models import ApontamentoDiarioLote, FuncionarioLote
 from .forms import (
     FuncionarioForm, ApontamentoForm, FechamentoForm,
-    ApontamentoDiarioCabecalhoForm,
+    ApontamentoDiarioCabecalhoForm, ApontamentoDiarioLoteForm,
 )
 from django.contrib import messages
 from django.utils import timezone
@@ -1592,3 +1593,586 @@ def itens_obra_api(request):
             'items': items,
         })
     return JsonResponse({'etapas': result})
+
+
+# ================ APONTAMENTO EM LOTE ================
+
+@login_required
+@transaction.atomic
+def apontamento_lote_create(request):
+    """Cria apontamento em lote para múltiplos funcionários"""
+    
+    if request.method == 'POST':
+        form_lote = ApontamentoDiarioLoteForm(request.POST)
+        
+        if form_lote.is_valid():
+            # Validar funcionários
+            funcionarios_ids = request.POST.getlist('funcionario')
+            horas_trabalhadas_list = request.POST.getlist('horas_trabalhadas')
+            
+            # Remover valores vazios
+            funcionarios_ids = [f for f in funcionarios_ids if f]
+            
+            if not funcionarios_ids:
+                messages.error(request, '❌ Adicione pelo menos 1 funcionário!')
+                context = {
+                    'form': form_lote,
+                    'funcionarios': Funcionario.objects.filter(ativo=True).order_by('nome_completo'),
+                    'title': 'Apontamento Diário em Lote'
+                }
+                return render(request, 'funcionarios/apontamento_lote_form.html', context)
+            
+            # Salvar lote
+            lote = form_lote.save(commit=False)
+            lote.criado_por = request.user
+            lote.save()
+            
+            # Criar registros FuncionarioLote
+            funcionarios_criados = 0
+            for i, func_id in enumerate(funcionarios_ids):
+                try:
+                    funcionario = Funcionario.objects.get(pk=func_id, ativo=True)
+                    horas = Decimal(horas_trabalhadas_list[i]) if i < len(horas_trabalhadas_list) else Decimal('8.0')
+                    
+                    FuncionarioLote.objects.create(
+                        lote=lote,
+                        funcionario=funcionario,
+                        horas_trabalhadas=horas
+                    )
+                    funcionarios_criados += 1
+                except (Funcionario.DoesNotExist, ValueError, decimal.InvalidOperation):
+                    continue
+            
+            if funcionarios_criados == 0:
+                lote.delete()
+                messages.error(request, '❌ Nenhum funcionário válido foi adicionado!')
+                context = {
+                    'form': form_lote,
+                    'funcionarios': Funcionario.objects.filter(ativo=True).order_by('nome_completo'),
+                    'title': 'Apontamento Diário em Lote'
+                }
+                return render(request, 'funcionarios/apontamento_lote_form.html', context)
+            
+            # ========== PROCESSAR CAMPOS DA ETAPA ==========
+            etapa = lote.etapa
+            campos_atualizados = []
+            valores_producao = []  # Armazena valores numéricos de produção dos campos
+            valores_producao_dia = {}  # NOVO: valores adicionados NESTE dia (não acumulados)
+            
+            if etapa:
+                numero_etapa = etapa.numero_etapa
+                
+                # Buscar ou criar o objeto de detalhes da etapa
+                detalhes = None
+                try:
+                    if numero_etapa == 1:
+                        detalhes, created = Etapa1Fundacao.objects.get_or_create(etapa=etapa)
+                    elif numero_etapa == 2:
+                        detalhes, created = Etapa2Estrutura.objects.get_or_create(etapa=etapa)
+                    elif numero_etapa == 3:
+                        detalhes, created = Etapa3Instalacoes.objects.get_or_create(etapa=etapa)
+                    elif numero_etapa == 4:
+                        detalhes, created = Etapa4Acabamentos.objects.get_or_create(etapa=etapa)
+                    elif numero_etapa == 5:
+                        detalhes, created = Etapa5Finalizacao.objects.get_or_create(etapa=etapa)
+                except Exception as e:
+                    messages.warning(request, f'⚠️ Erro ao criar detalhes da etapa: {str(e)}')
+                
+                # Atualizar campos com valores do POST
+                if detalhes:
+                    for key, value in request.POST.items():
+                        if key.startswith('campo_'):
+                            campo_nome = key.replace('campo_', '')
+                            
+                            # Verificar se o campo existe no model
+                            if hasattr(detalhes, campo_nome):
+                                try:
+                                    field = detalhes._meta.get_field(campo_nome)
+                                    valor_anterior = getattr(detalhes, campo_nome, None)
+                                    
+                                    if field.get_internal_type() == 'BooleanField':
+                                        # Checkbox
+                                        novo_valor = value == 'on'
+                                        if valor_anterior != novo_valor:
+                                            setattr(detalhes, campo_nome, novo_valor)
+                                            campos_atualizados.append(f"{field.verbose_name}: {'✓' if novo_valor else '✗'}")
+                                    
+                                    elif field.get_internal_type() == 'DecimalField':
+                                        # Decimal - INCREMENTAR valores de produção (blocos, m², etc)
+                                        if value:
+                                            novo_valor = Decimal(value)
+                                            # Capturar valores numéricos de produção (sempre que > 0)
+                                            if novo_valor > 0:
+                                                valores_producao.append((field.verbose_name, novo_valor))
+                                                # GUARDAR valor do DIA (não acumulado) para RegistroProducao
+                                                valores_producao_dia[campo_nome] = novo_valor
+                                            
+                                            # INCREMENTAR valor anterior ao invés de substituir
+                                            valor_anterior_decimal = valor_anterior if valor_anterior else Decimal('0.00')
+                                            valor_final = valor_anterior_decimal + novo_valor
+                                            
+                                            # Verificar se campo tem limite máximo (ex: percentuais até 100%)
+                                            tem_max_100 = any(
+                                                hasattr(v, 'limit_value') and v.limit_value == Decimal('100.00')
+                                                for v in field.validators
+                                            )
+                                            
+                                            if tem_max_100 and valor_final > Decimal('100.00'):
+                                                # Não permitir ultrapassar 100%
+                                                diferenca = Decimal('100.00') - valor_anterior_decimal
+                                                if diferenca > 0:
+                                                    valor_final = Decimal('100.00')
+                                                    campos_atualizados.append(f"{field.verbose_name}: +{diferenca} (total: 100.00% - LIMITE ATINGIDO)")
+                                                    messages.warning(request, f'⚠️ {field.verbose_name} atingiu o limite de 100%. Não é possível adicionar mais.')
+                                                else:
+                                                    messages.error(request, f'❌ {field.verbose_name} já está em 100%. Não é possível adicionar mais.')
+                                                    continue
+                                            else:
+                                                campos_atualizados.append(f"{field.verbose_name}: +{novo_valor} (total: {valor_final})")
+                                            
+                                            setattr(detalhes, campo_nome, valor_final)
+                                    
+                                    elif field.get_internal_type() in ['IntegerField', 'PositiveIntegerField']:
+                                        # Integer - INCREMENTAR valores de produção (blocos, etc)
+                                        if value:
+                                            novo_valor = int(value)
+                                            # Capturar valores numéricos de produção (sempre que > 0)
+                                            if novo_valor > 0:
+                                                valores_producao.append((field.verbose_name, Decimal(str(novo_valor))))
+                                                # GUARDAR valor do DIA (não acumulado) para RegistroProducao
+                                                valores_producao_dia[campo_nome] = novo_valor
+                                            
+                                            # INCREMENTAR valor anterior ao invés de substituir
+                                            valor_anterior_int = valor_anterior if valor_anterior else 0
+                                            valor_final = valor_anterior_int + novo_valor
+                                            
+                                            setattr(detalhes, campo_nome, valor_final)
+                                            campos_atualizados.append(f"{field.verbose_name}: +{novo_valor} (total: {valor_final})")
+                                    
+                                    elif field.get_internal_type() == 'DateField':
+                                        # Date
+                                        if value:
+                                            novo_valor = datetime.datetime.strptime(value, '%Y-%m-%d').date()
+                                            if valor_anterior != novo_valor:
+                                                setattr(detalhes, campo_nome, novo_valor)
+                                                campos_atualizados.append(f"{field.verbose_name}: {novo_valor.strftime('%d/%m/%Y')}")
+                                
+                                except Exception as e:
+                                    messages.warning(request, f'⚠️ Erro ao processar campo {campo_nome}: {str(e)}')
+                                    continue
+                    
+                    # Salvar atualizações
+                    if campos_atualizados:
+                        detalhes.save()
+                        
+                        # Registrar no histórico
+                        try:
+                            EtapaHistorico.objects.create(
+                                etapa=etapa,
+                                origem='Apontamento em Lote',
+                                descricao=f"📝 Campos atualizados via apontamento em lote:\n" + "\n".join([f"  • {c}" for c in campos_atualizados]),
+                                usuario=request.user
+                            )
+                        except Exception:
+                            pass
+                        
+                        messages.info(request, f'📊 {len(campos_atualizados)} campo(s) da etapa atualizado(s)')
+                    
+                    # ========== CALCULAR PRODUÇÃO TOTAL DOS CAMPOS ==========
+                    # Se não foi preenchido producao_total manualmente, usar os campos da etapa
+                    if valores_producao and (not lote.producao_total or lote.producao_total == 0):
+                        # Pegar o primeiro valor de produção encontrado
+                        nome_campo, valor = valores_producao[0]
+                        lote.producao_total = valor
+                        
+                        # Inferir unidade de medida pelo nome do campo
+                        nome_lower = nome_campo.lower()
+                        if 'bloco' in nome_lower or 'fiada' in nome_lower:
+                            lote.unidade_medida = 'blocos'
+                        elif 'm²' in nome_lower or 'm2' in nome_lower or 'metro' in nome_lower:
+                            lote.unidade_medida = 'm2'
+                        elif '%' in nome_lower or 'percentual' in nome_lower or 'porcento' in nome_lower:
+                            lote.unidade_medida = 'percentual'
+                        
+                        lote.save(update_fields=['producao_total', 'unidade_medida'])
+                        messages.info(request, f'📐 Produção calculada: {valor} (baseado em "{nome_campo}")')
+            
+            # ========== FIM PROCESSAMENTO CAMPOS ==========
+            
+            # Recarregar lote para pegar valores atualizados
+            lote.refresh_from_db()
+            
+            # GUARDAR valores do dia no lote (temporariamente) para usar em _criar_registro_producao
+            lote._valores_dia = valores_producao_dia
+            
+            # Debug: verificar quantidade de pedreiros
+            total_funcionarios = lote.funcionarios.count()
+            pedreiros_count = sum(1 for f in lote.funcionarios.all() if f.funcionario.funcao == 'pedreiro')
+            
+            # Gerar apontamentos individuais
+            apontamentos_criados = lote.gerar_apontamentos_individuais()
+            
+            # Mensagem com detalhes da divisão
+            if lote.producao_total and lote.producao_total > 0 and pedreiros_count > 0:
+                producao_por_pedreiro = (lote.producao_total / Decimal(pedreiros_count)).quantize(Decimal('0.01'))
+                unidade_map = {'blocos': 'blocos', 'm2': 'm²', 'percentual': '%'}
+                unidade = unidade_map.get(lote.unidade_medida, lote.unidade_medida)
+                messages.success(request, f'📐 Divisão: {lote.producao_total} {unidade} ÷ {pedreiros_count} pedreiro(s) = {producao_por_pedreiro} {unidade}/pedreiro')
+            
+            if apontamentos_criados:
+                messages.success(request, f'✅ {apontamentos_criados} apontamento(s) individual(is) criado(s)!')
+            
+            msg = f'✅ Apontamento criado com sucesso! {funcionarios_criados} funcionário(s) registrado(s).'
+            
+            messages.success(request, msg)
+            return redirect('funcionarios:apontamento_list')
+    
+    else:
+        form_lote = ApontamentoDiarioLoteForm()
+    
+    # Buscar funcionários ativos
+    funcionarios = Funcionario.objects.filter(ativo=True).order_by('nome_completo')
+    
+    context = {
+        'form': form_lote,
+        'funcionarios': funcionarios,
+        'title': 'Apontamento Diário em Lote'
+    }
+    
+    return render(request, 'funcionarios/apontamento_lote_form.html', context)
+
+
+@login_required
+def apontamento_lote_list(request):
+    """Lista apontamentos em lote"""
+    lotes = ApontamentoDiarioLote.objects.select_related(
+        'obra', 'etapa', 'criado_por'
+    ).prefetch_related('funcionarios__funcionario').order_by('-data', '-created_at')
+    
+    # Filtros
+    obra_id = request.GET.get('obra')
+    data_inicio = request.GET.get('data_inicio')
+    data_fim = request.GET.get('data_fim')
+    
+    if obra_id:
+        lotes = lotes.filter(obra_id=obra_id)
+    if data_inicio:
+        try:
+            lotes = lotes.filter(data__gte=datetime.datetime.strptime(data_inicio, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    if data_fim:
+        try:
+            lotes = lotes.filter(data__lte=datetime.datetime.strptime(data_fim, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    
+    # Pagination
+    paginator = Paginator(lotes, 20)
+    page = request.GET.get('page')
+    try:
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+    
+    context = {
+        'lotes': page_obj,
+        'title': 'Apontamentos em Lote',
+        'obras': Obra.objects.filter(ativo=True).order_by('nome'),
+    }
+    
+    return render(request, 'funcionarios/apontamento_lote_list.html', context)
+
+
+@login_required
+def api_campos_etapa(request):
+    """
+    Retorna os campos disponíveis para uma etapa específica.
+    Usado para carregar dinamicamente os campos no formulário de apontamento.
+    """
+    etapa_id = request.GET.get('etapa_id')
+    
+    if not etapa_id:
+        return JsonResponse({'error': 'etapa_id não informado'}, status=400)
+    
+    try:
+        etapa = Etapa.objects.get(pk=etapa_id)
+    except Etapa.DoesNotExist:
+        return JsonResponse({'error': 'Etapa não encontrada'}, status=404)
+    
+    # Determinar qual model de detalhe usar baseado no número da etapa
+    numero_etapa = etapa.numero_etapa
+    
+    # Buscar valores atuais do model de detalhes
+    valores_atuais = {}
+    try:
+        if numero_etapa == 1:
+            detalhes = etapa.fundacao
+        elif numero_etapa == 2:
+            detalhes = etapa.estrutura
+        elif numero_etapa == 3:
+            detalhes = etapa.instalacoes
+        elif numero_etapa == 4:
+            detalhes = etapa.acabamentos
+        elif numero_etapa == 5:
+            detalhes = etapa.finalizacao
+        else:
+            detalhes = None
+        
+        if detalhes:
+            for campo in detalhes._meta.get_fields():
+                if not campo.auto_created and campo.name != 'etapa' and campo.name != 'id':
+                    valor = getattr(detalhes, campo.name, None)
+                    if valor is not None:
+                        if isinstance(valor, Decimal):
+                            valores_atuais[campo.name] = str(valor)
+                        elif isinstance(valor, datetime.date):
+                            valores_atuais[campo.name] = valor.isoformat()
+                        else:
+                            valores_atuais[campo.name] = valor
+    except Exception:
+        pass  # Se não existe detalhes ainda, valores_atuais fica vazio
+    
+    campos = []
+    
+    if numero_etapa == 1:
+        # Etapa 1 - Fundação
+        campos = [
+            {
+                'nome': 'limpeza_terreno',
+                'label': 'Limpeza do Terreno',
+                'tipo': 'checkbox',
+                'help_text': 'Concluído?',
+                'valor_atual': valores_atuais.get('limpeza_terreno', False)
+            },
+            {
+                'nome': 'instalacao_energia_agua',
+                'label': 'Instalação de Padrão de Energia e Cavalete d\'Água',
+                'tipo': 'checkbox',
+                'help_text': 'Concluído?',
+                'valor_atual': valores_atuais.get('instalacao_energia_agua', False)
+            },
+            {
+                'nome': 'marcacao_escavacao_conclusao',
+                'label': 'Marcação e Escavação',
+                'tipo': 'date',
+                'help_text': 'Data de conclusão',
+                'valor_atual': valores_atuais.get('marcacao_escavacao_conclusao', '')
+            },
+            {
+                'nome': 'locacao_ferragem_conclusao',
+                'label': 'Locação de Ferragem e Concretagem',
+                'tipo': 'date',
+                'help_text': 'Data de conclusão',
+                'valor_atual': valores_atuais.get('locacao_ferragem_conclusao', '')
+            },
+            {
+                'nome': 'levantar_alicerce_percentual',
+                'label': 'Levantar Alicerce',
+                'tipo': 'number',
+                'unidade': '%',
+                'min': 0,
+                'max': 100,
+                'step': '0.01',
+                'help_text': 'Percentual executado (0-100%)',
+                'valor_atual': valores_atuais.get('levantar_alicerce_percentual', '0.00'),
+                'bloqueado': Decimal(str(valores_atuais.get('levantar_alicerce_percentual', '0.00'))) >= Decimal('100.00'),
+                'aviso': '✅ 100% concluído!' if Decimal(str(valores_atuais.get('levantar_alicerce_percentual', '0.00'))) >= Decimal('100.00') else None
+            },
+            {
+                'nome': 'rebocar_alicerce_concluido',
+                'label': 'Rebocar Alicerce',
+                'tipo': 'checkbox',
+                'help_text': 'Concluído?',
+                'valor_atual': valores_atuais.get('rebocar_alicerce_concluido', False)
+            },
+            {
+                'nome': 'impermeabilizar_alicerce_concluido',
+                'label': 'Impermeabilizar Alicerce',
+                'tipo': 'checkbox',
+                'help_text': 'Concluído?',
+                'valor_atual': valores_atuais.get('impermeabilizar_alicerce_concluido', False)
+            },
+            {
+                'nome': 'aterro_contrapiso_conclusao',
+                'label': 'Aterrar e Fazer Contra Piso',
+                'tipo': 'date',
+                'help_text': 'Data de conclusão',
+                'valor_atual': valores_atuais.get('aterro_contrapiso_conclusao', '')
+            },
+            {
+                'nome': 'parede_7fiadas_blocos',
+                'label': 'Parede - 7 Fiadas',
+                'tipo': 'number',
+                'unidade': 'blocos',
+                'min': 0,
+                'step': '1',
+                'help_text': 'Quantidade de blocos assentados',
+                'valor_atual': valores_atuais.get('parede_7fiadas_blocos', '0')
+            },
+            {
+                'nome': 'fiadas_respaldo_conclusao',
+                'label': '8 Fiadas até Respaldo',
+                'tipo': 'date',
+                'help_text': 'Data de conclusão',
+                'valor_atual': valores_atuais.get('fiadas_respaldo_conclusao', '')
+            },
+        ]
+    
+    elif numero_etapa == 2:
+        # Etapa 2 - Estrutura
+        campos = [
+            {
+                'nome': 'montagem_laje_conclusao',
+                'label': 'Montagem da Laje e Concretagem',
+                'tipo': 'date',
+                'help_text': 'Data de conclusão',
+                'valor_atual': valores_atuais.get('montagem_laje_conclusao', '')
+            },
+            {
+                'nome': 'platibanda_blocos',
+                'label': 'Platibanda',
+                'tipo': 'number',
+                'unidade': 'blocos',
+                'min': 0,
+                'step': '1',
+                'help_text': 'Quantidade de blocos assentados',
+                'valor_atual': valores_atuais.get('platibanda_blocos', '0')
+            },
+            {
+                'nome': 'cobertura_conclusao',
+                'label': 'Cobertura Completa',
+                'tipo': 'date',
+                'help_text': 'Data de conclusão',
+                'valor_atual': valores_atuais.get('cobertura_conclusao', '')
+            },
+        ]
+    
+    elif numero_etapa == 3:
+        # Etapa 3 - Instalações
+        campos = [
+            {
+                'nome': 'reboco_externo_m2',
+                'label': 'Reboco Externo',
+                'tipo': 'number',
+                'unidade': 'm²',
+                'min': 0,
+                'step': '0.01',
+                'help_text': 'Metragem executada em m²',
+                'valor_atual': valores_atuais.get('reboco_externo_m2', '0.00')
+            },
+            {
+                'nome': 'reboco_interno_m2',
+                'label': 'Reboco Interno',
+                'tipo': 'number',
+                'unidade': 'm²',
+                'min': 0,
+                'step': '0.01',
+                'help_text': 'Metragem executada em m²',
+                'valor_atual': valores_atuais.get('reboco_interno_m2', '0.00')
+            },
+            {
+                'nome': 'instalacao_portais',
+                'label': 'Instalação de Portais',
+                'tipo': 'checkbox',
+                'help_text': 'Concluído?',
+                'valor_atual': valores_atuais.get('instalacao_portais', False)
+            },
+            {
+                'nome': 'agua_fria',
+                'label': 'Água Fria',
+                'tipo': 'checkbox',
+                'help_text': 'Concluído?',
+                'valor_atual': valores_atuais.get('agua_fria', False)
+            },
+            {
+                'nome': 'esgoto',
+                'label': 'Esgoto',
+                'tipo': 'checkbox',
+                'help_text': 'Concluído?',
+                'valor_atual': valores_atuais.get('esgoto', False)
+            },
+            {
+                'nome': 'fluvial',
+                'label': 'Fluvial',
+                'tipo': 'checkbox',
+                'help_text': 'Concluído?',
+                'valor_atual': valores_atuais.get('fluvial', False)
+            },
+        ]
+    
+    elif numero_etapa == 4:
+        # Etapa 4 - Acabamentos
+        campos = [
+            {
+                'nome': 'portas_janelas',
+                'label': 'Portas e Janelas',
+                'tipo': 'checkbox',
+                'help_text': 'Concluído?',
+                'valor_atual': valores_atuais.get('portas_janelas', False)
+            },
+            {
+                'nome': 'pintura_externa_1demao_conclusao',
+                'label': 'Pintura Externa 1ª Demão',
+                'tipo': 'date',
+                'help_text': 'Data de conclusão',
+                'valor_atual': valores_atuais.get('pintura_externa_1demao_conclusao', '')
+            },
+            {
+                'nome': 'pintura_interna_1demao_conclusao',
+                'label': 'Pintura Interna 1ª Demão',
+                'tipo': 'date',
+                'help_text': 'Data de conclusão',
+                'valor_atual': valores_atuais.get('pintura_interna_1demao_conclusao', '')
+            },
+            {
+                'nome': 'assentamento_piso_conclusao',
+                'label': 'Assentamento de Piso',
+                'tipo': 'date',
+                'help_text': 'Data de conclusão',
+                'valor_atual': valores_atuais.get('assentamento_piso_conclusao', '')
+            },
+        ]
+    
+    elif numero_etapa == 5:
+        # Etapa 5 - Finalização
+        campos = [
+            {
+                'nome': 'pintura_externa_2demao_conclusao',
+                'label': 'Pintura Externa 2ª Demão',
+                'tipo': 'date',
+                'help_text': 'Data de conclusão',
+                'valor_atual': valores_atuais.get('pintura_externa_2demao_conclusao', '')
+            },
+            {
+                'nome': 'pintura_interna_2demao_conclusao',
+                'label': 'Pintura Interna 2ª Demão',
+                'tipo': 'date',
+                'help_text': 'Data de conclusão',
+                'valor_atual': valores_atuais.get('pintura_interna_2demao_conclusao', '')
+            },
+            {
+                'nome': 'loucas_metais',
+                'label': 'Instalação das Louças e Metais',
+                'tipo': 'checkbox',
+                'help_text': 'Concluído?',
+                'valor_atual': valores_atuais.get('loucas_metais', False)
+            },
+            {
+                'nome': 'eletrica',
+                'label': 'Elétrica',
+                'tipo': 'checkbox',
+                'help_text': 'Concluído?',
+                'valor_atual': valores_atuais.get('eletrica', False)
+            },
+        ]
+    
+    return JsonResponse({
+        'etapa_id': etapa_id,
+        'etapa_nome': etapa.get_numero_etapa_display(),
+        'numero_etapa': numero_etapa,
+        'campos': campos
+    })
+

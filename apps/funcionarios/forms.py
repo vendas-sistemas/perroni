@@ -1,9 +1,11 @@
 from django import forms
 from .models import Funcionario
 from .models import ApontamentoFuncionario, FechamentoSemanal
+from .models import ApontamentoDiarioLote, FuncionarioLote
 from apps.obras.models import Obra, Etapa
 import datetime
 from django.core.exceptions import ValidationError
+from decimal import Decimal
 
 
 class ApontamentoForm(forms.ModelForm):
@@ -223,3 +225,67 @@ class FuncionarioForm(forms.ModelForm):
                 raise forms.ValidationError('CPF inválido (deve conter 11 dígitos).')
             return cpf
         return cpf
+
+
+# ================ APONTAMENTO EM LOTE ================
+
+class ApontamentoDiarioLoteForm(forms.ModelForm):
+    """Formulário principal do apontamento em lote"""
+    
+    class Meta:
+        model = ApontamentoDiarioLote
+        fields = [
+            'obra', 'data', 'etapa', 'producao_total', 'unidade_medida',
+            'clima', 'houve_ociosidade', 'observacao_ociosidade',
+            'houve_retrabalho', 'motivo_retrabalho', 'observacoes'
+        ]
+        widgets = {
+            'obra': forms.Select(attrs={'class': 'form-select'}),
+            'data': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'etapa': forms.Select(attrs={'class': 'form-select'}),
+            'producao_total': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'placeholder': 'Ex: 100 blocos, 50 m², 30%',
+                'min': '0'
+            }),
+            'unidade_medida': forms.Select(attrs={'class': 'form-select'}),
+            'clima': forms.Select(attrs={'class': 'form-select'}),
+            'houve_ociosidade': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'houve_retrabalho': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'observacao_ociosidade': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'motivo_retrabalho': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['data'].initial = datetime.date.today()
+        
+        # Filtrar obras ativas
+        self.fields['obra'].queryset = Obra.objects.filter(
+            ativo=True,
+            status__in=['planejamento', 'em_andamento']
+        ).order_by('nome')
+        
+        # Etapas serão filtradas por obra via JavaScript
+        if self.data and self.data.get('obra'):
+            try:
+                obra_id = int(self.data['obra'])
+                self.fields['etapa'].queryset = Etapa.objects.filter(
+                    obra_id=obra_id,
+                    status='em_andamento'
+                ).order_by('numero_etapa')
+            except (ValueError, TypeError):
+                self.fields['etapa'].queryset = Etapa.objects.none()
+        elif self.instance and self.instance.pk and self.instance.obra_id:
+            self.fields['etapa'].queryset = Etapa.objects.filter(
+                obra_id=self.instance.obra_id,
+                status='em_andamento'
+            ).order_by('numero_etapa')
+        else:
+            self.fields['etapa'].queryset = Etapa.objects.none()
+        
+        self.fields['etapa'].required = False
+        self.fields['producao_total'].required = False
+        self.fields['unidade_medida'].required = False

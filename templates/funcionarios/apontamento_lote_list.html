@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-list-check text-primary"></i> {{ title }}</h2>
+            <small class="text-muted">Apontamentos em lote registrados</small>
+        </div>
+        <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Novo Apontamento em Lote
+        </a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Obra</label>
+                    <select name="obra" class="form-select">
+                        <option value="">Todas as obras</option>
+                        {% for obra in obras %}
+                        <option value="{{ obra.pk }}">{{ obra.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Data Início</label>
+                    <input type="date" name="data_inicio" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Data Fim</label>
+                    <input type="date" name="data_fim" class="form-control">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista -->
+    <div class="card shadow">
+        <div class="card-body">
+            {% if lotes %}
+            <!-- Contador de registros -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <span class="badge bg-primary">
+                        {{ lotes.paginator.count }} {{ lotes.paginator.count|pluralize:"registro,registros" }}
+                    </span>
+                    <small class="text-muted ms-2">
+                        Exibindo {{ lotes.start_index }} - {{ lotes.end_index }}
+                    </small>
+                </div>
+                <small class="text-muted">
+                    20 registros por página
+                </small>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Data</th>
+                            <th>Obra</th>
+                            <th>Etapa</th>
+                            <th>Produção</th>
+                            <th>Funcionários</th>
+                            <th>Clima</th>
+                            <th>Criado por</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lote in lotes %}
+                        <tr>
+                            <td>{{ lote.data|date:"d/m/Y" }}</td>
+                            <td>
+                                <a href="{% url 'obras:obra_detail' lote.obra.pk %}">
+                                    {{ lote.obra.nome }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if lote.etapa %}
+                                {{ lote.etapa.get_numero_etapa_display }}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if lote.producao_total and lote.producao_total > 0 %}
+                                    <strong>{{ lote.producao_total }}</strong>
+                                    {% if lote.unidade_medida == 'blocos' %}blocos{% elif lote.unidade_medida == 'm2' %}m²{% elif lote.unidade_medida == 'percentual' %}%{% endif %}
+                                {% endif %}
+                                
+                                {% with detalhes=lote.get_detalhes_producao %}
+                                    {% if detalhes %}
+                                        {% for detalhe in detalhes %}
+                                            <small class="d-block text-muted">{{ detalhe }}</small>
+                                        {% endfor %}
+                                    {% elif not lote.producao_total or lote.producao_total == 0 %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ lote.funcionarios.count }}</span>
+                                {% for fl in lote.funcionarios.all|slice:":3" %}
+                                <small class="d-block">{{ fl.funcionario.nome_completo }}</small>
+                                {% endfor %}
+                                {% if lote.funcionarios.count > 3 %}
+                                <small class="text-muted">+ {{ lote.funcionarios.count|add:"-3" }} mais</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge 
+                                    {% if lote.clima == 'sol' %}bg-warning text-dark
+                                    {% elif lote.clima == 'chuva' %}bg-info
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ lote.get_clima_display }}
+                                </span>
+                            </td>
+                            <td>{{ lote.criado_por.username }}</td>
+                            <td class="text-center">
+                                <a href="{% url 'obras:obra_detail' lote.obra.pk %}?data={{ lote.data|date:'Y-m-d' }}" 
+                                   class="btn btn-sm btn-outline-primary" title="Ver detalhes">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginação -->
+            {% if lotes.has_other_pages %}
+            <nav aria-label="Navegação de páginas" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    <!-- Primeira página -->
+                    {% if lotes.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if request.GET.obra %}&obra={{ request.GET.obra }}{% endif %}{% if request.GET.data_inicio %}&data_inicio={{ request.GET.data_inicio }}{% endif %}{% if request.GET.data_fim %}&data_fim={{ request.GET.data_fim }}{% endif %}" aria-label="Primeira">
+                            <span aria-hidden="true">&laquo;&laquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&laquo;&laquo;</span>
+                    </li>
+                    {% endif %}
+                    
+                    <!-- Anterior -->
+                    {% if lotes.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ lotes.previous_page_number }}{% if request.GET.obra %}&obra={{ request.GET.obra }}{% endif %}{% if request.GET.data_inicio %}&data_inicio={{ request.GET.data_inicio }}{% endif %}{% if request.GET.data_fim %}&data_fim={{ request.GET.data_fim }}{% endif %}" aria-label="Anterior">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&laquo;</span>
+                    </li>
+                    {% endif %}
+                    
+                    <!-- Números das páginas -->
+                    {% for num in lotes.paginator.page_range %}
+                        {% if lotes.number == num %}
+                            <li class="page-item active" aria-current="page">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > lotes.number|add:'-3' and num < lotes.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if request.GET.obra %}&obra={{ request.GET.obra }}{% endif %}{% if request.GET.data_inicio %}&data_inicio={{ request.GET.data_inicio }}{% endif %}{% if request.GET.data_fim %}&data_fim={{ request.GET.data_fim }}{% endif %}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    <!-- Próxima -->
+                    {% if lotes.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ lotes.next_page_number }}{% if request.GET.obra %}&obra={{ request.GET.obra }}{% endif %}{% if request.GET.data_inicio %}&data_inicio={{ request.GET.data_inicio }}{% endif %}{% if request.GET.data_fim %}&data_fim={{ request.GET.data_fim }}{% endif %}" aria-label="Próxima">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&raquo;</span>
+                    </li>
+                    {% endif %}
+                    
+                    <!-- Última página -->
+                    {% if lotes.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ lotes.paginator.num_pages }}{% if request.GET.obra %}&obra={{ request.GET.obra }}{% endif %}{% if request.GET.data_inicio %}&data_inicio={{ request.GET.data_inicio }}{% endif %}{% if request.GET.data_fim %}&data_fim={{ request.GET.data_fim }}{% endif %}" aria-label="Última">
+                            <span aria-hidden="true">&raquo;&raquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&raquo;&raquo;</span>
+                    </li>
+                    {% endif %}
+                </ul>
+                
+                <!-- Informação de páginas -->
+                <div class="text-center text-muted mt-2">
+                    <small>
+                        Página {{ lotes.number }} de {{ lotes.paginator.num_pages }} 
+                        ({{ lotes.paginator.count }} {{ lotes.paginator.count|pluralize:"registro,registros" }})
+                    </small>
+                </div>
+            </nav>
+            {% endif %}
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                <p class="text-muted mt-3">Nenhum apontamento em lote encontrado</p>
+                <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-primary">
+                    Criar Primeiro Apontamento
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

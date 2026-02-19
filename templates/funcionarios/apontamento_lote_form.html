@@ -1,0 +1,484 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+  .info-divisao {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+  }
+  .badge-pedreiro { background-color: #0d6efd; }
+  .badge-servente { background-color: #6c757d; }
+  
+  .campo-etapa-card {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    transition: all 0.3s ease;
+  }
+  
+  .campo-etapa-card.campo-concluido {
+    background: #d1e7dd;
+    border-color: #badbcc;
+  }
+  
+  .campo-etapa-card.campo-bloqueado {
+    background: #d4edda;
+    border: 2px solid #28a745;
+  }
+  
+  .campo-etapa-card.campo-bloqueado input:disabled {
+    background-color: #e9f7ef;
+    cursor: not-allowed;
+    opacity: 0.8;
+  }
+  
+  .campo-etapa-card:hover {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    transform: translateY(-2px);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-people-fill text-primary"></i> {{ title }}</h2>
+            <small class="text-muted">Registre vários funcionários trabalhando juntos</small>
+        </div>
+        <a href="{% url 'funcionarios:apontamento_lote_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-list-ul"></i> Ver Lotes
+        </a>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <form method="post" id="form-apontamento-lote">
+                {% csrf_token %}
+                
+                <!-- CABEÇALHO -->
+                <h5 class="mb-3"><i class="bi bi-info-circle"></i> Informações Básicas</h5>
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label">Obra <span class="text-danger">*</span></label>
+                        {{ form.obra }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Data <span class="text-danger">*</span></label>
+                        {{ form.data }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Clima <span class="text-danger">*</span></label>
+                        {{ form.clima }}
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <!-- FUNCIONÁRIOS -->
+                <h5 class="mb-3"><i class="bi bi-people"></i> Funcionários Trabalhando</h5>
+                <p class="text-muted">Adicione todos os funcionários que trabalharam juntos nesta etapa</p>
+                
+                <div id="funcionarios-container" class="mb-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 50%">Funcionário</th>
+                                    <th style="width: 15%" class="text-center">Função</th>
+                                    <th style="width: 20%">Horas</th>
+                                    <th style="width: 15%" class="text-center">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="funcionarios-tbody">
+                                <!-- Linhas serão adicionadas aqui via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn-adicionar-funcionario">
+                        <i class="bi bi-plus-circle"></i> Adicionar Funcionário
+                    </button>
+                </div>
+                
+                <hr>
+                
+                <!-- PRODUÇÃO -->
+                <h5 class="mb-3"><i class="bi bi-bar-chart"></i> Produção do Dia</h5>
+                
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label class="form-label">Etapa</label>
+                        {{ form.etapa }}
+                        <small class="form-text text-muted">Selecione a obra primeiro</small>
+                    </div>
+                </div>
+                
+                <!-- CONTAINER PARA CAMPOS DINÂMICOS DA ETAPA -->
+                <div id="campos-etapa-container" class="mt-4" style="display: none;">
+                    <div class="alert alert-info">
+                        <strong><i class="bi bi-info-circle"></i> Campos da Etapa</strong>
+                        <p class="mb-0 mt-2">Preencha os campos que foram executados no dia. Os valores serão atualizados no progresso da etapa.</p>
+                    </div>
+                    
+                    <div id="campos-etapa-fields" class="row g-3">
+                        <!-- Campos serão carregados aqui via AJAX -->
+                    </div>
+                </div>
+                
+                <hr class="my-4">
+                
+                <!-- PRODUÇÃO TOTAL (SIMPLIFICADO) -->
+                <div class="row mb-3" style="display: none;">
+                    <div class="col-md-3">
+                        <label class="form-label">Quantidade Total</label>
+                        {{ form.producao_total }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Unidade</label>
+                        {{ form.unidade_medida }}
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <!-- INDICADORES -->
+                <h5 class="mb-3"><i class="bi bi-exclamation-triangle"></i> Indicadores</h5>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="form-check mb-2">
+                            {{ form.houve_ociosidade }}
+                            <label class="form-check-label">Houve Ociosidade</label>
+                        </div>
+                        <div id="div-ociosidade" style="display: none;">
+                            {{ form.observacao_ociosidade }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check mb-2">
+                            {{ form.houve_retrabalho }}
+                            <label class="form-check-label">Houve Retrabalho</label>
+                        </div>
+                        <div id="div-retrabalho" style="display: none;">
+                            {{ form.motivo_retrabalho }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label">Observações Gerais</label>
+                    {{ form.observacoes }}
+                </div>
+                
+                <hr>
+                
+                <!-- BOTÕES -->
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="bi bi-check-circle"></i> Salvar Apontamento
+                    </button>
+                    <a href="{% url 'funcionarios:apontamento_list' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let contadorFuncionarios = 0;
+
+// Adicionar linha de funcionário
+document.getElementById('btn-adicionar-funcionario').addEventListener('click', function() {
+    const tbody = document.getElementById('funcionarios-tbody');
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td>
+            <select name="funcionario" class="form-select funcionario-select" required>
+                <option value="">Selecione...</option>
+                {% for func in funcionarios %}
+                <option value="{{ func.id }}" data-funcao="{{ func.funcao }}">
+                    {{ func.nome_completo }}
+                </option>
+                {% endfor %}
+            </select>
+        </td>
+        <td class="text-center">
+            <span class="badge bg-secondary funcao-badge">-</span>
+        </td>
+        <td>
+            <input type="number" name="horas_trabalhadas" class="form-control" 
+                   value="8.0" step="0.5" min="0.5" max="24" required>
+        </td>
+        <td class="text-center">
+            <button type="button" class="btn btn-sm btn-danger btn-remover-funcionario">
+                <i class="bi bi-trash"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(row);
+    contadorFuncionarios++;
+    calcularDivisao();
+});
+
+// Remover funcionário
+document.addEventListener('click', function(e) {
+    if (e.target.closest('.btn-remover-funcionario')) {
+        e.target.closest('tr').remove();
+        contadorFuncionarios--;
+        calcularDivisao();
+    }
+});
+
+// Atualizar função ao selecionar funcionário
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('funcionario-select')) {
+        const option = e.target.options[e.target.selectedIndex];
+        const funcao = option.getAttribute('data-funcao');
+        const badge = e.target.closest('tr').querySelector('.funcao-badge');
+        
+        if (funcao === 'pedreiro') {
+            badge.textContent = 'Pedreiro';
+            badge.className = 'badge badge-pedreiro';
+        } else if (funcao === 'servente') {
+            badge.textContent = 'Servente';
+            badge.className = 'badge badge-servente';
+        }
+        
+        calcularDivisao();
+    }
+});
+
+// Calcular divisão ao mudar quantidade
+document.getElementById('id_producao_total').addEventListener('input', calcularDivisao);
+document.getElementById('id_unidade_medida').addEventListener('change', calcularDivisao);
+
+function calcularDivisao() {
+    const producaoTotal = parseFloat(document.getElementById('id_producao_total').value) || 0;
+    const unidade = document.getElementById('id_unidade_medida').value;
+    
+    // Contar pedreiros
+    const selects = document.querySelectorAll('.funcionario-select');
+    let qtdPedreiros = 0;
+    let qtdServentes = 0;
+    
+    selects.forEach(select => {
+        const option = select.options[select.selectedIndex];
+        if (option && option.value) {
+            if (option.getAttribute('data-funcao') === 'pedreiro') {
+                qtdPedreiros++;
+            } else {
+                qtdServentes++;
+            }
+        }
+    });
+    
+    if (producaoTotal > 0 && qtdPedreiros > 0) {
+        const porPedreiro = (producaoTotal / qtdPedreiros).toFixed(2);
+        const unidadeTexto = unidade === 'blocos' ? 'blocos' : 
+                           unidade === 'm2' ? 'm²' : 
+                           unidade === 'percentual' ? '%' : unidade;
+        
+        document.getElementById('info-divisao').style.display = 'block';
+        
+        let texto = `
+            <strong style="font-size: 1.2em;">${producaoTotal} ${unidadeTexto}</strong> ÷ 
+            <strong style="font-size: 1.2em;">${qtdPedreiros} pedreiro(s)</strong> = 
+            <strong style="font-size: 1.4em; color: #ffd700;">${porPedreiro} ${unidadeTexto}/pedreiro</strong>
+        `;
+        
+        if (qtdServentes > 0) {
+            texto += `<br><small>+ ${qtdServentes} servente(s) (não contam na divisão de produção)</small>`;
+        }
+        
+        document.getElementById('texto-divisao').innerHTML = texto;
+    } else {
+        document.getElementById('info-divisao').style.display = 'none';
+    }
+}
+
+// Mostrar/ocultar campos de ociosidade e retrabalho
+document.getElementById('id_houve_ociosidade').addEventListener('change', function() {
+    document.getElementById('div-ociosidade').style.display = this.checked ? 'block' : 'none';
+});
+
+document.getElementById('id_houve_retrabalho').addEventListener('change', function() {
+    document.getElementById('div-retrabalho').style.display = this.checked ? 'block' : 'none';
+});
+
+// Carregar etapas ao selecionar obra
+document.getElementById('id_obra').addEventListener('change', function() {
+    const obraId = this.value;
+    const etapaSelect = document.getElementById('id_etapa');
+    
+    // Limpar campos da etapa
+    document.getElementById('campos-etapa-container').style.display = 'none';
+    document.getElementById('campos-etapa-fields').innerHTML = '';
+    
+    if (!obraId) {
+        etapaSelect.innerHTML = '<option value="">Selecione uma obra primeiro</option>';
+        return;
+    }
+    
+    etapaSelect.disabled = true;
+    etapaSelect.innerHTML = '<option value="">Carregando...</option>';
+    
+    fetch(`/funcionarios/api/etapas-por-obra/?obra_id=${obraId}`)
+        .then(response => response.json())
+        .then(data => {
+            etapaSelect.innerHTML = '<option value="">Selecione a etapa</option>';
+            data.etapas.forEach(etapa => {
+                const option = document.createElement('option');
+                option.value = etapa.id;
+                option.textContent = etapa.label;
+                etapaSelect.appendChild(option);
+            });
+            etapaSelect.disabled = false;
+        })
+        .catch(error => {
+            console.error('Erro ao carregar etapas:', error);
+            etapaSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+            etapaSelect.disabled = false;
+        });
+});
+
+// Carregar campos ao selecionar etapa
+document.getElementById('id_etapa').addEventListener('change', function() {
+    const etapaId = this.value;
+    
+    if (!etapaId) {
+        document.getElementById('campos-etapa-container').style.display = 'none';
+        document.getElementById('campos-etapa-fields').innerHTML = '';
+        return;
+    }
+    
+    console.log('Carregando campos da etapa:', etapaId);
+    
+    // Fazer requisição AJAX
+    fetch(`/funcionarios/api/campos-etapa/?etapa_id=${etapaId}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Dados recebidos:', data);
+            
+            if (data.error) {
+                alert('Erro: ' + data.error);
+                return;
+            }
+            
+            // Limpar campos anteriores
+            const container = document.getElementById('campos-etapa-fields');
+            container.innerHTML = '';
+            
+            // Adicionar campos dinamicamente
+            data.campos.forEach(campo => {
+                const colDiv = document.createElement('div');
+                colDiv.className = 'col-md-6 mb-3';
+                
+                let inputHtml = '';
+                const isChecked = campo.valor_atual === true || campo.valor_atual === 'True';
+                const cardClass = isChecked ? 'campo-etapa-card campo-concluido' : 'campo-etapa-card';
+                
+                if (campo.tipo === 'checkbox') {
+                    // Checkbox
+                    inputHtml = `
+                        <div class="card ${cardClass} h-100">
+                            <div class="card-body">
+                                <div class="form-check">
+                                    <input type="checkbox" 
+                                           name="campo_${campo.nome}" 
+                                           id="id_campo_${campo.nome}"
+                                           class="form-check-input"
+                                           ${isChecked ? 'checked' : ''}>
+                                    <label class="form-check-label fw-bold" for="id_campo_${campo.nome}">
+                                        ${campo.label}
+                                    </label>
+                                </div>
+                                <small class="form-text text-muted d-block mt-1">${campo.help_text}</small>
+                                ${isChecked ? '<small class="text-success mt-2 d-block"><i class="bi bi-check-circle-fill"></i> Concluído</small>' : ''}
+                            </div>
+                        </div>
+                    `;
+                } else if (campo.tipo === 'number') {
+                    // Number input
+                    const step = campo.step || '1';
+                    const min = campo.min !== undefined ? campo.min : '0';
+                    const max = campo.max !== undefined ? `max="${campo.max}"` : '';
+                    const valorAtual = campo.valor_atual || '0';
+                    const hasValue = parseFloat(valorAtual) > 0;
+                    const bloqueado = campo.bloqueado || false;
+                    const aviso = campo.aviso || '';
+                    
+                    // Se bloqueado (100%), usar card verde e desabilitar input
+                    const cardClassNum = bloqueado ? 'campo-etapa-card campo-bloqueado' : (hasValue ? 'campo-etapa-card campo-concluido' : 'campo-etapa-card');
+                    const disabledAttr = bloqueado ? 'disabled readonly' : '';
+                    
+                    inputHtml = `
+                        <div class="card ${cardClassNum} h-100">
+                            <div class="card-body">
+                                <label class="form-label fw-bold">
+                                    ${campo.label}
+                                    ${campo.unidade ? `<small class="text-muted">(${campo.unidade})</small>` : ''}
+                                </label>
+                                <input type="number" 
+                                       name="campo_${campo.nome}"
+                                       id="id_campo_${campo.nome}"
+                                       class="form-control"
+                                       step="${step}"
+                                       min="${min}"
+                                       ${max}
+                                       value="${valorAtual}"
+                                       placeholder="0"
+                                       ${disabledAttr}>
+                                <small class="form-text text-muted d-block mt-1">${campo.help_text}</small>
+                                ${aviso ? `<div class="alert alert-success mt-2 mb-0 py-1 px-2"><small><i class="bi bi-check-circle-fill"></i> ${aviso}</small></div>` : ''}
+                                ${hasValue && !bloqueado ? `<small class="text-success mt-1 d-block"><i class="bi bi-check-circle-fill"></i> Atual: ${valorAtual} ${campo.unidade || ''}</small>` : ''}
+                            </div>
+                        </div>
+                    `;
+                } else if (campo.tipo === 'date') {
+                    // Date input
+                    const valorAtual = campo.valor_atual || '';
+                    const hasValue = valorAtual !== '';
+                    const cardClassDate = hasValue ? 'campo-etapa-card campo-concluido' : 'campo-etapa-card';
+                    
+                    inputHtml = `
+                        <div class="card ${cardClassDate} h-100">
+                            <div class="card-body">
+                                <label class="form-label fw-bold">
+                                    ${campo.label}
+                                </label>
+                                <input type="date" 
+                                       name="campo_${campo.nome}"
+                                       id="id_campo_${campo.nome}"
+                                       class="form-control"
+                                       value="${valorAtual}">
+                                <small class="form-text text-muted d-block mt-1">${campo.help_text}</small>
+                                ${hasValue ? `<small class="text-success mt-1 d-block"><i class="bi bi-check-circle-fill"></i> Concluído em: ${new Date(valorAtual).toLocaleDateString('pt-BR')}</small>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                colDiv.innerHTML = inputHtml;
+                container.appendChild(colDiv);
+            });
+            
+            // Mostrar container
+            document.getElementById('campos-etapa-container').style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Erro ao carregar campos:', error);
+            alert('Erro ao carregar campos da etapa');
+        });
+});
+
+// Adicionar primeira linha automaticamente ao carregar
+window.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('btn-adicionar-funcionario').click();
+});
+</script>
+{% endblock %}

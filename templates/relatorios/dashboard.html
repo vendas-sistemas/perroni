@@ -115,7 +115,7 @@
         <p>Selecione ao menos um filtro acima e clique em <strong>Filtrar</strong>.</p>
       </div>
     </div>
-  {% elif not ranking_etapa and not media_dias_etapa and not media_individual and not apontamentos_periodo %}
+  {% elif not ranking_por_etapas and not media_dias_etapa and not media_individual and not apontamentos_periodo %}
     <div class="card section-card shadow-sm">
       <div class="card-body empty-state">
         <i class="bi bi-clipboard-data"></i>
@@ -129,76 +129,95 @@
   {% else %}
 
   <!-- ════════════════════════════════════════════ -->
-  <!-- SEÇÃO 1: Ranking por Etapa                  -->
+  <!-- SEÇÃO 1: Ranking por Etapa e Indicador      -->
   <!-- ════════════════════════════════════════════ -->
   <div class="card section-card shadow-sm mb-4">
     <div class="card-header bg-white border-0 pt-3">
       <h5 class="mb-0"><i class="bi bi-trophy text-warning"></i> 1. Ranking por Etapa (Melhores e Piores)</h5>
-      <small class="text-muted">Critério: média de metragem executada (m²) por dia na etapa</small>
+      <small class="text-muted">Critério: média de quantidade produzida por dia em cada indicador</small>
     </div>
     <div class="card-body">
-      {% for etapa in ranking_etapa %}
-      <div class="mb-4">
-        <h6 class="fw-bold text-primary mb-3">{{ etapa.etapa_nome }}</h6>
-        <div class="row g-3">
-          <!-- Melhores -->
-          <div class="col-md-6">
-            <div class="border rounded p-3 h-100">
-              <span class="badge ranking-badge-best mb-2"><i class="bi bi-arrow-up-circle"></i> Top 3 Melhores</span>
-              <table class="table table-sm table-ranking mb-0">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Pedreiro</th>
-                    <th class="text-end">Média m²/dia</th>
-                    <th class="text-end">Dias</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for m in etapa.melhores %}
-                  <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ m.nome }}</td>
-                    <td class="text-end fw-bold text-success">{{ m.media_metragem }}</td>
-                    <td class="text-end">{{ m.total_dias }}</td>
-                  </tr>
-                  {% empty %}
-                  <tr><td colspan="4" class="text-muted text-center">Sem dados</td></tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+      {% for etapa in ranking_por_etapas %}
+      <div class="mb-5">
+        <h5 class="fw-bold text-primary mb-4" style="border-bottom: 2px solid #0d6efd; padding-bottom: 10px;">
+          {{ etapa.nome }}
+        </h5>
+        
+        {% for indicador in etapa.indicadores %}
+        <div class="mb-4 p-3" style="background-color: #f8f9fa; border-left: 4px solid #0d6efd;">
+          <h6 class="fw-bold text-secondary mb-3">
+            📊 {{ indicador.nome }} ({{ indicador.unidade }})
+          </h6>
+          <div class="row g-3">
+            <!-- Melhores -->
+            <div class="col-md-6">
+              <div class="border rounded p-3 h-100 bg-white">
+                <span class="badge ranking-badge-best mb-2"><i class="bi bi-arrow-up-circle"></i> Top 3 Melhores</span>
+                <table class="table table-sm table-ranking mb-0">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Pedreiro</th>
+                      <th class="text-end">Média {{ indicador.unidade }}/dia</th>
+                      <th class="text-end">Dias</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for m in indicador.melhores %}
+                    <tr>
+                      <td>
+                        {% if forloop.counter == 1 %}🥇
+                        {% elif forloop.counter == 2 %}🥈
+                        {% elif forloop.counter == 3 %}🥉
+                        {% else %}{{ forloop.counter }}{% endif %}
+                      </td>
+                      <td>{{ m.nome }}</td>
+                      <td class="text-end fw-bold text-success">{{ m.media_producao }}</td>
+                      <td class="text-end">{{ m.total_dias }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-muted text-center">Sem dados</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-          <!-- Piores -->
-          <div class="col-md-6">
-            <div class="border rounded p-3 h-100">
-              <span class="badge ranking-badge-worst mb-2"><i class="bi bi-arrow-down-circle"></i> Top 3 Piores</span>
-              <table class="table table-sm table-ranking mb-0">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Pedreiro</th>
-                    <th class="text-end">Média m²/dia</th>
-                    <th class="text-end">Dias</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for p in etapa.piores %}
-                  <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ p.nome }}</td>
-                    <td class="text-end fw-bold text-danger">{{ p.media_metragem }}</td>
-                    <td class="text-end">{{ p.total_dias }}</td>
-                  </tr>
-                  {% empty %}
-                  <tr><td colspan="4" class="text-muted text-center">Sem dados</td></tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+            <!-- Piores -->
+            <div class="col-md-6">
+              <div class="border rounded p-3 h-100 bg-white">
+                <span class="badge ranking-badge-worst mb-2"><i class="bi bi-arrow-down-circle"></i> Top 3 Piores</span>
+                <table class="table table-sm table-ranking mb-0">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Pedreiro</th>
+                      <th class="text-end">Média {{ indicador.unidade }}/dia</th>
+                      <th class="text-end">Dias</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for p in indicador.piores %}
+                    <tr>
+                      <td>{{ forloop.counter }}</td>
+                      <td>{{ p.nome }}</td>
+                      <td class="text-end fw-bold text-danger">{{ p.media_producao }}</td>
+                      <td class="text-end">{{ p.total_dias }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-muted text-center">Sem dados</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
+        {% empty %}
+        <p class="text-muted">Nenhum indicador com dados para esta etapa.</p>
+        {% endfor %}
       </div>
+      {% empty %}
+      <p class="text-muted">Nenhum dado de ranking disponível.</p>
       {% endfor %}
     </div>
   </div>

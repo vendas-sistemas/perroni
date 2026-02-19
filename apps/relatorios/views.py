@@ -6,6 +6,7 @@ from django.http import HttpResponse, JsonResponse
 
 from apps.relatorios.forms import FiltroRelatorioForm
 from apps.relatorios.services.analytics import gerar_relatorio_completo, apontamentos_periodo
+from apps.relatorios.services.analytics_indicadores import gerar_relatorio_completo_indicadores
 from apps.relatorios.services.exports import exportar_pdf, exportar_excel
 from apps.funcionarios.models import ApontamentoFuncionario
 from apps.obras.models import Etapa
@@ -20,30 +21,33 @@ import csv
 @login_required
 def relatorio_dashboard(request):
     """Tela principal dos relatórios com filtros e as 3 análises.
-    Os dados vêm diretamente dos apontamentos diários (ApontamentoFuncionario).
+    Usa o NOVO sistema baseado em RegistroProducao com indicadores específicos.
     """
     form = FiltroRelatorioForm(request.GET or None)
     filtros = form.get_filtros() if form.is_valid() else {}
     filtros_informados = bool(filtros)
 
     if filtros_informados:
-        dados = gerar_relatorio_completo(filtros)
+        # USAR NOVO SISTEMA COM INDICADORES
+        dados = gerar_relatorio_completo_indicadores(filtros)
         apontamentos = apontamentos_periodo(filtros)
     else:
         dados = {
-            'ranking_etapa': [],
+            'ranking_por_etapas': [],
             'media_dias_etapa': [],
             'media_individual': [],
+            'rankings_indicadores': {},
         }
         apontamentos = []
 
     context = {
         'form': form,
-        'ranking_etapa': dados['ranking_etapa'],
+        'ranking_por_etapas': dados['ranking_por_etapas'],  # NOVO: lista de etapas com indicadores
         'media_dias_etapa': dados['media_dias_etapa'],
         'media_individual': dados['media_individual'],
+        'rankings_indicadores': dados.get('rankings_indicadores', {}),  # NOVO: rankings por indicador
         'apontamentos_periodo': apontamentos,
-        'title': 'Relatórios de Produção',
+        'title': 'Relatórios de Produção - Por Indicador',
         'filtros_aplicados': filtros,
         'filtros_informados': filtros_informados,
     }

@@ -388,6 +388,8 @@
               <li><hr class="dropdown-divider"></li>
               <li class="dropdown-section-label">Apontamentos</li>
               <li><a class="dropdown-item" href="/funcionarios/apontamentos/diario/"><i class="bi bi-calendar-check text-success"></i> <strong>Registro Diário</strong></a></li>
+              <li><a class="dropdown-item" href="{% url 'funcionarios:apontamento_lote_create' %}"><i class="bi bi-person-plus-fill text-info"></i> Apontamento em Lote</a></li>
+              <li><a class="dropdown-item" href="{% url 'funcionarios:apontamento_lote_list' %}"><i class="bi bi-list-ul text-info"></i> Ver Apontamentos em Lote</a></li>
               <li><a class="dropdown-item" href="/funcionarios/apontamentos/"><i class="bi bi-list-check text-muted"></i> Todos as dárias</a></li>
               <li><hr class="dropdown-divider"></li>
               <li class="dropdown-section-label">Fechamentos</li>
@@ -549,6 +551,8 @@
               <li><a class="dropdown-item" href="/funcionarios/"><i class="bi bi-person-lines-fill"></i> Lista</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="/funcionarios/apontamentos/diario/"><i class="bi bi-calendar-check"></i> <strong>Registro Diário</strong></a></li>
+              <li><a class="dropdown-item" href="{% url 'funcionarios:apontamento_lote_create' %}"><i class="bi bi-person-plus-fill"></i> Apontamento em Lote</a></li>
+              <li><a class="dropdown-item" href="{% url 'funcionarios:apontamento_lote_list' %}"><i class="bi bi-list-ul"></i> Ver Apontamentos em Lote</a></li>
               <li><a class="dropdown-item" href="/funcionarios/apontamentos/"><i class="bi bi-list-check"></i> Todos as dárias</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><button id="themeToggleMobile" class="dropdown-item" type="button"><i class="bi bi-moon-fill"></i> Tema Escuro</button></li>

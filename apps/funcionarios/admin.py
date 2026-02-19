@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import Funcionario, ApontamentoFuncionario, FechamentoSemanal, UserProfile
+from .models import ApontamentoDiarioLote, FuncionarioLote
 
 
 @admin.register(Funcionario)
@@ -107,6 +108,46 @@ class FechamentoSemanalAdmin(admin.ModelAdmin):
             fechamento.calcular_totais()
         self.message_user(request, f"{queryset.count()} fechamento(s) recalculado(s).")
     calcular_totais_selecionados.short_description = "Recalcular totais"
+
+
+# ================ APONTAMENTO EM LOTE ================
+
+class FuncionarioLoteInline(admin.TabularInline):
+    model = FuncionarioLote
+    extra = 1
+    fields = ['funcionario', 'horas_trabalhadas']
+
+
+@admin.register(ApontamentoDiarioLote)
+class ApontamentoDiarioLoteAdmin(admin.ModelAdmin):
+    list_display = ['obra', 'data', 'etapa', 'producao_total', 'unidade_medida', 'criado_por', 'created_at']
+    list_filter = ['data', 'unidade_medida', 'clima', 'obra']
+    search_fields = ['obra__nome', 'observacoes']
+    date_hierarchy = 'data'
+    inlines = [FuncionarioLoteInline]
+    
+    fieldsets = (
+        ('Informações Básicas', {
+            'fields': ('obra', 'data', 'etapa', 'clima')
+        }),
+        ('Produção', {
+            'fields': ('producao_total', 'unidade_medida')
+        }),
+        ('Indicadores', {
+            'fields': ('houve_ociosidade', 'observacao_ociosidade', 'houve_retrabalho', 'motivo_retrabalho')
+        }),
+        ('Observações', {
+            'fields': ('observacoes',)
+        }),
+        ('Controle', {
+            'fields': ('criado_por',)
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.criado_por = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(UserProfile)

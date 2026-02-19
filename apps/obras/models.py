@@ -308,6 +308,13 @@ class Etapa1Fundacao(models.Model):
         default=False,
         verbose_name="Impermeabilizar Alicerce Concluído"
     )
+    
+    # Parede - 7 Fiadas (blocos) - campo incremental
+    parede_7fiadas_blocos = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Parede - 7 Fiadas (blocos)",
+        help_text="Quantidade de blocos assentados (acumulado)"
+    )
 
     # ========== FIM CAMPOS NOVOS ==========
 
