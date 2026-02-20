@@ -82,8 +82,6 @@ class Etapa1FundacaoForm(forms.ModelForm):
                 'max': '100',
                 'placeholder': '0.00 – 100.00'
             }),
-            'rebocar_alicerce_concluido': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'impermeabilizar_alicerce_concluido': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
     def __init__(self, *args, **kwargs):

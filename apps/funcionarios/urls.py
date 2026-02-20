@@ -42,6 +42,7 @@ urlpatterns = [
     path('api/apontamentos/', views.apontamentos_api, name='apontamentos_api'),
     path('api/etapas-por-obra/', views.etapas_por_obra_api, name='etapas_por_obra_api'),
     path('api/campos-etapa/', views.api_campos_etapa, name='api_campos_etapa'),
+    path('api/obra-possui-placa/', views.api_obra_possui_placa, name='api_obra_possui_placa'),
     path('api/itens-etapa/', views.itens_etapa_api, name='itens_etapa_api'),
     path('api/itens-obra/', views.itens_obra_api, name='itens_obra_api'),
     path('set-theme/', views.set_theme, name='set_theme'),

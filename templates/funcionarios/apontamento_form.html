@@ -10,7 +10,7 @@
         <div class="card-body">
           <h4 class="card-title mb-3">{{ title }}</h4>
           <p class="text-muted">Para apontar múltiplos funcionários de uma vez, use o <a href="{% url 'funcionarios:apontamento_diario' %}">Registro Diário</a>.</p>
-          <form method="post">
+          <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             {% if form.non_field_errors %}
               <div class="mb-3">
@@ -95,6 +95,32 @@
                 {{ form.motivo_retrabalho }}
                 {% for error in form.motivo_retrabalho.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
               </div>
+              <div class="col-6">
+                <div class="form-check">
+                  {{ form.possui_placa }}
+                  <label class="form-check-label" for="{{ form.possui_placa.id_for_label }}">
+                    Possui Placa
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <hr>
+            <h5>📷 Fotos</h5>
+            <div class="mb-3">
+              <label class="form-label">Adicionar Fotos</label>
+              <input type="file" 
+                     name="fotos" 
+                     class="form-control" 
+                     multiple
+                     accept="image/*"
+                     id="input-fotos">
+              <small class="text-muted">
+                Você pode selecionar múltiplas fotos
+              </small>
+              
+              <!-- Preview das fotos -->
+              <div id="preview-fotos" class="row mt-2"></div>
             </div>
 
             <div class="mt-3">
@@ -318,6 +344,29 @@ document.addEventListener('DOMContentLoaded', function() {
       etapaItemsContainer.appendChild(col);
     });
   }
+
+  // Preview de fotos
+  document.getElementById('input-fotos').addEventListener('change', function(e) {
+    const preview = document.getElementById('preview-fotos');
+    preview.innerHTML = '';
+    
+    if (e.target.files.length > 0) {
+      for (let file of e.target.files) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const col = document.createElement('div');
+          col.className = 'col-md-2 mb-2';
+          col.innerHTML = `
+            <img src="${e.target.result}" 
+                 class="img-thumbnail" 
+                 style="max-height: 100px; width: 100%; object-fit: cover;">
+          `;
+          preview.appendChild(col);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  });
 });
 </script>
 {% endblock %}

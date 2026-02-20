@@ -18,6 +18,7 @@ class ApontamentoForm(forms.ModelForm):
             'clima', 'metragem_executada',
             'houve_ociosidade', 'observacao_ociosidade',
             'houve_retrabalho', 'motivo_retrabalho',
+            'possui_placa',
             'observacoes'
         ]
         widgets = {
@@ -34,6 +35,7 @@ class ApontamentoForm(forms.ModelForm):
             'clima': forms.Select(attrs={'class': 'form-select'}),
             'houve_ociosidade': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'houve_retrabalho': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'possui_placa': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -65,6 +67,42 @@ class ApontamentoForm(forms.ModelForm):
                 self.fields['obra_nome'].initial = self.instance.obra.nome
             except Exception:
                 pass
+        
+        # Pré-preencher "Possui Placa" baseado no último apontamento da obra
+        obra_id_placa = None
+        if self.data and self.data.get('obra'):
+            try:
+                obra_id_placa = int(self.data['obra'])
+            except (ValueError, TypeError):
+                pass
+        elif obra_id:
+            obra_id_placa = obra_id
+        elif self.instance and self.instance.pk and self.instance.obra_id:
+            obra_id_placa = self.instance.obra_id
+        
+        if obra_id_placa and not self.instance.pk:  # Apenas para novos apontamentos
+            # Buscar último apontamento desta obra (individual ou lote)
+            ultimo_individual = ApontamentoFuncionario.objects.filter(
+                obra_id=obra_id_placa
+            ).order_by('-data', '-created_at').first()
+            
+            ultimo_lote = ApontamentoDiarioLote.objects.filter(
+                obra_id=obra_id_placa
+            ).order_by('-data', '-created_at').first()
+            
+            # Pegar o mais recente entre individual e lote
+            if ultimo_individual and ultimo_lote:
+                if ultimo_individual.data >= ultimo_lote.data:
+                    if ultimo_individual.possui_placa:
+                        self.fields['possui_placa'].initial = True
+                else:
+                    if ultimo_lote.possui_placa:
+                        self.fields['possui_placa'].initial = True
+            elif ultimo_individual and ultimo_individual.possui_placa:
+                self.fields['possui_placa'].initial = True
+            elif ultimo_lote and ultimo_lote.possui_placa:
+                self.fields['possui_placa'].initial = True
+        
         # Filter etapas by obra if provided
         if obra_id:
             self.fields['etapa'].queryset = Etapa.objects.filter(
@@ -237,7 +275,7 @@ class ApontamentoDiarioLoteForm(forms.ModelForm):
         fields = [
             'obra', 'data', 'etapa', 'producao_total', 'unidade_medida',
             'clima', 'houve_ociosidade', 'observacao_ociosidade',
-            'houve_retrabalho', 'motivo_retrabalho', 'observacoes'
+            'houve_retrabalho', 'motivo_retrabalho', 'possui_placa', 'observacoes'
         ]
         widgets = {
             'obra': forms.Select(attrs={'class': 'form-select'}),
@@ -253,6 +291,7 @@ class ApontamentoDiarioLoteForm(forms.ModelForm):
             'clima': forms.Select(attrs={'class': 'form-select'}),
             'houve_ociosidade': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'houve_retrabalho': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'possui_placa': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'observacao_ociosidade': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'motivo_retrabalho': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
@@ -268,12 +307,31 @@ class ApontamentoDiarioLoteForm(forms.ModelForm):
             status__in=['planejamento', 'em_andamento']
         ).order_by('nome')
         
-        # Etapas serão filtradas por obra via JavaScript
+        # Pré-preencher "Possui Placa" baseado no último apontamento da obra
+        obra_id = None
         if self.data and self.data.get('obra'):
             try:
                 obra_id = int(self.data['obra'])
+            except (ValueError, TypeError):
+                pass
+        elif self.instance and self.instance.pk and self.instance.obra_id:
+            obra_id = self.instance.obra_id
+        
+        if obra_id and not self.instance.pk:  # Apenas para novos apontamentos
+            # Buscar último apontamento desta obra
+            ultimo_apontamento = ApontamentoDiarioLote.objects.filter(
+                obra_id=obra_id
+            ).order_by('-data', '-created_at').first()
+            
+            if ultimo_apontamento and ultimo_apontamento.possui_placa:
+                self.fields['possui_placa'].initial = True
+        
+        # Etapas serão filtradas por obra via JavaScript
+        if self.data and self.data.get('obra'):
+            try:
+                obra_id_etapa = int(self.data['obra'])
                 self.fields['etapa'].queryset = Etapa.objects.filter(
-                    obra_id=obra_id,
+                    obra_id=obra_id_etapa,
                     status='em_andamento'
                 ).order_by('numero_etapa')
             except (ValueError, TypeError):

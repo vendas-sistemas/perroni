@@ -158,6 +158,13 @@ class ApontamentoFuncionario(models.Model):
         verbose_name="Motivo do Retrabalho"
     )
     
+    # Possui Placa
+    possui_placa = models.BooleanField(
+        default=False,
+        verbose_name="Possui Placa",
+        help_text="Marque se a obra possui placa de identificação"
+    )
+    
     # Metragem executada no dia
     metragem_executada = models.DecimalField(
         max_digits=10,
@@ -448,6 +455,13 @@ class ApontamentoDiarioLote(models.Model):
         blank=True,
         null=True,
         verbose_name="Motivo Retrabalho"
+    )
+    
+    # Possui Placa
+    possui_placa = models.BooleanField(
+        default=False,
+        verbose_name="Possui Placa",
+        help_text="Marque se a obra possui placa de identificação"
     )
     
     observacoes = models.TextField(
@@ -918,3 +932,59 @@ class RegistroProducao(models.Model):
     
     def __str__(self):
         return f"{self.funcionario.nome_completo} - {self.get_indicador_display()} - {self.data.strftime('%d/%m/%Y')}"
+
+
+class FotoApontamento(models.Model):
+    """Fotos anexadas aos apontamentos"""
+    
+    apontamento_individual = models.ForeignKey(
+        ApontamentoFuncionario,
+        on_delete=models.CASCADE,
+        related_name='fotos',
+        verbose_name="Apontamento Individual",
+        null=True,
+        blank=True
+    )
+    
+    apontamento_lote = models.ForeignKey(
+        ApontamentoDiarioLote,
+        on_delete=models.CASCADE,
+        related_name='fotos',
+        verbose_name="Apontamento em Lote",
+        null=True,
+        blank=True
+    )
+    
+    obra = models.ForeignKey(
+        'obras.Obra',
+        on_delete=models.CASCADE,
+        related_name='fotos_apontamentos',
+        verbose_name="Obra",
+        help_text="Facilita buscar todas as fotos de uma obra"
+    )
+    
+    foto = models.ImageField(
+        upload_to='apontamentos/fotos/%Y/%m/',
+        verbose_name="Foto"
+    )
+    
+    descricao = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        verbose_name="Descrição",
+        help_text="Descrição opcional da foto"
+    )
+    
+    data_upload = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Data do Upload"
+    )
+    
+    class Meta:
+        verbose_name = "Foto do Apontamento"
+        verbose_name_plural = "Fotos dos Apontamentos"
+        ordering = ['-data_upload']
+    
+    def __str__(self):
+        return f"Foto - {self.obra.nome} - {self.data_upload.strftime('%d/%m/%Y')}"

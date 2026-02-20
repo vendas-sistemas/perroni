@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import Funcionario, ApontamentoFuncionario, FechamentoSemanal, UserProfile
-from .models import ApontamentoDiarioLote, FuncionarioLote
+from .models import ApontamentoDiarioLote, FuncionarioLote, FotoApontamento
 
 
 @admin.register(Funcionario)
@@ -154,3 +154,17 @@ class ApontamentoDiarioLoteAdmin(admin.ModelAdmin):
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ['user', 'theme_preference', 'theme_variant', 'updated_at']
     search_fields = ['user__username', 'user__email']
+
+
+@admin.register(FotoApontamento)
+class FotoApontamentoAdmin(admin.ModelAdmin):
+    list_display = ['id', 'obra', 'data_upload', 'thumbnail_preview']
+    list_filter = ['data_upload', 'obra']
+    search_fields = ['obra__nome', 'descricao']
+    date_hierarchy = 'data_upload'
+    
+    def thumbnail_preview(self, obj):
+        if obj.foto:
+            return format_html('<img src="{}" style="max-height: 50px;" />', obj.foto.url)
+        return '-'
+    thumbnail_preview.short_description = 'Preview'

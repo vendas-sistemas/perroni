@@ -293,7 +293,7 @@ class Etapa1Fundacao(models.Model):
         decimal_places=2,
         default=Decimal('0.00'),
         validators=[MinValueValidator(Decimal('0.00')), MaxValueValidator(Decimal('100.00'))],
-        verbose_name="Levantar Alicerce (%)",
+        verbose_name="Levantar Alicerce, Reboco e Impermeabilizar (%)",
         help_text="Percentual de conclusão do levantamento do alicerce"
     )
 

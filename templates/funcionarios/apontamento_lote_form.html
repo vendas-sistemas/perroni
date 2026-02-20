@@ -56,7 +56,7 @@
 
     <div class="card shadow">
         <div class="card-body">
-            <form method="post" id="form-apontamento-lote">
+            <form method="post" enctype="multipart/form-data" id="form-apontamento-lote">
                 {% csrf_token %}
                 
                 <!-- CABEÇALHO -->
@@ -168,9 +168,41 @@
                     </div>
                 </div>
                 
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            {{ form.possui_placa }}
+                            <label class="form-check-label">
+                                Possui Placa
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="mb-4">
                     <label class="form-label">Observações Gerais</label>
                     {{ form.observacoes }}
+                </div>
+                
+                <hr>
+                
+                <!-- FOTOS -->
+                <h5 class="mb-3"><i class="bi bi-camera"></i> Fotos da Obra</h5>
+                
+                <div class="mb-4">
+                    <label class="form-label">Adicionar Fotos</label>
+                    <input type="file" 
+                           name="fotos" 
+                           class="form-control" 
+                           multiple
+                           accept="image/*"
+                           id="input-fotos">
+                    <small class="text-muted">
+                        Você pode selecionar múltiplas fotos (Ctrl+clique)
+                    </small>
+                    
+                    <!-- Preview das fotos -->
+                    <div id="preview-fotos" class="row mt-3"></div>
                 </div>
                 
                 <hr>
@@ -324,6 +356,20 @@ document.getElementById('id_obra').addEventListener('change', function() {
         return;
     }
     
+    // Buscar e atualizar "Possui Placa" baseado no último apontamento desta obra
+    fetch(`/funcionarios/api/obra-possui-placa/?obra_id=${obraId}`)
+        .then(response => response.json())
+        .then(data => {
+            const possuiPlacaCheckbox = document.getElementById('id_possui_placa');
+            if (possuiPlacaCheckbox) {
+                possuiPlacaCheckbox.checked = data.possui_placa;
+                console.log('Possui Placa carregado:', data.possui_placa);
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao buscar possui_placa:', error);
+        });
+    
     etapaSelect.disabled = true;
     etapaSelect.innerHTML = '<option value="">Carregando...</option>';
     
@@ -403,17 +449,17 @@ document.getElementById('id_etapa').addEventListener('change', function() {
                         </div>
                     `;
                 } else if (campo.tipo === 'number') {
-                    // Number input
+                    // Number input - ✅ CORRIGIDO: Campo vazio, valor atual só como informação
                     const step = campo.step || '1';
                     const min = campo.min !== undefined ? campo.min : '0';
                     const max = campo.max !== undefined ? `max="${campo.max}"` : '';
-                    const valorAtual = campo.valor_atual || '0';
-                    const hasValue = parseFloat(valorAtual) > 0;
+                    const valorAtualDisplay = campo.valor_atual_display || '0';
+                    const hasValue = parseFloat(valorAtualDisplay) > 0;
                     const bloqueado = campo.bloqueado || false;
                     const aviso = campo.aviso || '';
                     
                     // Se bloqueado (100%), usar card verde e desabilitar input
-                    const cardClassNum = bloqueado ? 'campo-etapa-card campo-bloqueado' : (hasValue ? 'campo-etapa-card campo-concluido' : 'campo-etapa-card');
+                    const cardClassNum = bloqueado ? 'campo-etapa-card campo-bloqueado' : (hasValue ? 'campo-etapa-card' : 'campo-etapa-card');
                     const disabledAttr = bloqueado ? 'disabled readonly' : '';
                     
                     inputHtml = `
@@ -423,6 +469,16 @@ document.getElementById('id_etapa').addEventListener('change', function() {
                                     ${campo.label}
                                     ${campo.unidade ? `<small class="text-muted">(${campo.unidade})</small>` : ''}
                                 </label>
+                                
+                                ${hasValue ? `
+                                <div class="alert alert-info mb-2 py-1 px-2">
+                                    <small>
+                                        <i class="bi bi-info-circle"></i> 
+                                        <strong>Progresso atual: ${valorAtualDisplay} ${campo.unidade || ''}</strong>
+                                    </small>
+                                </div>
+                                ` : ''}
+                                
                                 <input type="number" 
                                        name="campo_${campo.nome}"
                                        id="id_campo_${campo.nome}"
@@ -430,12 +486,11 @@ document.getElementById('id_etapa').addEventListener('change', function() {
                                        step="${step}"
                                        min="${min}"
                                        ${max}
-                                       value="${valorAtual}"
-                                       placeholder="0"
+                                       value=""
+                                       placeholder="Quanto foi feito HOJE?"
                                        ${disabledAttr}>
                                 <small class="form-text text-muted d-block mt-1">${campo.help_text}</small>
                                 ${aviso ? `<div class="alert alert-success mt-2 mb-0 py-1 px-2"><small><i class="bi bi-check-circle-fill"></i> ${aviso}</small></div>` : ''}
-                                ${hasValue && !bloqueado ? `<small class="text-success mt-1 d-block"><i class="bi bi-check-circle-fill"></i> Atual: ${valorAtual} ${campo.unidade || ''}</small>` : ''}
                             </div>
                         </div>
                     `;
@@ -479,6 +534,34 @@ document.getElementById('id_etapa').addEventListener('change', function() {
 // Adicionar primeira linha automaticamente ao carregar
 window.addEventListener('DOMContentLoaded', function() {
     document.getElementById('btn-adicionar-funcionario').click();
+});
+
+// Preview de fotos antes de enviar
+document.getElementById('input-fotos').addEventListener('change', function(e) {
+    const preview = document.getElementById('preview-fotos');
+    preview.innerHTML = '';
+    
+    if (e.target.files.length > 0) {
+        for (let file of e.target.files) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const col = document.createElement('div');
+                col.className = 'col-md-3 mb-2';
+                col.innerHTML = `
+                    <div class="card">
+                        <img src="${e.target.result}" 
+                             class="card-img-top" 
+                             style="max-height: 150px; object-fit: cover;">
+                        <div class="card-body p-2">
+                            <small class="text-muted">${file.name}</small>
+                        </div>
+                    </div>
+                `;
+                preview.appendChild(col);
+            };
+            reader.readAsDataURL(file);
+        }
+    }
 });
 </script>
 {% endblock %}

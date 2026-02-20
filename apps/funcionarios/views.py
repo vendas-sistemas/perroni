@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from .models import Funcionario, ApontamentoFuncionario, FechamentoSemanal
-from .models import ApontamentoDiarioLote, FuncionarioLote, RegistroProducao
+from .models import ApontamentoDiarioLote, FuncionarioLote, RegistroProducao, FotoApontamento
 from .forms import (
     FuncionarioForm, ApontamentoForm, FechamentoForm,
     ApontamentoDiarioCabecalhoForm, ApontamentoDiarioLoteForm,
@@ -42,9 +42,7 @@ ETAPA_FIELDS_META = {
             ('locacao_ferragem_conclusao', 'date', 'Locação de Ferragem (conclusão)'),
             ('aterro_contrapiso_conclusao', 'date', 'Aterro e Contrapiso (conclusão)'),
             ('fiadas_respaldo_conclusao', 'date', '8 Fiadas até Respaldo (conclusão)'),
-            ('levantar_alicerce_percentual', 'decimal', 'Levantar Alicerce (%)'),
-            ('rebocar_alicerce_concluido', 'boolean', 'Rebocar Alicerce Concluído'),
-            ('impermeabilizar_alicerce_concluido', 'boolean', 'Impermeabilizar Alicerce Concluído'),
+            ('levantar_alicerce_percentual', 'decimal', 'Levantar Alicerce, Reboco e Impermeabilizar (%)'),
         ]
     },
     2: {
@@ -587,7 +585,7 @@ def apontamento_list(request):
 def apontamento_create(request, funcionario_id=None):
     """Cria apontamento individual"""
     if request.method == 'POST':
-        form = ApontamentoForm(request.POST, funcionario_id=funcionario_id)
+        form = ApontamentoForm(request.POST, request.FILES, funcionario_id=funcionario_id)
         if form.is_valid():
             ap = form.save(commit=False)
             ap.valor_diaria = ap.funcionario.valor_diaria
@@ -605,6 +603,19 @@ def apontamento_create(request, funcionario_id=None):
             # ---- Registrar histórico no EtapaHistorico ----
             if ap.etapa:
                 _registrar_historico_apontamento(ap.etapa, ap, request, is_update=is_update, etapa_items_changes=etapa_items_changes)
+
+            # ========== PROCESSAR FOTOS ==========
+            fotos_uploaded = request.FILES.getlist('fotos')
+            for foto in fotos_uploaded:
+                FotoApontamento.objects.create(
+                    apontamento_individual=ap,
+                    obra=ap.obra,
+                    foto=foto
+                )
+            
+            if fotos_uploaded:
+                messages.info(request, f'📷 {len(fotos_uploaded)} foto(s) anexada(s)!')
+            # ========================================
 
             # Notificação de retrabalho/ociosidade
             if ap.houve_retrabalho:
@@ -1916,6 +1927,19 @@ def apontamento_lote_create(request):
             if apontamentos_criados:
                 messages.success(request, f'✅ {apontamentos_criados} apontamento(s) individual(is) criado(s)!')
             
+            # ========== PROCESSAR FOTOS ==========
+            fotos_uploaded = request.FILES.getlist('fotos')
+            for foto in fotos_uploaded:
+                FotoApontamento.objects.create(
+                    apontamento_lote=lote,
+                    obra=lote.obra,
+                    foto=foto
+                )
+            
+            if fotos_uploaded:
+                messages.info(request, f'📷 {len(fotos_uploaded)} foto(s) anexada(s)!')
+            # ========================================
+            
             msg = f'✅ Apontamento criado com sucesso! {funcionarios_criados} funcionário(s) registrado(s).'
             
             messages.success(request, msg)
@@ -2064,30 +2088,17 @@ def api_campos_etapa(request):
             },
             {
                 'nome': 'levantar_alicerce_percentual',
-                'label': 'Levantar Alicerce',
+                'label': 'Levantar Alicerce, Reboco e Impermeabilizar',
                 'tipo': 'number',
                 'unidade': '%',
                 'min': 0,
                 'max': 100,
                 'step': '0.01',
-                'help_text': 'Percentual executado (0-100%)',
-                'valor_atual': valores_atuais.get('levantar_alicerce_percentual', '0.00'),
+                'help_text': 'Quanto foi executado HOJE (será somado ao total)',
+                'valor_atual': '',  # Campo vazio para input
+                'valor_atual_display': str(valores_atuais.get('levantar_alicerce_percentual', '0.00')),
                 'bloqueado': Decimal(str(valores_atuais.get('levantar_alicerce_percentual', '0.00'))) >= Decimal('100.00'),
                 'aviso': '✅ 100% concluído!' if Decimal(str(valores_atuais.get('levantar_alicerce_percentual', '0.00'))) >= Decimal('100.00') else None
-            },
-            {
-                'nome': 'rebocar_alicerce_concluido',
-                'label': 'Rebocar Alicerce',
-                'tipo': 'checkbox',
-                'help_text': 'Concluído?',
-                'valor_atual': valores_atuais.get('rebocar_alicerce_concluido', False)
-            },
-            {
-                'nome': 'impermeabilizar_alicerce_concluido',
-                'label': 'Impermeabilizar Alicerce',
-                'tipo': 'checkbox',
-                'help_text': 'Concluído?',
-                'valor_atual': valores_atuais.get('impermeabilizar_alicerce_concluido', False)
             },
             {
                 'nome': 'aterro_contrapiso_conclusao',
@@ -2103,8 +2114,9 @@ def api_campos_etapa(request):
                 'unidade': 'blocos',
                 'min': 0,
                 'step': '1',
-                'help_text': 'Quantidade de blocos assentados',
-                'valor_atual': valores_atuais.get('parede_7fiadas_blocos', '0')
+                'help_text': 'Quantidade de blocos assentados HOJE (será somado ao total)',
+                'valor_atual': '',  # Campo vazio para input
+                'valor_atual_display': str(valores_atuais.get('parede_7fiadas_blocos', '0'))
             },
             {
                 'nome': 'fiadas_respaldo_conclusao',
@@ -2132,8 +2144,9 @@ def api_campos_etapa(request):
                 'unidade': 'blocos',
                 'min': 0,
                 'step': '1',
-                'help_text': 'Quantidade de blocos assentados',
-                'valor_atual': valores_atuais.get('platibanda_blocos', '0')
+                'help_text': 'Quantidade de blocos assentados HOJE (será somado ao total)',
+                'valor_atual': '',  # Campo vazio para input
+                'valor_atual_display': str(valores_atuais.get('platibanda_blocos', '0'))
             },
             {
                 'nome': 'cobertura_conclusao',
@@ -2154,8 +2167,9 @@ def api_campos_etapa(request):
                 'unidade': 'm²',
                 'min': 0,
                 'step': '0.01',
-                'help_text': 'Metragem executada em m²',
-                'valor_atual': valores_atuais.get('reboco_externo_m2', '0.00')
+                'help_text': 'Metragem executada HOJE em m² (será somado ao total)',
+                'valor_atual': '',  # Campo vazio para input
+                'valor_atual_display': str(valores_atuais.get('reboco_externo_m2', '0.00'))
             },
             {
                 'nome': 'reboco_interno_m2',
@@ -2164,8 +2178,9 @@ def api_campos_etapa(request):
                 'unidade': 'm²',
                 'min': 0,
                 'step': '0.01',
-                'help_text': 'Metragem executada em m²',
-                'valor_atual': valores_atuais.get('reboco_interno_m2', '0.00')
+                'help_text': 'Metragem executada HOJE em m² (será somado ao total)',
+                'valor_atual': '',  # Campo vazio para input
+                'valor_atual_display': str(valores_atuais.get('reboco_interno_m2', '0.00'))
             },
             {
                 'nome': 'instalacao_portais',
@@ -2269,4 +2284,40 @@ def api_campos_etapa(request):
         'numero_etapa': numero_etapa,
         'campos': campos
     })
+
+
+@login_required
+def api_obra_possui_placa(request):
+    """API para retornar o último valor de possui_placa de uma obra"""
+    obra_id = request.GET.get('obra_id')
+    if not obra_id:
+        return JsonResponse({'possui_placa': False})
+    
+    try:
+        obra_id = int(obra_id)
+    except (ValueError, TypeError):
+        return JsonResponse({'possui_placa': False})
+    
+    # Buscar último apontamento (individual ou lote)
+    ultimo_individual = ApontamentoFuncionario.objects.filter(
+        obra_id=obra_id
+    ).order_by('-data', '-created_at').first()
+    
+    ultimo_lote = ApontamentoDiarioLote.objects.filter(
+        obra_id=obra_id
+    ).order_by('-data', '-created_at').first()
+    
+    # Pegar o mais recente
+    possui_placa = False
+    if ultimo_individual and ultimo_lote:
+        if ultimo_individual.data >= ultimo_lote.data:
+            possui_placa = ultimo_individual.possui_placa
+        else:
+            possui_placa = ultimo_lote.possui_placa
+    elif ultimo_individual:
+        possui_placa = ultimo_individual.possui_placa
+    elif ultimo_lote:
+        possui_placa = ultimo_lote.possui_placa
+    
+    return JsonResponse({'possui_placa': possui_placa})
 
