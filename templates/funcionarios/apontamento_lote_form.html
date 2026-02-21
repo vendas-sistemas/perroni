@@ -222,21 +222,43 @@
 </div>
 
 <script>
+// Lista de funcionários disponível (serializada do servidor)
+const funcionariosDisponiveis = {{ funcionarios_json|safe }};
+
+// Conjunto para evitar duplicatas
+const funcionariosSelecionados = new Set();
+
+function getFuncionariosOptions(excluirIds = []) {
+    return funcionariosDisponiveis
+        .filter(f => !excluirIds.includes(f.id))
+        .map(f => `<option value="${f.id}" data-funcao="${f.funcao}">${f.nome_completo} (${f.funcao_display})</option>`)
+        .join('');
+}
+
+function atualizarSelects() {
+    document.querySelectorAll('.funcionario-select').forEach(select => {
+        const valorAtual = select.value ? parseInt(select.value) : null;
+        const excluir = Array.from(funcionariosSelecionados).filter(id => id !== valorAtual);
+        const optionsHtml = `<option value="">Selecione...</option>` + getFuncionariosOptions(excluir);
+        select.innerHTML = optionsHtml;
+        if (valorAtual) select.value = String(valorAtual);
+    });
+}
+
 let contadorFuncionarios = 0;
 
 // Adicionar linha de funcionário
 document.getElementById('btn-adicionar-funcionario').addEventListener('click', function() {
     const tbody = document.getElementById('funcionarios-tbody');
     const row = document.createElement('tr');
+    // Options excluem já selecionados
+    const excluir = Array.from(funcionariosSelecionados);
+    const optionsHtml = `<option value="">Selecione...</option>` + getFuncionariosOptions(excluir);
+
     row.innerHTML = `
         <td>
             <select name="funcionario" class="form-select funcionario-select" required>
-                <option value="">Selecione...</option>
-                {% for func in funcionarios %}
-                <option value="{{ func.id }}" data-funcao="{{ func.funcao }}">
-                    {{ func.nome_completo }}
-                </option>
-                {% endfor %}
+                ${optionsHtml}
             </select>
         </td>
         <td class="text-center">
@@ -254,33 +276,52 @@ document.getElementById('btn-adicionar-funcionario').addEventListener('click', f
     `;
     tbody.appendChild(row);
     contadorFuncionarios++;
+    atualizarSelects();
     calcularDivisao();
 });
 
 // Remover funcionário
+// Remover funcionário
 document.addEventListener('click', function(e) {
     if (e.target.closest('.btn-remover-funcionario')) {
-        e.target.closest('tr').remove();
+        const row = e.target.closest('tr');
+        const select = row.querySelector('.funcionario-select');
+        if (select && select.value) {
+            funcionariosSelecionados.delete(parseInt(select.value));
+        }
+        row.remove();
         contadorFuncionarios--;
+        atualizarSelects();
         calcularDivisao();
     }
 });
 
-// Atualizar função ao selecionar funcionário
+// Atualizar função ao selecionar funcionário e evitar duplicatas
 document.addEventListener('change', function(e) {
     if (e.target.classList.contains('funcionario-select')) {
-        const option = e.target.options[e.target.selectedIndex];
-        const funcao = option.getAttribute('data-funcao');
-        const badge = e.target.closest('tr').querySelector('.funcao-badge');
-        
+        const select = e.target;
+        const option = select.options[select.selectedIndex];
+        const funcao = option ? option.getAttribute('data-funcao') : null;
+        const badge = select.closest('tr').querySelector('.funcao-badge');
+
         if (funcao === 'pedreiro') {
             badge.textContent = 'Pedreiro';
             badge.className = 'badge badge-pedreiro';
         } else if (funcao === 'servente') {
             badge.textContent = 'Servente';
             badge.className = 'badge badge-servente';
+        } else {
+            badge.textContent = '-';
+            badge.className = 'badge bg-secondary funcao-badge';
         }
-        
+
+        // Recalcular conjunto de selecionados a partir dos selects atuais
+        funcionariosSelecionados.clear();
+        document.querySelectorAll('.funcionario-select').forEach(s => {
+            if (s.value) funcionariosSelecionados.add(parseInt(s.value));
+        });
+
+        atualizarSelects();
         calcularDivisao();
     }
 });

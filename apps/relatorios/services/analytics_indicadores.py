@@ -6,7 +6,7 @@ Este módulo substitui/complementa o analytics.py oferecendo detalhamento por in
 from collections import defaultdict
 from decimal import Decimal
 
-from django.db.models import Avg, Count, Sum, Q, Max, Min
+from django.db.models import Avg, Count, Sum, Q, Max, Min, Value, DecimalField
 from django.db.models.functions import Coalesce
 
 from apps.funcionarios.models import RegistroProducao, Funcionario, ApontamentoFuncionario
@@ -44,7 +44,7 @@ INDICADORES_POR_ETAPA = {
         {
             'indicador': 'platibanda',
             'nome': 'Platibanda',
-            'unidade': 'metros lineares',
+            'unidade': 'blocos',
             'tipo': 'quantitativo'
         },
         {
@@ -84,7 +84,7 @@ UNIDADES_INDICADORES = {
     'parede_7fiadas': 'blocos',
     'respaldo_conclusao': '%',
     'laje_conclusao': '%',
-    'platibanda': 'metros lineares',
+    'platibanda': 'blocos',
     'cobertura_conclusao': '%',
     'reboco_externo': 'm²',
     'reboco_interno': 'm²',
@@ -266,6 +266,9 @@ def media_rendimento_por_pedreiro(filtros=None):
         .annotate(
             total_ociosidade=Count('id', filter=Q(houve_ociosidade=True)),
             total_retrabalho=Count('id', filter=Q(houve_retrabalho=True)),
+            total_horas=Coalesce(Sum('horas_trabalhadas'), Value(0), output_field=DecimalField(max_digits=10, decimal_places=2)),
+            total_valor=Coalesce(Sum('valor_diaria'), Value(0), output_field=DecimalField(max_digits=10, decimal_places=2)),
+            total_metragem=Coalesce(Sum('metragem_executada'), Value(0), output_field=DecimalField(max_digits=10, decimal_places=2)),
         )
     )
     
@@ -273,33 +276,69 @@ def media_rendimento_por_pedreiro(filtros=None):
     apontamentos_dict = {
         r['funcionario_id']: r for r in stats_apontamentos
     }
-    
+
+    # Agregar produção por (funcionario_id, indicador) para médias por indicador
+    INDICADORES_COLS = [
+        'parede_7fiadas',
+        'alicerce_percentual',
+        'platibanda',
+        'reboco_externo',
+        'reboco_interno',
+    ]
+    por_indicador_qs = (
+        qs_producao
+        .filter(indicador__in=INDICADORES_COLS)
+        .values('funcionario_id', 'indicador')
+        .annotate(
+            total_ind=Sum('quantidade'),
+            dias_ind=Count('data', distinct=True),
+        )
+    )
+    # Montar dicionário {func_id: {indicador: media}}
+    indicador_dict = defaultdict(dict)
+    for row_ind in por_indicador_qs:
+        fid = row_ind['funcionario_id']
+        ind = row_ind['indicador']
+        total_i = float(row_ind['total_ind'] or 0)
+        dias_i = int(row_ind['dias_ind'] or 0)
+        indicador_dict[fid][ind] = round(total_i / dias_i, 2) if dias_i > 0 else 0
+
     resultado = []
     for row in stats_producao:
         func_id = row['funcionario_id']
         apt = apontamentos_dict.get(func_id, {})
-        
+        ind_data = indicador_dict.get(func_id, {})
+
         # ===== CALCULAR MÉDIA CORRETAMENTE EM PYTHON =====
         total_producao = float(row['total_producao'] or 0)
         total_dias = int(row['total_dias'] or 0)
-        
+
         if total_dias > 0:
             media_producao = total_producao / total_dias
         else:
             media_producao = 0
-        
+
         resultado.append({
             'funcionario_id': func_id,
             'nome': row['funcionario__nome_completo'],
-            'media_producao': round(media_producao, 2),  # ← MÉDIA CORRETA!
+            'media_producao': round(media_producao, 2),
             'total_dias': total_dias,
             'total_ociosidade': apt.get('total_ociosidade', 0),
             'total_retrabalho': apt.get('total_retrabalho', 0),
+            'total_horas': float(apt.get('total_horas', 0) or 0),
+            'total_valor': float(apt.get('total_valor', 0) or 0),
+            'total_metragem': float(apt.get('total_metragem', 0) or 0),
+            # Médias por indicador específico
+            'media_7fiadas': ind_data.get('parede_7fiadas', '-'),
+            'media_alicerce': ind_data.get('alicerce_percentual', '-'),
+            'media_platibanda': ind_data.get('platibanda', '-'),
+            'media_reboco_ext': ind_data.get('reboco_externo', '-'),
+            'media_reboco_int': ind_data.get('reboco_interno', '-'),
         })
-    
+
     # Ordenar por média de produção
     resultado.sort(key=lambda x: x['media_producao'], reverse=True)
-    
+
     return resultado
 
 

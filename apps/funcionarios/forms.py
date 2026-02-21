@@ -90,17 +90,20 @@ class ApontamentoForm(forms.ModelForm):
                 obra_id=obra_id_placa
             ).order_by('-data', '-created_at').first()
             
-            # Pegar o mais recente entre individual e lote
+            # Pegar o mais recente — em empate de data o LOTE tem prioridade
+            possui_placa = False
             if ultimo_individual and ultimo_lote:
-                if ultimo_individual.data >= ultimo_lote.data:
-                    if ultimo_individual.possui_placa:
-                        self.fields['possui_placa'].initial = True
+                if ultimo_lote.data > ultimo_individual.data:
+                    possui_placa = getattr(ultimo_lote, 'possui_placa', False)
+                elif ultimo_individual.data > ultimo_lote.data:
+                    possui_placa = getattr(ultimo_individual, 'possui_placa', False)
                 else:
-                    if ultimo_lote.possui_placa:
-                        self.fields['possui_placa'].initial = True
-            elif ultimo_individual and ultimo_individual.possui_placa:
-                self.fields['possui_placa'].initial = True
-            elif ultimo_lote and ultimo_lote.possui_placa:
+                    possui_placa = getattr(ultimo_lote, 'possui_placa', False)
+            elif ultimo_individual:
+                possui_placa = getattr(ultimo_individual, 'possui_placa', False)
+            elif ultimo_lote:
+                possui_placa = getattr(ultimo_lote, 'possui_placa', False)
+            if possui_placa:
                 self.fields['possui_placa'].initial = True
         
         # Filter etapas by obra if provided
@@ -318,12 +321,29 @@ class ApontamentoDiarioLoteForm(forms.ModelForm):
             obra_id = self.instance.obra_id
         
         if obra_id and not self.instance.pk:  # Apenas para novos apontamentos
-            # Buscar último apontamento desta obra
-            ultimo_apontamento = ApontamentoDiarioLote.objects.filter(
+            # Buscar últimos apontamentos desta obra (individual E lote)
+            ultimo_individual = ApontamentoFuncionario.objects.filter(
                 obra_id=obra_id
             ).order_by('-data', '-created_at').first()
-            
-            if ultimo_apontamento and ultimo_apontamento.possui_placa:
+            ultimo_lote = ApontamentoDiarioLote.objects.filter(
+                obra_id=obra_id
+            ).order_by('-data', '-created_at').first()
+
+            possui_placa = False
+            if ultimo_individual and ultimo_lote:
+                if ultimo_lote.data > ultimo_individual.data:
+                    possui_placa = getattr(ultimo_lote, 'possui_placa', False)
+                elif ultimo_individual.data > ultimo_lote.data:
+                    possui_placa = getattr(ultimo_individual, 'possui_placa', False)
+                else:
+                    # Mesma data: lote tem prioridade
+                    possui_placa = getattr(ultimo_lote, 'possui_placa', False)
+            elif ultimo_individual:
+                possui_placa = getattr(ultimo_individual, 'possui_placa', False)
+            elif ultimo_lote:
+                possui_placa = getattr(ultimo_lote, 'possui_placa', False)
+
+            if possui_placa:
                 self.fields['possui_placa'].initial = True
         
         # Etapas serão filtradas por obra via JavaScript

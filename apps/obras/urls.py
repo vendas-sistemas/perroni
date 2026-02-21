@@ -9,6 +9,7 @@ urlpatterns = [
     path('criar/', views.obra_create, name='obra_create'),
     path('<int:pk>/editar/', views.obra_update, name='obra_update'),
     path('<int:pk>/etapas/', views.obra_etapas, name='obra_etapas'),
+    path('<int:pk>/fotos/', views.obra_fotos, name='obra_fotos'),
     path('allocacoes/<int:pk>/', views.obra_allocations, name='obra_allocations'),
     path('allocacoes/<int:pk>/csv/', views.obra_allocations_csv, name='obra_allocations_csv'),
     path('etapa/<int:pk>/', views.etapa_detail, name='etapa_detail'),

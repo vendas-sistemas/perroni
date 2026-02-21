@@ -644,6 +644,7 @@ class ApontamentoDiarioLote(models.Model):
             motivo_retrabalho=self.motivo_retrabalho or '',
             observacoes=self.observacoes or '',
             valor_diaria=func_lote.funcionario.valor_diaria or Decimal('0.00'),
+            possui_placa=self.possui_placa,
         )
         
         # Criar registros de produção individuais
@@ -934,9 +935,33 @@ class RegistroProducao(models.Model):
         return f"{self.funcionario.nome_completo} - {self.get_indicador_display()} - {self.data.strftime('%d/%m/%Y')}"
 
 
+import uuid as _uuid
+import os as _os
+
+
+def foto_apontamento_upload_path(instance, filename):
+    """
+    Organiza fotos por obra/etapa/dia:
+    obras/{obra_id}/etapas/etapa_{n}/{data}/
+    obras/{obra_id}/sem_etapa/{data}/
+    """
+    ext = _os.path.splitext(filename)[1].lower()
+    nome = f"{_uuid.uuid4().hex[:10]}{ext}"
+    obra_id = instance.obra_id or 0
+    data_str = str(instance.data_foto) if instance.data_foto else 'sem_data'
+
+    if instance.etapa_id:
+        try:
+            num = instance.etapa.numero_etapa
+            return f'obras/{obra_id}/etapas/etapa_{num}/{data_str}/{nome}'
+        except Exception:
+            pass
+    return f'obras/{obra_id}/sem_etapa/{data_str}/{nome}'
+
+
 class FotoApontamento(models.Model):
     """Fotos anexadas aos apontamentos"""
-    
+
     apontamento_individual = models.ForeignKey(
         ApontamentoFuncionario,
         on_delete=models.CASCADE,
@@ -945,7 +970,7 @@ class FotoApontamento(models.Model):
         null=True,
         blank=True
     )
-    
+
     apontamento_lote = models.ForeignKey(
         ApontamentoDiarioLote,
         on_delete=models.CASCADE,
@@ -954,7 +979,7 @@ class FotoApontamento(models.Model):
         null=True,
         blank=True
     )
-    
+
     obra = models.ForeignKey(
         'obras.Obra',
         on_delete=models.CASCADE,
@@ -962,12 +987,29 @@ class FotoApontamento(models.Model):
         verbose_name="Obra",
         help_text="Facilita buscar todas as fotos de uma obra"
     )
-    
+
+    etapa = models.ForeignKey(
+        'obras.Etapa',
+        on_delete=models.SET_NULL,
+        related_name='fotos',
+        verbose_name="Etapa",
+        null=True,
+        blank=True,
+        help_text="Etapa em que a foto foi tirada"
+    )
+
+    data_foto = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Data da Foto",
+        help_text="Data do apontamento ao qual a foto pertence"
+    )
+
     foto = models.ImageField(
-        upload_to='apontamentos/fotos/%Y/%m/',
+        upload_to=foto_apontamento_upload_path,
         verbose_name="Foto"
     )
-    
+
     descricao = models.CharField(
         max_length=200,
         blank=True,
@@ -975,16 +1017,18 @@ class FotoApontamento(models.Model):
         verbose_name="Descrição",
         help_text="Descrição opcional da foto"
     )
-    
+
     data_upload = models.DateTimeField(
         auto_now_add=True,
         verbose_name="Data do Upload"
     )
-    
+
     class Meta:
         verbose_name = "Foto do Apontamento"
         verbose_name_plural = "Fotos dos Apontamentos"
         ordering = ['-data_upload']
-    
+
     def __str__(self):
-        return f"Foto - {self.obra.nome} - {self.data_upload.strftime('%d/%m/%Y')}"
+        etapa_str = f" | Etapa {self.etapa.numero_etapa}" if self.etapa_id else ""
+        data_str = self.data_foto.strftime('%d/%m/%Y') if self.data_foto else self.data_upload.strftime('%d/%m/%Y')
+        return f"Foto - {self.obra.nome}{etapa_str} - {data_str}"

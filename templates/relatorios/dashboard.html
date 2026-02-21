@@ -254,19 +254,42 @@
   <!-- ════════════════════════════════════════════ -->
   <div class="card section-card shadow-sm mb-4">
     <div class="card-header bg-white border-0 pt-3">
-      <h5 class="mb-0"><i class="bi bi-person-lines-fill text-primary"></i> 3. Média de Rendimento Individual</h5>
+      <h5 class="mb-0"><i class="bi bi-person-lines-fill text-primary"></i> 3. Rendimento Individual por Pedreiro</h5>
+      <small class="text-muted">Resumo do desempenho de cada pedreiro no período selecionado: produção média diária (blocos, m² etc.), dias trabalhados, horas, valor recebido e metragem executada.</small>
     </div>
     <div class="card-body">
+      <!-- Legenda dos indicadores -->
+      <div class="alert alert-secondary py-2 mb-3">
+        <small>
+          <strong>Produção média diária por indicador:</strong>
+          <span class="badge bg-primary ms-2">7F</span> Parede 7 Fiadas (blocos/dia) &nbsp;
+          <span class="badge bg-secondary">Ali</span> Alicerce (%/dia) &nbsp;
+          <span class="badge bg-info text-dark">Plat</span> Platibanda (blocos/dia) &nbsp;
+          <span class="badge bg-warning text-dark">R.Ext</span> Reboco Externo (m²/dia) &nbsp;
+          <span class="badge bg-success">R.Int</span> Reboco Interno (m²/dia) &nbsp;
+          <span class="text-muted">— = sem registros no período</span>
+        </small>
+      </div>
       <div class="table-responsive">
-        <table class="table table-hover align-middle">
+        <table class="table table-hover align-middle table-sm">
           <thead class="table-light">
             <tr>
-              <th>#</th>
-              <th>Pedreiro</th>
-              <th class="text-center">Média m²/dia</th>
-              <th class="text-center">Dias Trab.</th>
-              <th class="text-center">Dias Ocioso</th>
-              <th class="text-center">Dias Retrabalho</th>
+              <th rowspan="2" class="align-middle">#</th>
+              <th rowspan="2" class="align-middle">Pedreiro</th>
+              <th colspan="5" class="text-center border-start border-end bg-light-blue">Produção Média Diária (por indicador)</th>
+              <th rowspan="2" class="text-center align-middle">Dias<br>Trab.</th>
+              <th rowspan="2" class="text-center align-middle">Ocio<br>sidade</th>
+              <th rowspan="2" class="text-center align-middle">Retra<br>balho</th>
+              <th rowspan="2" class="text-center align-middle">Horas</th>
+              <th rowspan="2" class="text-center align-middle">Total<br>Recebido</th>
+              <th rowspan="2" class="text-center align-middle">Metrag.<br>(m²)</th>
+            </tr>
+            <tr>
+              <th class="text-center border-start"><span class="badge bg-primary">7F</span><br><small class="text-muted fw-normal">blocos</small></th>
+              <th class="text-center"><span class="badge bg-secondary">Ali</span><br><small class="text-muted fw-normal">%</small></th>
+              <th class="text-center"><span class="badge bg-info text-dark">Plat</span><br><small class="text-muted fw-normal">blocos</small></th>
+              <th class="text-center"><span class="badge bg-warning text-dark">R.Ext</span><br><small class="text-muted fw-normal">m²</small></th>
+              <th class="text-center border-end"><span class="badge bg-success">R.Int</span><br><small class="text-muted fw-normal">m²</small></th>
             </tr>
           </thead>
           <tbody>
@@ -274,27 +297,38 @@
             <tr>
               <td>{{ forloop.counter }}</td>
               <td class="fw-semibold">{{ r.nome }}</td>
+              <td class="text-center border-start">
+                {% if r.media_7fiadas != '-' %}<span class="badge bg-primary">{{ r.media_7fiadas }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
+              </td>
               <td class="text-center">
-                <span class="badge bg-primary fs-6">{{ r.media_producao }}</span>
+                {% if r.media_alicerce != '-' %}<span class="badge bg-secondary">{{ r.media_alicerce }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
+              </td>
+              <td class="text-center">
+                {% if r.media_platibanda != '-' %}<span class="badge bg-info text-dark">{{ r.media_platibanda }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
+              </td>
+              <td class="text-center">
+                {% if r.media_reboco_ext != '-' %}<span class="badge bg-warning text-dark">{{ r.media_reboco_ext }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
+              </td>
+              <td class="text-center border-end">
+                {% if r.media_reboco_int != '-' %}<span class="badge bg-success">{{ r.media_reboco_int }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
               </td>
               <td class="text-center">{{ r.total_dias }}</td>
               <td class="text-center">
                 {% if r.total_ociosidade > 0 %}
                   <span class="text-warning fw-bold">{{ r.total_ociosidade }}</span>
-                {% else %}
-                  0
-                {% endif %}
+                {% else %}0{% endif %}
               </td>
               <td class="text-center">
                 {% if r.total_retrabalho > 0 %}
                   <span class="text-danger fw-bold">{{ r.total_retrabalho }}</span>
-                {% else %}
-                  0
-                {% endif %}
+                {% else %}0{% endif %}
               </td>
+              <td class="text-center">{{ r.total_horas|floatformat:1 }}</td>
+              <td class="text-center">R$ {{ r.total_valor|floatformat:2 }}</td>
+              <td class="text-center">{{ r.total_metragem|floatformat:2 }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="6" class="text-muted text-center">Sem dados</td></tr>
+            <tr><td colspan="12" class="text-muted text-center">Sem dados</td></tr>
             {% endfor %}
           </tbody>
         </table>

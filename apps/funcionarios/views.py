@@ -26,6 +26,7 @@ import calendar
 from apps.obras.templatetags.obras_extras import brl
 from django.db import transaction
 from django.views.decorators.http import require_GET
+import json
 
 
 # ==================== ETAPA ITEMS HELPERS ====================
@@ -610,6 +611,8 @@ def apontamento_create(request, funcionario_id=None):
                 FotoApontamento.objects.create(
                     apontamento_individual=ap,
                     obra=ap.obra,
+                    etapa=ap.etapa,
+                    data_foto=ap.data,
                     foto=foto
                 )
             
@@ -1450,7 +1453,7 @@ def funcionario_medias_individuais(request, pk):
         'reboco_interno': (3, 'Reboco Interno', 'm²'),
     }
     
-    for indicador_code in producoes.values_list('indicador', flat=True).distinct():
+    for indicador_code in producoes.order_by().values_list('indicador', flat=True).distinct():
         prods = producoes.filter(indicador=indicador_code)
         
         if prods.exists():
@@ -1933,6 +1936,8 @@ def apontamento_lote_create(request):
                 FotoApontamento.objects.create(
                     apontamento_lote=lote,
                     obra=lote.obra,
+                    etapa=lote.etapa,
+                    data_foto=lote.data,
                     foto=foto
                 )
             
@@ -1946,14 +1951,55 @@ def apontamento_lote_create(request):
             return redirect('funcionarios:apontamento_list')
     
     else:
-        form_lote = ApontamentoDiarioLoteForm()
+        # Se vier com ?obra=ID, pré-carregar o estado de 'possui_placa' baseado
+        # no último apontamento desta obra (requisito: manter marcado entre apontamentos).
+        initial = {}
+        obra_id = request.GET.get('obra') or request.GET.get('obra_id')
+        if obra_id:
+            try:
+                ultimo_individual = ApontamentoFuncionario.objects.filter(
+                    obra_id=obra_id
+                ).order_by('-data', '-created_at').first()
+                ultimo_lote = ApontamentoDiarioLote.objects.filter(
+                    obra_id=obra_id
+                ).order_by('-data', '-created_at').first()
+
+                possui_placa = False
+                if ultimo_individual and ultimo_lote:
+                    if ultimo_lote.data > ultimo_individual.data:
+                        possui_placa = getattr(ultimo_lote, 'possui_placa', False)
+                    elif ultimo_individual.data > ultimo_lote.data:
+                        possui_placa = getattr(ultimo_individual, 'possui_placa', False)
+                    else:
+                        # Mesma data: lote tem prioridade
+                        possui_placa = getattr(ultimo_lote, 'possui_placa', False)
+                elif ultimo_individual:
+                    possui_placa = getattr(ultimo_individual, 'possui_placa', False)
+                elif ultimo_lote:
+                    possui_placa = getattr(ultimo_lote, 'possui_placa', False)
+
+                if possui_placa:
+                    initial['possui_placa'] = True
+            except Exception:
+                pass
+
+        form_lote = ApontamentoDiarioLoteForm(initial=initial) if initial else ApontamentoDiarioLoteForm()
     
     # Buscar funcionários ativos
     funcionarios = Funcionario.objects.filter(ativo=True).order_by('nome_completo')
+    funcionarios_json = json.dumps([
+        {
+            'id': f.id,
+            'nome_completo': f.nome_completo,
+            'funcao': f.funcao,
+            'funcao_display': f.get_funcao_display()
+        } for f in funcionarios
+    ])
     
     context = {
         'form': form_lote,
         'funcionarios': funcionarios,
+        'funcionarios_json': funcionarios_json,
         'title': 'Apontamento Diário em Lote'
     }
     
@@ -2307,12 +2353,15 @@ def api_obra_possui_placa(request):
         obra_id=obra_id
     ).order_by('-data', '-created_at').first()
     
-    # Pegar o mais recente
+    # Pegar o mais recente — em caso de empate de data, o LOTE tem prioridade
     possui_placa = False
     if ultimo_individual and ultimo_lote:
-        if ultimo_individual.data >= ultimo_lote.data:
+        if ultimo_lote.data > ultimo_individual.data:
+            possui_placa = ultimo_lote.possui_placa
+        elif ultimo_individual.data > ultimo_lote.data:
             possui_placa = ultimo_individual.possui_placa
         else:
+            # Mesma data: lote é o registro mestre
             possui_placa = ultimo_lote.possui_placa
     elif ultimo_individual:
         possui_placa = ultimo_individual.possui_placa

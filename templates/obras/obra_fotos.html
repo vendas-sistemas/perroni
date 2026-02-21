@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+  .foto-thumb {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: .5rem;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s, opacity .15s;
+  }
+  .foto-thumb:hover {
+    transform: scale(1.04);
+    box-shadow: 0 6px 20px rgba(0,0,0,.25);
+    opacity: .92;
+  }
+  .day-badge {
+    font-size: .72rem;
+    letter-spacing: .04em;
+  }
+  .etapa-section-header {
+    border-left: 4px solid;
+    padding-left: .75rem;
+  }
+  .etapa-1 { border-color: #6c757d; }
+  .etapa-2 { border-color: #0d6efd; }
+  .etapa-3 { border-color: #fd7e14; }
+  .etapa-4 { border-color: #198754; }
+  .etapa-5 { border-color: #6f42c1; }
+  .sem-etapa-section { border-color: #adb5bd; }
+
+  .etapa-color-1 { color: #6c757d !important; }
+  .etapa-color-2 { color: #0d6efd !important; }
+  .etapa-color-3 { color: #fd7e14 !important; }
+  .etapa-color-4 { color: #198754 !important; }
+  .etapa-color-5 { color: #6f42c1 !important; }
+
+  #lightbox-modal .modal-dialog { max-width: 90vw; }
+  #lightbox-modal img { max-height: 80vh; object-fit: contain; border-radius: .5rem; }
+  .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); }
+  .lightbox-nav.prev { left: -3rem; }
+  .lightbox-nav.next { right: -3rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4">
+
+  <!-- Cabeçalho -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <div>
+      <h1 class="h3 mb-0">
+        <i class="bi bi-images text-primary"></i>
+        Fotos da Obra
+      </h1>
+      <div class="text-muted small mt-1">
+        <i class="bi bi-building"></i> {{ obra.nome }}
+        {% if obra.cliente %}
+          <span class="ms-2"><i class="bi bi-person"></i> {{ obra.cliente.nome }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <span class="badge bg-primary fs-6 align-self-center">
+        <i class="bi bi-camera"></i> {{ total_fotos }} foto{{ total_fotos|pluralize }}
+      </span>
+      <a href="{% url 'obras:obra_etapas' obra.pk %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+        <i class="bi bi-arrow-left"></i> Voltar às Etapas
+      </a>
+    </div>
+  </div>
+
+  {% if total_fotos == 0 %}
+  <!-- Estado vazio -->
+  <div class="card border-0 shadow-sm" style="border-radius:.75rem;">
+    <div class="card-body text-center py-5">
+      <i class="bi bi-camera-slash fs-1 text-muted"></i>
+      <h5 class="mt-3 text-muted">Nenhuma foto registrada ainda</h5>
+      <p class="text-muted small">
+        Adicione fotos ao criar um apontamento em lote ou apontamento individual.
+      </p>
+      <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-primary btn-sm mt-1">
+        <i class="bi bi-plus-circle"></i> Novo Apontamento em Lote
+      </a>
+    </div>
+  </div>
+
+  {% else %}
+
+  <!-- Acordeão por Etapa -->
+  <div class="accordion" id="acordeao-fotos">
+
+    {% for grupo in etapas_grupos %}
+    <div class="accordion-item border-0 shadow-sm mb-3" style="border-radius:.75rem; overflow:hidden;">
+      <h2 class="accordion-header">
+        <button class="accordion-button fw-semibold collapsed" type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#etapa-{{ grupo.numero }}"
+                aria-expanded="false">
+          <i class="bi bi-layers me-2 etapa-color-{{ grupo.numero }}"></i>
+          {{ grupo.nome }}
+          <span class="badge bg-light text-dark ms-2 border">
+            <i class="bi bi-camera"></i> {{ grupo.total }}
+          </span>
+        </button>
+      </h2>
+      <div id="etapa-{{ grupo.numero }}" class="accordion-collapse collapse">
+        <div class="accordion-body pt-2 pb-3">
+
+          {% for dia in grupo.dias %}
+          <div class="mb-3">
+            <!-- Separador de dia -->
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="badge bg-secondary day-badge">
+                <i class="bi bi-calendar3"></i> {{ dia.data }}
+              </span>
+              <span class="text-muted" style="font-size:.8rem;">
+                {{ dia.fotos|length }} foto{{ dia.fotos|length|pluralize }}
+              </span>
+              <hr class="flex-grow-1 my-0">
+            </div>
+            <!-- Grid de fotos -->
+            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-2">
+              {% for foto in dia.fotos %}
+              <div class="col">
+                <img src="{{ foto.foto.url }}"
+                     class="foto-thumb shadow-sm"
+                     loading="lazy"
+                     alt="Foto {{ grupo.nome }} - {{ dia.data }}"
+                     data-bs-toggle="modal"
+                     data-bs-target="#lightbox-modal"
+                     data-src="{{ foto.foto.url }}"
+                     data-caption="{{ grupo.nome }} | {{ dia.data }}{% if foto.descricao %} | {{ foto.descricao }}{% endif %}"
+                     title="{% if foto.descricao %}{{ foto.descricao }}{% else %}{{ dia.data }}{% endif %}">
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- Fotos sem etapa -->
+    {% if sem_etapa_dias %}
+    <div class="accordion-item border-0 shadow-sm mb-3" style="border-radius:.75rem; overflow:hidden;">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed fw-semibold" type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#sem-etapa-section"
+                aria-expanded="false">
+          <i class="bi bi-folder2-open me-2 text-muted"></i>
+          Fotos sem Etapa
+          <span class="badge bg-light text-dark ms-2 border">
+            <i class="bi bi-camera"></i> {{ sem_etapa_total }}
+          </span>
+        </button>
+      </h2>
+      <div id="sem-etapa-section" class="accordion-collapse collapse">
+        <div class="accordion-body pt-2 pb-3">
+          {% for dia in sem_etapa_dias %}
+          <div class="mb-3">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="badge bg-secondary day-badge">
+                <i class="bi bi-calendar3"></i> {{ dia.data }}
+              </span>
+              <span class="text-muted" style="font-size:.8rem;">
+                {{ dia.fotos|length }} foto{{ dia.fotos|length|pluralize }}
+              </span>
+              <hr class="flex-grow-1 my-0">
+            </div>
+            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-2">
+              {% for foto in dia.fotos %}
+              <div class="col">
+                <img src="{{ foto.foto.url }}"
+                     class="foto-thumb shadow-sm"
+                     loading="lazy"
+                     alt="Sem Etapa - {{ dia.data }}"
+                     data-bs-toggle="modal"
+                     data-bs-target="#lightbox-modal"
+                     data-src="{{ foto.foto.url }}"
+                     data-caption="Sem Etapa | {{ dia.data }}{% if foto.descricao %} | {{ foto.descricao }}{% endif %}"
+                     title="{% if foto.descricao %}{{ foto.descricao }}{% else %}{{ dia.data }}{% endif %}">
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- ===== Lightbox Modal ===== -->
+<div class="modal fade" id="lightbox-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark border-0">
+      <div class="modal-header border-0 py-2 px-3">
+        <span class="text-white small" id="lightbox-caption"></span>
+        <button type="button" class="btn-close btn-close-white ms-auto"
+                data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body p-2 text-center position-relative">
+        <img id="lightbox-img" src="" alt="" class="w-100">
+        <!-- Navegação anterior / próximo -->
+        <button class="btn btn-dark btn-sm position-absolute top-50 start-0 translate-middle-y ms-1"
+                id="btn-prev" style="z-index:10; opacity:.8;">
+          <i class="bi bi-chevron-left"></i>
+        </button>
+        <button class="btn btn-dark btn-sm position-absolute top-50 end-0 translate-middle-y me-1"
+                id="btn-next" style="z-index:10; opacity:.8;">
+          <i class="bi bi-chevron-right"></i>
+        </button>
+      </div>
+      <div class="modal-footer border-0 py-2 justify-content-center">
+        <a id="lightbox-download" href="#" download class="btn btn-outline-light btn-sm">
+          <i class="bi bi-download"></i> Baixar
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  'use strict';
+
+  // Coleta todas as fotos em ordem de aparição na página
+  let allThumbs = [];
+  let currentIndex = 0;
+
+  const modalEl = document.getElementById('lightbox-modal');
+  const imgEl   = document.getElementById('lightbox-img');
+  const capEl   = document.getElementById('lightbox-caption');
+  const dlEl    = document.getElementById('lightbox-download');
+  const btnPrev = document.getElementById('btn-prev');
+  const btnNext = document.getElementById('btn-next');
+
+  function refreshThumbs() {
+    allThumbs = Array.from(document.querySelectorAll('.foto-thumb'));
+  }
+
+  function showPhoto(index) {
+    if (index < 0) index = allThumbs.length - 1;
+    if (index >= allThumbs.length) index = 0;
+    currentIndex = index;
+
+    const th = allThumbs[currentIndex];
+    const src = th.dataset.src;
+    imgEl.src = src;
+    imgEl.alt = th.alt;
+    capEl.textContent = th.dataset.caption || '';
+    dlEl.href = src;
+    dlEl.download = src.split('/').pop();
+  }
+
+  // Abrir modal ao clicar em thumbnail
+  document.addEventListener('click', function (e) {
+    const th = e.target.closest('.foto-thumb');
+    if (!th) return;
+    refreshThumbs();
+    showPhoto(allThumbs.indexOf(th));
+  });
+
+  // Botões anterior / próximo
+  btnPrev.addEventListener('click', function () { showPhoto(currentIndex - 1); });
+  btnNext.addEventListener('click', function () { showPhoto(currentIndex + 1); });
+
+  // Teclado: setas
+  document.addEventListener('keydown', function (e) {
+    if (!modalEl.classList.contains('show')) return;
+    if (e.key === 'ArrowLeft')  showPhoto(currentIndex - 1);
+    if (e.key === 'ArrowRight') showPhoto(currentIndex + 1);
+    if (e.key === 'Escape') bootstrap.Modal.getInstance(modalEl).hide();
+  });
+})();
+</script>
+{% endblock %}

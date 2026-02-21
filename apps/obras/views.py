@@ -6,7 +6,7 @@ from django.utils import timezone
 import datetime
 from django.contrib.auth.models import User
 from .models import Obra, Etapa
-from apps.funcionarios.models import ApontamentoFuncionario
+from apps.funcionarios.models import ApontamentoFuncionario, FotoApontamento
 from django.http import HttpResponse
 import csv
 from decimal import Decimal
@@ -335,6 +335,74 @@ def obra_etapas(request, pk):
         'title': f'Etapas - {obra.nome}'
     }
     return render(request, 'obras/obra_etapas.html', context)
+
+
+@login_required
+def obra_fotos(request, pk):
+    """
+    Galeria de fotos de uma obra, organizadas por etapa e dia.
+    """
+    from collections import defaultdict
+
+    ETAPA_NOMES = {
+        1: 'Etapa 1 — Fundação',
+        2: 'Etapa 2 — Estrutura',
+        3: 'Etapa 3 — Revestimentos e Instalações',
+        4: 'Etapa 4 — Acabamentos',
+        5: 'Etapa 5 — Finalização',
+    }
+
+    obra = get_object_or_404(Obra, pk=pk)
+
+    fotos_qs = (
+        FotoApontamento.objects
+        .filter(obra=obra)
+        .select_related('etapa', 'apontamento_lote', 'apontamento_individual')
+        .order_by('etapa__numero_etapa', 'data_foto', '-data_upload')
+    )
+
+    # Agrupar: etapa_num → data_str → [fotos]
+    por_etapa = defaultdict(lambda: defaultdict(list))
+    sem_etapa = defaultdict(list)
+
+    for foto in fotos_qs:
+        data_str = foto.data_foto.strftime('%d/%m/%Y') if foto.data_foto else 'Sem data'
+        if foto.etapa_id:
+            num = foto.etapa.numero_etapa
+            por_etapa[num][data_str].append(foto)
+        else:
+            sem_etapa[data_str].append(foto)
+
+    # Montar lista ordenada para o template
+    etapas_grupos = []
+    for num in sorted(por_etapa.keys()):
+        dias = [
+            {'data': data, 'fotos': por_etapa[num][data]}
+            for data in sorted(por_etapa[num].keys(), reverse=True)
+        ]
+        total = sum(len(d['fotos']) for d in dias)
+        etapas_grupos.append({
+            'numero': num,
+            'nome': ETAPA_NOMES.get(num, f'Etapa {num}'),
+            'dias': dias,
+            'total': total,
+        })
+
+    sem_etapa_dias = [
+        {'data': data, 'fotos': sem_etapa[data]}
+        for data in sorted(sem_etapa.keys(), reverse=True)
+    ]
+    sem_etapa_total = sum(len(d['fotos']) for d in sem_etapa_dias)
+
+    context = {
+        'obra': obra,
+        'etapas_grupos': etapas_grupos,
+        'sem_etapa_dias': sem_etapa_dias,
+        'sem_etapa_total': sem_etapa_total,
+        'total_fotos': fotos_qs.count(),
+        'title': f'Fotos da Obra — {obra.nome}',
+    }
+    return render(request, 'obras/obra_fotos.html', context)
 
 
 @login_required
