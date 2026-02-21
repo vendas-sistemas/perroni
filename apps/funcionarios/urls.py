@@ -33,6 +33,9 @@ urlpatterns = [
     # Apontamentos em Lote
     path('apontamento-lote/criar/', views.apontamento_lote_create, name='apontamento_lote_create'),
     path('apontamento-lote/', views.apontamento_lote_list, name='apontamento_lote_list'),
+    path('apontamento-lote/<int:pk>/', views.apontamento_lote_detail, name='apontamento_lote_detail'),
+    path('apontamento-lote/<int:pk>/editar/', views.apontamento_lote_edit, name='apontamento_lote_edit'),
+    path('apontamento-lote/<int:pk>/excluir/', views.apontamento_lote_delete, name='apontamento_lote_delete'),
 
     # Visão por obra
     path('obra/<int:pk>/mao-de-obra/', views.obra_mao_de_obra, name='obra_mao_de_obra'),

@@ -1,0 +1,371 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .campo-etapa-card {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        transition: all 0.3s ease;
+    }
+    .campo-etapa-card:hover {
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    }
+    .badge-pedreiro { background-color: #0d6efd; color: #fff; }
+    .badge-servente { background-color: #6c757d; color: #fff; }
+</style>
+{% endblock %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-pencil-square text-warning"></i> {{ title }}</h2>
+            <small class="text-muted">Editar apontamento em lote - {{ lote.obra.nome }}</small>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'funcionarios:apontamento_lote_detail' lote.pk %}" class="btn btn-outline-info btn-sm">
+                <i class="bi bi-eye"></i> Ver Detalhes
+            </a>
+            <a href="{% url 'funcionarios:apontamento_lote_list' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i>
+        <strong>Atenção:</strong> Ao editar, os valores antigos serão revertidos e os novos serão aplicados.
+        Relatórios serão recalculados automaticamente.
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <form method="post" id="form-editar-lote">
+                {% csrf_token %}
+
+                <!-- CABEÇALHO -->
+                <h5 class="mb-3"><i class="bi bi-info-circle"></i> Informações Básicas</h5>
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Obra</label>
+                        {{ form.obra }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Data</label>
+                        {{ form.data }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Clima</label>
+                        {{ form.clima }}
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Etapa</label>
+                        {{ form.etapa }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Produção Total</label>
+                        {{ form.producao_total }}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">Unidade</label>
+                        {{ form.unidade_medida }}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">Placa</label>
+                        <div class="form-check mt-2">
+                            {{ form.possui_placa }}
+                            <label class="form-check-label" for="id_possui_placa">Sim</label>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- FUNCIONÁRIOS -->
+                <h5 class="mb-3"><i class="bi bi-people"></i> Funcionários</h5>
+
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm" id="tabela-funcionarios">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Funcionário</th>
+                                <th class="text-center" style="width:100px;">Função</th>
+                                <th style="width:150px;">Horas</th>
+                                <th class="text-center" style="width:80px;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for func_lote in funcionarios_atuais %}
+                            <tr>
+                                <td>
+                                    <select name="funcionario" class="form-select funcionario-select" required>
+                                        <option value="">Selecione...</option>
+                                        {% for f in funcionarios %}
+                                        <option value="{{ f.id }}" 
+                                                data-funcao="{{ f.get_funcao_display }}"
+                                                {% if f.id == func_lote.funcionario.id %}selected{% endif %}>
+                                            {{ f.nome_completo }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge {% if func_lote.funcionario.funcao == 'pedreiro' %}badge-pedreiro{% else %}badge-servente{% endif %} funcao-badge">
+                                        {{ func_lote.funcionario.get_funcao_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <input type="number" name="horas_trabalhadas" class="form-control"
+                                           value="{{ func_lote.horas_trabalhadas }}" step="0.5" min="0.5" max="24" required>
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-remover-funcionario">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <button type="button" class="btn btn-sm btn-outline-primary mb-3" id="btn-adicionar-funcionario">
+                    <i class="bi bi-plus-circle"></i> Adicionar Funcionário
+                </button>
+
+                <hr>
+
+                <!-- CAMPOS DA ETAPA (container para AJAX) -->
+                <div id="campos-etapa-container" class="mt-4" style="display: none;">
+                    <h5 class="mb-3"><i class="bi bi-list-task"></i> Campos da Etapa</h5>
+                    <div class="alert alert-info">
+                        <strong><i class="bi bi-info-circle"></i></strong>
+                        Preencha os campos executados. Valores serão <strong>somados</strong> ao progresso existente.
+                    </div>
+                    <div id="campos-etapa-fields" class="row g-3"></div>
+                </div>
+
+                <hr class="my-4">
+
+                <!-- INDICADORES -->
+                <h5 class="mb-3"><i class="bi bi-exclamation-triangle"></i> Indicadores</h5>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            {{ form.houve_ociosidade }}
+                            <label class="form-check-label" for="id_houve_ociosidade">Houve ociosidade?</label>
+                        </div>
+                        <div id="ociosidade-wrap" class="mt-2" {% if not lote.houve_ociosidade %}style="display:none;"{% endif %}>
+                            {{ form.observacao_ociosidade }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            {{ form.houve_retrabalho }}
+                            <label class="form-check-label" for="id_houve_retrabalho">Houve retrabalho?</label>
+                        </div>
+                        <div id="retrabalho-wrap" class="mt-2" {% if not lote.houve_retrabalho %}style="display:none;"{% endif %}>
+                            {{ form.motivo_retrabalho }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- OBSERVAÇÕES -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Observações</label>
+                    {{ form.observacoes }}
+                </div>
+
+                <hr>
+
+                <!-- BOTÕES -->
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="bi bi-check-circle"></i> Salvar Alterações
+                    </button>
+                    <a href="{% url 'funcionarios:apontamento_lote_detail' lote.pk %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+const funcionariosDisponiveis = {{ funcionarios_json|safe }};
+
+function getFuncionariosOptions(excluirIds) {
+    excluirIds = excluirIds || [];
+    return funcionariosDisponiveis
+        .filter(function(f) { return excluirIds.indexOf(f.id) === -1; })
+        .map(function(f) { return '<option value="' + f.id + '" data-funcao="' + f.funcao_display + '">' + f.nome + '</option>'; })
+        .join('');
+}
+
+function getExcluidos() {
+    var selects = document.querySelectorAll('.funcionario-select');
+    var ids = [];
+    selects.forEach(function(s) { if (s.value) ids.push(parseInt(s.value)); });
+    return ids;
+}
+
+// Adicionar funcionário
+document.getElementById('btn-adicionar-funcionario').addEventListener('click', function() {
+    var tbody = document.querySelector('#tabela-funcionarios tbody');
+    var row = document.createElement('tr');
+    var excluir = getExcluidos();
+    var optionsHtml = '<option value="">Selecione...</option>' + getFuncionariosOptions(excluir);
+
+    row.innerHTML = 
+        '<td>' +
+            '<select name="funcionario" class="form-select funcionario-select" required>' +
+                optionsHtml +
+            '</select>' +
+        '</td>' +
+        '<td class="text-center">' +
+            '<span class="badge bg-secondary funcao-badge">-</span>' +
+        '</td>' +
+        '<td>' +
+            '<input type="number" name="horas_trabalhadas" class="form-control" value="8.0" step="0.5" min="0.5" max="24" required>' +
+        '</td>' +
+        '<td class="text-center">' +
+            '<button type="button" class="btn btn-sm btn-outline-danger btn-remover-funcionario">' +
+                '<i class="bi bi-trash"></i>' +
+            '</button>' +
+        '</td>';
+    tbody.appendChild(row);
+
+    // Atualizar badge ao trocar seleção
+    row.querySelector('.funcionario-select').addEventListener('change', function() {
+        var opt = this.options[this.selectedIndex];
+        var badge = row.querySelector('.funcao-badge');
+        if (opt && opt.dataset.funcao) {
+            badge.textContent = opt.dataset.funcao;
+            badge.className = opt.dataset.funcao.toLowerCase().indexOf('pedreiro') >= 0
+                ? 'badge badge-pedreiro funcao-badge'
+                : 'badge badge-servente funcao-badge';
+        } else {
+            badge.textContent = '-';
+            badge.className = 'badge bg-secondary funcao-badge';
+        }
+    });
+});
+
+// Remover funcionário (delegado)
+document.querySelector('#tabela-funcionarios').addEventListener('click', function(e) {
+    var btn = e.target.closest('.btn-remover-funcionario');
+    if (btn) {
+        var rows = document.querySelectorAll('#tabela-funcionarios tbody tr');
+        if (rows.length > 1) {
+            btn.closest('tr').remove();
+        } else {
+            alert('Mínimo de 1 funcionário!');
+        }
+    }
+});
+
+// Toggle ociosidade/retrabalho
+var oc = document.getElementById('id_houve_ociosidade');
+var ow = document.getElementById('ociosidade-wrap');
+if (oc && ow) {
+    oc.addEventListener('change', function() { ow.style.display = oc.checked ? '' : 'none'; });
+}
+
+var rc = document.getElementById('id_houve_retrabalho');
+var rw = document.getElementById('retrabalho-wrap');
+if (rc && rw) {
+    rc.addEventListener('change', function() { rw.style.display = rc.checked ? '' : 'none'; });
+}
+
+// Carregar campos da etapa via AJAX
+var etapaSelect = document.getElementById('id_etapa');
+if (etapaSelect) {
+    function carregarCamposEtapa() {
+        var etapaId = etapaSelect.value;
+        var container = document.getElementById('campos-etapa-container');
+        var fields = document.getElementById('campos-etapa-fields');
+
+        if (!etapaId) {
+            container.style.display = 'none';
+            fields.innerHTML = '';
+            return;
+        }
+
+        fetch('{% url "funcionarios:api_campos_etapa" %}?etapa_id=' + etapaId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.error) return;
+                fields.innerHTML = '';
+                container.style.display = data.campos.length > 0 ? '' : 'none';
+
+                data.campos.forEach(function(campo) {
+                    var col = document.createElement('div');
+                    col.className = 'col-md-6 mb-3';
+
+                    if (campo.tipo === 'checkbox') {
+                        var checked = campo.valor_atual === true || campo.valor_atual === 'True';
+                        col.innerHTML =
+                            '<div class="card campo-etapa-card h-100"><div class="card-body">' +
+                                '<div class="form-check">' +
+                                    '<input type="checkbox" name="campo_' + campo.nome + '" id="id_campo_' + campo.nome + '" class="form-check-input"' + (checked ? ' checked' : '') + '>' +
+                                    '<label class="form-check-label" for="id_campo_' + campo.nome + '">' + campo.label + '</label>' +
+                                '</div>' +
+                                (campo.help_text ? '<small class="text-muted">' + campo.help_text + '</small>' : '') +
+                            '</div></div>';
+                    } else if (campo.tipo === 'date') {
+                        col.innerHTML =
+                            '<div class="card campo-etapa-card h-100"><div class="card-body">' +
+                                '<label class="form-label fw-bold">' + campo.label + '</label>' +
+                                '<input type="date" name="campo_' + campo.nome + '" class="form-control" value="' + (campo.valor_atual || '') + '">' +
+                                (campo.help_text ? '<small class="text-muted">' + campo.help_text + '</small>' : '') +
+                            '</div></div>';
+                    } else {
+                        var display = campo.valor_atual_display || '0';
+                        col.innerHTML =
+                            '<div class="card campo-etapa-card h-100"><div class="card-body">' +
+                                '<label class="form-label fw-bold">' + campo.label +
+                                    (campo.unidade ? ' <small class="text-muted">(' + campo.unidade + ')</small>' : '') +
+                                '</label>' +
+                                '<div class="alert alert-info mb-2 py-1 px-2">' +
+                                    '<small><i class="bi bi-info-circle"></i> Progresso atual: <strong>' + display + '</strong></small>' +
+                                '</div>' +
+                                '<input type="number" name="campo_' + campo.nome + '" class="form-control" min="' + (campo.min || 0) + '" step="' + (campo.step || 1) + '" placeholder="Valor a adicionar HOJE">' +
+                                (campo.help_text ? '<small class="text-muted">' + campo.help_text + '</small>' : '') +
+                            '</div></div>';
+                    }
+
+                    fields.appendChild(col);
+                });
+            })
+            .catch(function() { container.style.display = 'none'; });
+    }
+
+    etapaSelect.addEventListener('change', carregarCamposEtapa);
+    // Carregar ao abrir se já tem etapa selecionada
+    if (etapaSelect.value) {
+        carregarCamposEtapa();
+    }
+}
+
+// Atualizar badges existentes
+document.querySelectorAll('.funcionario-select').forEach(function(select) {
+    select.addEventListener('change', function() {
+        var opt = select.options[select.selectedIndex];
+        var badge = select.closest('tr').querySelector('.funcao-badge');
+        if (opt && opt.dataset.funcao) {
+            badge.textContent = opt.dataset.funcao;
+            badge.className = opt.dataset.funcao.toLowerCase().indexOf('pedreiro') >= 0
+                ? 'badge badge-pedreiro funcao-badge'
+                : 'badge badge-servente funcao-badge';
+        }
+    });
+});
+</script>
+{% endblock %}

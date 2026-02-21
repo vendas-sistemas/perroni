@@ -7,6 +7,7 @@ import datetime
 from django.contrib.auth.models import User
 from .models import Obra, Etapa
 from apps.funcionarios.models import ApontamentoFuncionario, FotoApontamento
+from apps.funcionarios.models import HistoricoAlteracaoEtapa
 from django.http import HttpResponse
 import csv
 from decimal import Decimal
@@ -282,11 +283,54 @@ def obra_update(request, pk):
     return render(request, 'obras/obra_form.html', {'form': form, 'obra': obra, 'title': 'Editar Obra'})
 
 
+def _retornar_ferramentas_para_deposito(obra, usuario):
+    """
+    Retorna todas as ferramentas de uma obra para o depósito.
+    Cria registros de movimentação (retorno_deposito) para auditoria.
+    Remove também todas as conferências de ferramentas da obra.
+    """
+    from apps.ferramentas.models import (
+        LocalizacaoFerramenta, MovimentacaoFerramenta, ConferenciaFerramenta
+    )
+
+    localizacoes = LocalizacaoFerramenta.objects.filter(
+        local_tipo='obra',
+        obra=obra
+    ).select_related('ferramenta')
+
+    qtd_retornadas = 0
+    for loc in localizacoes:
+        if loc.quantidade > 0:
+            # MovimentacaoFerramenta.save() auto-atualiza LocalizacaoFerramenta
+            MovimentacaoFerramenta.objects.create(
+                ferramenta=loc.ferramenta,
+                quantidade=loc.quantidade,
+                tipo='retorno_deposito',
+                origem_tipo='obra',
+                obra_origem=obra,
+                destino_tipo='deposito',
+                responsavel=usuario,
+                observacoes=f'Retorno automático ao depósito — Obra "{obra.nome}" excluída',
+            )
+            qtd_retornadas += 1
+
+    # Excluir conferências de ferramentas vinculadas à obra
+    ConferenciaFerramenta.objects.filter(obra=obra).delete()
+
+    return qtd_retornadas
+
+
 @login_required
 @require_POST
 def obra_delete(request, pk):
     """Soft-delete: move obra para excluídos (marca `deleted_at` e desativa `ativo`)."""
     obra = get_object_or_404(Obra, pk=pk)
+
+    # Retornar ferramentas ao depósito e limpar conferências
+    qtd = _retornar_ferramentas_para_deposito(obra, request.user)
+    if qtd:
+        messages.info(request, f'{qtd} ferramenta(s) retornada(s) ao depósito.')
+
     # soft-delete timestamp
     obra.delete()
     # manter compatibilidade com flag `ativo` usada nas views
@@ -319,6 +363,13 @@ def obra_restore(request, pk):
 @require_POST
 def obra_hard_delete(request, pk):
     obra = get_object_or_404(Obra.all_objects, pk=pk)
+
+    # Retornar ferramentas ao depósito antes da exclusão permanente
+    # (CASCADE deletaria os LocalizacaoFerramenta, perdendo as quantidades)
+    qtd = _retornar_ferramentas_para_deposito(obra, request.user)
+    if qtd:
+        messages.info(request, f'{qtd} ferramenta(s) retornada(s) ao depósito.')
+
     obra.hard_delete()
     messages.success(request, 'Obra excluída permanentemente.')
     return redirect(request.META.get('HTTP_REFERER', 'obras:excluidos'))
@@ -475,7 +526,7 @@ def etapa1_detail(request, pk):
             return redirect(reverse('obras:etapa1_detail', args=[etapa.pk]))
     else:
         form = Etapa1FundacaoForm(instance=detalhe)
-    return render(request, 'obras/etapa1_fundacao_detail.html', {'etapa': etapa, 'detalhe': detalhe, 'form': form, 'title': f'Fundação - {etapa.obra.nome}'})
+    return render(request, 'obras/etapa1_fundacao_detail.html', {'etapa': etapa, 'detalhe': detalhe, 'form': form, 'title': f'Fundação - {etapa.obra.nome}', 'historico_alteracoes': HistoricoAlteracaoEtapa.objects.filter(etapa=etapa).select_related('usuario').order_by('-created_at')[:20]})
 
 
 @login_required
@@ -495,7 +546,7 @@ def etapa2_detail(request, pk):
             return redirect(reverse('obras:etapa2_detail', args=[etapa.pk]))
     else:
         form = Etapa2EstruturaForm(instance=detalhe)
-    return render(request, 'obras/etapa2_estrutura_detail.html', {'etapa': etapa, 'detalhe': detalhe, 'form': form, 'title': f'Estrutura - {etapa.obra.nome}'})
+    return render(request, 'obras/etapa2_estrutura_detail.html', {'etapa': etapa, 'detalhe': detalhe, 'form': form, 'title': f'Estrutura - {etapa.obra.nome}', 'historico_alteracoes': HistoricoAlteracaoEtapa.objects.filter(etapa=etapa).select_related('usuario').order_by('-created_at')[:20]})
 
 
 @login_required
@@ -515,7 +566,7 @@ def etapa3_detail(request, pk):
             return redirect(reverse('obras:etapa3_detail', args=[etapa.pk]))
     else:
         form = Etapa3InstalacoesForm(instance=detalhe)
-    return render(request, 'obras/etapa3_instalacoes_detail.html', {'etapa': etapa, 'detalhe': detalhe, 'form': form, 'title': f'Instalações - {etapa.obra.nome}'})
+    return render(request, 'obras/etapa3_instalacoes_detail.html', {'etapa': etapa, 'detalhe': detalhe, 'form': form, 'title': f'Instalações - {etapa.obra.nome}', 'historico_alteracoes': HistoricoAlteracaoEtapa.objects.filter(etapa=etapa).select_related('usuario').order_by('-created_at')[:20]})
 
 
 @login_required
@@ -535,7 +586,7 @@ def etapa4_detail(request, pk):
             return redirect(reverse('obras:etapa4_detail', args=[etapa.pk]))
     else:
         form = Etapa4AcabamentosForm(instance=detalhe)
-    return render(request, 'obras/etapa4_acabamentos_detail.html', {'etapa': etapa, 'detalhe': detalhe, 'form': form, 'title': f'Acabamentos - {etapa.obra.nome}'})
+    return render(request, 'obras/etapa4_acabamentos_detail.html', {'etapa': etapa, 'detalhe': detalhe, 'form': form, 'title': f'Acabamentos - {etapa.obra.nome}', 'historico_alteracoes': HistoricoAlteracaoEtapa.objects.filter(etapa=etapa).select_related('usuario').order_by('-created_at')[:20]})
 
 
 @login_required
@@ -555,7 +606,7 @@ def etapa5_detail(request, pk):
             return redirect(reverse('obras:etapa5_detail', args=[etapa.pk]))
     else:
         form = Etapa5FinalizacaoForm(instance=detalhe)
-    return render(request, 'obras/etapa5_finalizacao_detail.html', {'etapa': etapa, 'detalhe': detalhe, 'form': form, 'title': f'Finalização - {etapa.obra.nome}'})
+    return render(request, 'obras/etapa5_finalizacao_detail.html', {'etapa': etapa, 'detalhe': detalhe, 'form': form, 'title': f'Finalização - {etapa.obra.nome}', 'historico_alteracoes': HistoricoAlteracaoEtapa.objects.filter(etapa=etapa).select_related('usuario').order_by('-created_at')[:20]})
 
 
 @login_required

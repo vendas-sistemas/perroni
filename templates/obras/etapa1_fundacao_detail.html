@@ -79,4 +79,41 @@
   </div>
 </div>
 
+<!-- Histórico de Alterações -->
+{% if historico_alteracoes %}
+<div class="card shadow-sm mt-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Histórico de Alterações</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data/Hora</th>
+                        <th>Tipo</th>
+                        <th>Descrição</th>
+                        <th>Usuário</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for h in historico_alteracoes %}
+                    <tr>
+                        <td>{{ h.created_at|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <span class="badge {% if h.tipo_alteracao == 'exclusao' %}bg-danger{% elif h.tipo_alteracao == 'edicao' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                {{ h.get_tipo_alteracao_display }}
+                            </span>
+                        </td>
+                        <td>{{ h.descricao|truncatewords:30 }}</td>
+                        <td>{{ h.usuario.username }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}

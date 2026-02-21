@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from .models import Funcionario, ApontamentoFuncionario, FechamentoSemanal
 from .models import ApontamentoDiarioLote, FuncionarioLote, RegistroProducao, FotoApontamento
+from .models import HistoricoAlteracaoEtapa
 from .forms import (
     FuncionarioForm, ApontamentoForm, FechamentoForm,
     ApontamentoDiarioCabecalhoForm, ApontamentoDiarioLoteForm,
@@ -25,7 +26,7 @@ from collections import defaultdict
 import calendar
 from apps.obras.templatetags.obras_extras import brl
 from django.db import transaction
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_http_methods
 import json
 
 
@@ -2370,3 +2371,405 @@ def api_obra_possui_placa(request):
     
     return JsonResponse({'possui_placa': possui_placa})
 
+
+# ================ APONTAMENTO EM LOTE - CRUD (EDIÇÃO / EXCLUSÃO / DETALHES) ================
+
+
+def reverter_producao_etapa(lote):
+    """
+    Reverte a produção que foi adicionada ao salvar o lote.
+    Subtrai os valores dos campos das etapas baseado nos RegistroProducao.
+    """
+    if not lote.etapa:
+        return
+
+    etapa_num = lote.etapa.numero_etapa
+
+    # Buscar detalhes da etapa
+    detalhes = None
+    try:
+        if etapa_num == 1:
+            detalhes = Etapa1Fundacao.objects.filter(etapa=lote.etapa).first()
+        elif etapa_num == 2:
+            detalhes = Etapa2Estrutura.objects.filter(etapa=lote.etapa).first()
+        elif etapa_num == 3:
+            detalhes = Etapa3Instalacoes.objects.filter(etapa=lote.etapa).first()
+        elif etapa_num == 4:
+            detalhes = Etapa4Acabamentos.objects.filter(etapa=lote.etapa).first()
+        elif etapa_num == 5:
+            detalhes = Etapa5Finalizacao.objects.filter(etapa=lote.etapa).first()
+    except Exception:
+        return
+
+    if not detalhes:
+        return
+
+    # Buscar registros de produção deste lote
+    prods = RegistroProducao.objects.filter(
+        obra=lote.obra,
+        data=lote.data,
+        etapa=lote.etapa
+    )
+
+    # Mapear indicador para campo do model de detalhes
+    CAMPO_MAP = {
+        'parede_7fiadas': 'parede_7fiadas_blocos',
+        'alicerce_percentual': 'levantar_alicerce_percentual',
+        'platibanda': 'platibanda_blocos',
+        'reboco_externo': 'reboco_externo_m2',
+        'reboco_interno': 'reboco_interno_m2',
+    }
+
+    # Reverter por indicador
+    indicadores = prods.values_list('indicador', flat=True).distinct()
+    for indicador in indicadores:
+        total_reverter = prods.filter(indicador=indicador).aggregate(
+            total=Sum('quantidade')
+        )['total'] or Decimal('0')
+
+        campo_nome = CAMPO_MAP.get(indicador)
+
+        if campo_nome and hasattr(detalhes, campo_nome):
+            valor_atual = getattr(detalhes, campo_nome)
+            if valor_atual is None:
+                continue
+
+            novo_valor = Decimal(str(valor_atual)) - total_reverter
+            # Garantir que não fique negativo
+            novo_valor = max(novo_valor, Decimal('0'))
+            setattr(detalhes, campo_nome, novo_valor)
+
+    detalhes.save()
+
+
+@login_required
+@require_http_methods(["POST"])
+@transaction.atomic
+def apontamento_lote_delete(request, pk):
+    """
+    Exclui apontamento em lote e REVERTE todas as produções nas etapas.
+    """
+    lote = get_object_or_404(ApontamentoDiarioLote, pk=pk)
+
+    # Guardar dados para histórico ANTES de excluir
+    obra = lote.obra
+    etapa = lote.etapa
+    data = lote.data
+    producao_total = lote.producao_total or Decimal('0')
+    funcionarios_nomes = [
+        f.funcionario.nome_completo for f in lote.funcionarios.select_related('funcionario').all()
+    ]
+
+    # PASSO 1: Reverter produção nas etapas
+    reverter_producao_etapa(lote)
+
+    # PASSO 2: Excluir registros de produção
+    RegistroProducao.objects.filter(
+        obra=obra,
+        data=data,
+        etapa=etapa
+    ).delete()
+
+    # PASSO 3: Excluir apontamentos individuais vinculados
+    ApontamentoFuncionario.objects.filter(
+        obra=obra,
+        data=data,
+        etapa=etapa
+    ).delete()
+
+    # PASSO 4: Registrar no histórico
+    HistoricoAlteracaoEtapa.objects.create(
+        obra=obra,
+        etapa=etapa,
+        tipo_alteracao='exclusao',
+        data_referencia=data,
+        descricao=(
+            f'Apontamento em lote excluído. '
+            f'Produção total: {producao_total}. '
+            f'Funcionários: {", ".join(funcionarios_nomes)}'
+        ),
+        usuario=request.user,
+        dados_anteriores={
+            'producao_total': str(producao_total),
+            'funcionarios': funcionarios_nomes,
+            'data': data.isoformat(),
+        }
+    )
+
+    # PASSO 5: Registrar no EtapaHistorico existente
+    if etapa:
+        try:
+            EtapaHistorico.objects.create(
+                etapa=etapa,
+                origem='Exclusão de Apontamento em Lote',
+                descricao=(
+                    f'🗑️ APONTAMENTO EM LOTE EXCLUÍDO\n'
+                    f'Data: {data.strftime("%d/%m/%Y")}\n'
+                    f'Produção revertida: {producao_total}\n'
+                    f'Funcionários: {", ".join(funcionarios_nomes)}'
+                ),
+                usuario=request.user
+            )
+        except Exception:
+            pass
+
+    # PASSO 6: Excluir o lote
+    lote.delete()
+
+    messages.success(
+        request,
+        f'✅ Apontamento excluído com sucesso! '
+        f'Produção revertida e relatórios recalculados.'
+    )
+
+    return redirect('funcionarios:apontamento_lote_list')
+
+
+@login_required
+@transaction.atomic
+def apontamento_lote_edit(request, pk):
+    """
+    Edita apontamento em lote existente.
+    Reverte valores antigos antes de aplicar os novos.
+    """
+    lote = get_object_or_404(ApontamentoDiarioLote, pk=pk)
+
+    # Guardar valores antigos
+    valores_antigos = {
+        'producao_total': str(lote.producao_total or 0),
+        'funcionarios': [
+            {
+                'id': fl.funcionario.id,
+                'nome': fl.funcionario.nome_completo,
+                'horas': str(fl.horas_trabalhadas),
+            }
+            for fl in lote.funcionarios.select_related('funcionario').all()
+        ],
+        'clima': lote.clima,
+        'observacoes': lote.observacoes or '',
+    }
+
+    funcionarios_atuais = lote.funcionarios.select_related('funcionario').all()
+
+    if request.method == 'POST':
+        form = ApontamentoDiarioLoteForm(request.POST, instance=lote)
+
+        if form.is_valid():
+            # PASSO 1: Reverter produção antiga
+            reverter_producao_etapa(lote)
+
+            # PASSO 2: Excluir registros de produção antigos
+            RegistroProducao.objects.filter(
+                obra=lote.obra,
+                data=lote.data,
+                etapa=lote.etapa
+            ).delete()
+
+            # PASSO 3: Excluir apontamentos individuais antigos
+            ApontamentoFuncionario.objects.filter(
+                obra=lote.obra,
+                data=lote.data,
+                etapa=lote.etapa
+            ).delete()
+
+            # PASSO 4: Salvar lote atualizado
+            lote_atualizado = form.save()
+
+            # PASSO 5: Atualizar funcionários
+            lote.funcionarios.all().delete()
+
+            funcionarios_ids = request.POST.getlist('funcionario')
+            horas_trabalhadas_list = request.POST.getlist('horas_trabalhadas')
+            funcionarios_ids = [f for f in funcionarios_ids if f]
+
+            funcionarios_criados = 0
+            for i, func_id in enumerate(funcionarios_ids):
+                try:
+                    funcionario = Funcionario.objects.get(pk=func_id, ativo=True)
+                    horas = Decimal(horas_trabalhadas_list[i]) if i < len(horas_trabalhadas_list) else Decimal('8.0')
+                    FuncionarioLote.objects.create(
+                        lote=lote,
+                        funcionario=funcionario,
+                        horas_trabalhadas=horas,
+                    )
+                    funcionarios_criados += 1
+                except (Funcionario.DoesNotExist, ValueError, InvalidOperation):
+                    continue
+
+            if funcionarios_criados == 0:
+                messages.error(request, '❌ Nenhum funcionário válido foi adicionado!')
+                return redirect('funcionarios:apontamento_lote_edit', pk=lote.pk)
+
+            # PASSO 6: Processar campos da etapa (se houver)
+            etapa = lote.etapa
+            valores_producao_dia = {}
+
+            if etapa:
+                numero_etapa = etapa.numero_etapa
+                detalhes = None
+                try:
+                    if numero_etapa == 1:
+                        detalhes, _ = Etapa1Fundacao.objects.get_or_create(etapa=etapa)
+                    elif numero_etapa == 2:
+                        detalhes, _ = Etapa2Estrutura.objects.get_or_create(etapa=etapa)
+                    elif numero_etapa == 3:
+                        detalhes, _ = Etapa3Instalacoes.objects.get_or_create(etapa=etapa)
+                    elif numero_etapa == 4:
+                        detalhes, _ = Etapa4Acabamentos.objects.get_or_create(etapa=etapa)
+                    elif numero_etapa == 5:
+                        detalhes, _ = Etapa5Finalizacao.objects.get_or_create(etapa=etapa)
+                except Exception:
+                    detalhes = None
+
+                if detalhes:
+                    campos_atualizados = False
+                    for key, value in request.POST.items():
+                        if key.startswith('campo_'):
+                            campo_nome = key.replace('campo_', '')
+                            if not value or value.strip() == '' or value.strip() == '0' or value.strip() == '0.00':
+                                continue
+
+                            if hasattr(detalhes, campo_nome):
+                                try:
+                                    field = detalhes._meta.get_field(campo_nome)
+
+                                    if field.get_internal_type() == 'BooleanField':
+                                        novo_valor = value == 'on'
+                                        setattr(detalhes, campo_nome, novo_valor)
+                                        campos_atualizados = True
+
+                                    elif field.get_internal_type() == 'DecimalField':
+                                        novo_valor = Decimal(value)
+                                        if novo_valor > 0:
+                                            valores_producao_dia[campo_nome] = novo_valor
+                                            valor_anterior = getattr(detalhes, campo_nome) or Decimal('0.00')
+                                            setattr(detalhes, campo_nome, valor_anterior + novo_valor)
+                                            campos_atualizados = True
+
+                                    elif field.get_internal_type() in ['IntegerField', 'PositiveIntegerField']:
+                                        novo_valor = int(value)
+                                        if novo_valor > 0:
+                                            valores_producao_dia[campo_nome] = Decimal(str(novo_valor))
+                                            valor_anterior = getattr(detalhes, campo_nome) or 0
+                                            setattr(detalhes, campo_nome, valor_anterior + novo_valor)
+                                            campos_atualizados = True
+
+                                    elif field.get_internal_type() == 'DateField':
+                                        novo_valor = datetime.datetime.strptime(value, '%Y-%m-%d').date()
+                                        setattr(detalhes, campo_nome, novo_valor)
+                                        campos_atualizados = True
+                                except Exception:
+                                    continue
+
+                    if campos_atualizados:
+                        detalhes.save()
+
+            # PASSO 7: Gerar nova produção
+            lote._valores_dia = valores_producao_dia
+            lote.gerar_apontamentos_individuais()
+
+            # PASSO 8: Registrar no histórico
+            HistoricoAlteracaoEtapa.objects.create(
+                obra=lote.obra,
+                etapa=lote.etapa,
+                tipo_alteracao='edicao',
+                data_referencia=lote.data,
+                descricao=(
+                    f'Apontamento em lote editado. '
+                    f'Produção anterior: {valores_antigos["producao_total"]}. '
+                    f'Produção nova: {lote.producao_total or 0}'
+                ),
+                usuario=request.user,
+                dados_anteriores=valores_antigos,
+                dados_novos={
+                    'producao_total': str(lote.producao_total or 0),
+                    'funcionarios': list(lote.funcionarios.values_list('funcionario_id', flat=True)),
+                }
+            )
+
+            if etapa:
+                try:
+                    EtapaHistorico.objects.create(
+                        etapa=etapa,
+                        origem='Edição de Apontamento em Lote',
+                        descricao=(
+                            f'✏️ APONTAMENTO EM LOTE EDITADO\n'
+                            f'Data: {lote.data.strftime("%d/%m/%Y")}\n'
+                            f'Produção: {valores_antigos["producao_total"]} → {lote.producao_total or 0}'
+                        ),
+                        usuario=request.user
+                    )
+                except Exception:
+                    pass
+
+            messages.success(request, '✅ Apontamento atualizado com sucesso!')
+            return redirect('funcionarios:apontamento_lote_detail', pk=lote.pk)
+        else:
+            messages.error(request, '❌ Corrija os erros no formulário.')
+    else:
+        form = ApontamentoDiarioLoteForm(instance=lote)
+
+    # Serializar funcionários para JS
+    todos_funcionarios = Funcionario.objects.filter(ativo=True).order_by('nome_completo')
+    funcionarios_json = json.dumps([
+        {
+            'id': f.id,
+            'nome': f.nome_completo,
+            'funcao': f.funcao,
+            'funcao_display': f.get_funcao_display(),
+        }
+        for f in todos_funcionarios
+    ])
+
+    context = {
+        'form': form,
+        'lote': lote,
+        'funcionarios_atuais': funcionarios_atuais,
+        'funcionarios': todos_funcionarios,
+        'funcionarios_json': funcionarios_json,
+        'title': f'Editar Apontamento - {lote.data.strftime("%d/%m/%Y")}',
+    }
+
+    return render(request, 'funcionarios/apontamento_lote_edit.html', context)
+
+
+@login_required
+def apontamento_lote_detail(request, pk):
+    """
+    Mostra detalhes completos do apontamento em lote.
+    """
+    lote = get_object_or_404(ApontamentoDiarioLote, pk=pk)
+
+    funcionarios_lote = lote.funcionarios.select_related('funcionario').all()
+
+    apontamentos = ApontamentoFuncionario.objects.filter(
+        obra=lote.obra,
+        data=lote.data,
+        etapa=lote.etapa,
+    ).select_related('funcionario')
+
+    producoes = RegistroProducao.objects.filter(
+        obra=lote.obra,
+        data=lote.data,
+        etapa=lote.etapa,
+    ).select_related('funcionario')
+
+    historico = HistoricoAlteracaoEtapa.objects.filter(
+        obra=lote.obra,
+        etapa=lote.etapa,
+        data_referencia=lote.data,
+    ).order_by('-created_at')
+
+    detalhes_producao = lote.get_detalhes_producao()
+
+    context = {
+        'lote': lote,
+        'funcionarios_lote': funcionarios_lote,
+        'apontamentos': apontamentos,
+        'producoes': producoes,
+        'historico': historico,
+        'detalhes_producao': detalhes_producao,
+        'title': f'Detalhes - Apontamento {lote.data.strftime("%d/%m/%Y")}',
+    }
+
+    return render(request, 'funcionarios/apontamento_lote_detail.html', context)

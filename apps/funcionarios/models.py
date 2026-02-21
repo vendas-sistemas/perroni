@@ -864,6 +864,72 @@ def ensure_user_profile(sender, instance, created, **kwargs):
         UserProfile.objects.create(user=instance)
 
 
+class HistoricoAlteracaoEtapa(models.Model):
+    """
+    Registra todas as alterações e exclusões em apontamentos/etapas.
+    """
+    obra = models.ForeignKey(
+        'obras.Obra',
+        on_delete=models.CASCADE,
+        related_name='historico_alteracoes',
+        verbose_name="Obra"
+    )
+    etapa = models.ForeignKey(
+        'obras.Etapa',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='historico_alteracoes',
+        verbose_name="Etapa"
+    )
+    tipo_alteracao = models.CharField(
+        max_length=20,
+        choices=[
+            ('criacao', 'Criação'),
+            ('edicao', 'Edição'),
+            ('exclusao', 'Exclusão'),
+        ],
+        verbose_name="Tipo de Alteração"
+    )
+    data_referencia = models.DateField(
+        verbose_name="Data de Referência",
+        help_text="Data do apontamento que foi alterado/excluído"
+    )
+    descricao = models.TextField(
+        verbose_name="Descrição",
+        help_text="Detalhes da alteração"
+    )
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        verbose_name="Usuário Responsável"
+    )
+    dados_anteriores = models.JSONField(
+        blank=True,
+        null=True,
+        verbose_name="Dados Anteriores",
+        help_text="Estado antes da alteração"
+    )
+    dados_novos = models.JSONField(
+        blank=True,
+        null=True,
+        verbose_name="Dados Novos",
+        help_text="Estado depois da alteração"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Data/Hora da Alteração"
+    )
+
+    class Meta:
+        verbose_name = "Histórico de Alteração"
+        verbose_name_plural = "Histórico de Alterações"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_tipo_alteracao_display()} - {self.obra.nome} - {self.data_referencia}"
+
+
 class RegistroProducao(models.Model):
     """Rastreamento de produção individual por indicador para relatórios"""
     

@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h2 class="h3 mb-0"><i class="bi bi-eye text-info"></i> {{ title }}</h2>
+            <small class="text-muted">Detalhes completos do apontamento em lote</small>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'funcionarios:apontamento_lote_edit' lote.pk %}" class="btn btn-warning btn-sm">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modal-excluir">
+                <i class="bi bi-trash"></i> Excluir
+            </button>
+            <a href="{% url 'funcionarios:apontamento_lote_list' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <!-- Informações Gerais -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="bi bi-info-circle"></i> Informações Gerais</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3 mb-2">
+                    <strong>Data:</strong><br>
+                    {{ lote.data|date:"d/m/Y" }}
+                </div>
+                <div class="col-md-3 mb-2">
+                    <strong>Obra:</strong><br>
+                    <a href="{% url 'obras:obra_detail' lote.obra.pk %}">{{ lote.obra.nome }}</a>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <strong>Etapa:</strong><br>
+                    {% if lote.etapa %}{{ lote.etapa.get_numero_etapa_display }}{% else %}-{% endif %}
+                </div>
+                <div class="col-md-3 mb-2">
+                    <strong>Clima:</strong><br>
+                    {{ lote.get_clima_display }}
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-md-3 mb-2">
+                    <strong>Produção Total:</strong><br>
+                    {% if lote.producao_total and lote.producao_total > 0 %}
+                        {{ lote.producao_total }}
+                        {% if lote.unidade_medida == 'blocos' %}blocos{% elif lote.unidade_medida == 'm2' %}m²{% elif lote.unidade_medida == 'percentual' %}%{% endif %}
+                    {% else %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
+                </div>
+                <div class="col-md-3 mb-2">
+                    <strong>Criado por:</strong><br>
+                    {{ lote.criado_por.username }}
+                </div>
+                <div class="col-md-3 mb-2">
+                    <strong>Data Criação:</strong><br>
+                    {{ lote.created_at|date:"d/m/Y H:i" }}
+                </div>
+                <div class="col-md-3 mb-2">
+                    <strong>Placa:</strong><br>
+                    {% if lote.possui_placa %}
+                        <span class="badge bg-success">Sim</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Não</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if detalhes_producao %}
+            <div class="row mt-2">
+                <div class="col-12">
+                    <strong>Detalhes da Produção:</strong>
+                    <ul class="mb-0 mt-1">
+                        {% for detalhe in detalhes_producao %}
+                        <li>{{ detalhe }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if lote.observacoes %}
+            <div class="row mt-2">
+                <div class="col-12">
+                    <strong>Observações:</strong><br>
+                    {{ lote.observacoes }}
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if lote.houve_ociosidade %}
+            <div class="alert alert-warning mt-3 mb-0">
+                <i class="bi bi-exclamation-triangle"></i> <strong>Ociosidade:</strong> {{ lote.observacao_ociosidade|default:"-" }}
+            </div>
+            {% endif %}
+            
+            {% if lote.houve_retrabalho %}
+            <div class="alert alert-danger mt-3 mb-0">
+                <i class="bi bi-arrow-repeat"></i> <strong>Retrabalho:</strong> {{ lote.motivo_retrabalho|default:"-" }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Funcionários -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-people"></i> Funcionários ({{ funcionarios_lote.count }})</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nome</th>
+                            <th>Função</th>
+                            <th>Horas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for func_lote in funcionarios_lote %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'funcionarios:funcionario_detail' func_lote.funcionario.pk %}">
+                                    {{ func_lote.funcionario.nome_completo }}
+                                </a>
+                            </td>
+                            <td>
+                                <span class="badge {% if func_lote.funcionario.funcao == 'pedreiro' %}bg-primary{% else %}bg-secondary{% endif %}">
+                                    {{ func_lote.funcionario.get_funcao_display }}
+                                </span>
+                            </td>
+                            <td>{{ func_lote.horas_trabalhadas }}h</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Apontamentos Individuais -->
+    {% if apontamentos %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-list-check"></i> Apontamentos Individuais ({{ apontamentos.count }})</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Funcionário</th>
+                            <th>Horas</th>
+                            <th>Metragem</th>
+                            <th>Valor Diária</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ap in apontamentos %}
+                        <tr>
+                            <td>{{ ap.funcionario.nome_completo }}</td>
+                            <td>{{ ap.horas_trabalhadas }}h</td>
+                            <td>{% if ap.metragem_executada %}{{ ap.metragem_executada }} m²{% else %}-{% endif %}</td>
+                            <td>R$ {{ ap.valor_diaria }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Registros de Produção -->
+    {% if producoes %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Registros de Produção ({{ producoes.count }})</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Funcionário</th>
+                            <th>Indicador</th>
+                            <th>Quantidade</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prod in producoes %}
+                        <tr>
+                            <td>{{ prod.funcionario.nome_completo }}</td>
+                            <td>{{ prod.get_indicador_display }}</td>
+                            <td><strong>{{ prod.quantidade }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Histórico de Alterações -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-clock-history"></i> Histórico de Alterações</h5>
+        </div>
+        <div class="card-body">
+            {% if historico %}
+                {% for h in historico %}
+                <div class="card mb-2 {% if h.tipo_alteracao == 'exclusao' %}border-danger{% elif h.tipo_alteracao == 'edicao' %}border-warning{% else %}border-success{% endif %}">
+                    <div class="card-body py-2">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <span class="badge {% if h.tipo_alteracao == 'exclusao' %}bg-danger{% elif h.tipo_alteracao == 'edicao' %}bg-warning text-dark{% else %}bg-success{% endif %} me-2">
+                                    {{ h.get_tipo_alteracao_display }}
+                                </span>
+                                <span>{{ h.descricao|linebreaksbr }}</span>
+                            </div>
+                            <div class="text-muted text-nowrap ms-3">
+                                <small>{{ h.usuario.username }} - {{ h.created_at|date:"d/m/Y H:i" }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted mb-0">Nenhuma alteração registrada.</p>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal de exclusão -->
+<div class="modal fade" id="modal-excluir" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">⚠️ Confirmar Exclusão</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Tem certeza que deseja excluir este apontamento?</strong></p>
+                <ul class="list-unstyled">
+                    <li><strong>Data:</strong> {{ lote.data|date:"d/m/Y" }}</li>
+                    <li><strong>Obra:</strong> {{ lote.obra.nome }}</li>
+                    <li><strong>Etapa:</strong> {% if lote.etapa %}{{ lote.etapa.get_numero_etapa_display }}{% else %}-{% endif %}</li>
+                </ul>
+                <div class="alert alert-warning mb-0">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Produção será <strong>REVERTIDA</strong> e relatórios <strong>RECALCULADOS</strong>!
+                    Esta ação NÃO pode ser desfeita.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="post" action="{% url 'funcionarios:apontamento_lote_delete' lote.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Sim, Excluir
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from .models import Funcionario, ApontamentoFuncionario, FechamentoSemanal, UserProfile
 from .models import ApontamentoDiarioLote, FuncionarioLote, FotoApontamento
+from .models import HistoricoAlteracaoEtapa
 
 
 @admin.register(Funcionario)
@@ -154,6 +155,15 @@ class ApontamentoDiarioLoteAdmin(admin.ModelAdmin):
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ['user', 'theme_preference', 'theme_variant', 'updated_at']
     search_fields = ['user__username', 'user__email']
+
+
+@admin.register(HistoricoAlteracaoEtapa)
+class HistoricoAlteracaoEtapaAdmin(admin.ModelAdmin):
+    list_display = ['obra', 'etapa', 'tipo_alteracao', 'data_referencia', 'usuario', 'created_at']
+    list_filter = ['tipo_alteracao', 'obra', 'created_at']
+    search_fields = ['obra__nome', 'descricao']
+    date_hierarchy = 'created_at'
+    readonly_fields = ['created_at']
 
 
 @admin.register(FotoApontamento)
