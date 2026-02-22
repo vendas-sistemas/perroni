@@ -27,7 +27,7 @@ ALLOWED_HOSTS = [
     host.strip()
     for host in config(
         'ALLOWED_HOSTS',
-        default='localhost,127.0.0.1,3.145.135.109,perroni.ddns.net'
+        default='localhost,127.0.0.1,3.145.135.109,perroni.ddns.net,'
     ).split(',')
     if host.strip()
 ]

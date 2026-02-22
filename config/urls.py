@@ -8,7 +8,7 @@ from django.conf.urls.static import static
 from config.views import home_redirect
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('babu/', admin.site.urls),
     path('', home_redirect, name='home'),
     
     # Apps URLs
