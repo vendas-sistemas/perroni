@@ -37,6 +37,13 @@ venv.bak/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+# PostgreSQL (dados locais e dumps)
+postgres_data/
+postgres-data/
+.pgdata/
+*.dump
+*.sql.gz
+*.pgsql
 /media
 /staticfiles
 /static
