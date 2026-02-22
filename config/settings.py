@@ -54,7 +54,8 @@ for module_name, app_label in _optional_third_party:
 # Local apps
 INSTALLED_APPS += [
     'apps.obras',
-    'apps.fiscalizacao',
+    # DESCONTINUADO em 21/02/2026: módulo fiscalização removido
+    # 'apps.fiscalizacao',
     'apps.funcionarios',
     'apps.ferramentas',
     'apps.analytics',

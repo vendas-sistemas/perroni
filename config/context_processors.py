@@ -21,7 +21,8 @@ def navigation_permissions(request):
         return {'nav_perms': nav_perms}
 
     nav_perms['obras'] = user.has_module_perms('obras')
-    nav_perms['fiscalizacao'] = user.has_module_perms('fiscalizacao')
+    # DESCONTINUADO em 21/02/2026: módulo fiscalização removido – sempre False
+    nav_perms['fiscalizacao'] = False
     nav_perms['funcionarios'] = user.has_module_perms('funcionarios')
     nav_perms['ferramentas'] = user.has_module_perms('ferramentas')
     nav_perms['clientes'] = user.has_module_perms('clientes')

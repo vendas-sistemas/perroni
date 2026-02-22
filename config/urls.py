@@ -13,7 +13,8 @@ urlpatterns = [
     
     # Apps URLs
     path('obras/', include('apps.obras.urls')),
-    path('fiscalizacao/', include('apps.fiscalizacao.urls')),
+    # DESCONTINUADO em 21/02/2026: módulo fiscalização removido do sistema
+    # path('fiscalizacao/', include('apps.fiscalizacao.urls')),
     path('funcionarios/', include('apps.funcionarios.urls')),
     path('ferramentas/', include('apps.ferramentas.urls')),
     path('clientes/', include('apps.clientes.urls')),

@@ -440,12 +440,20 @@ def media_dias_por_etapa(filtros=None):
     """
     Calcula média de dias para execução de cada etapa.
     Usa dados de ApontamentoFuncionario (mantido do sistema original).
+    Exclui etapas concluídas e obras concluídas do cálculo.
     """
     from apps.funcionarios.models import ApontamentoFuncionario
     
     qs = (
         ApontamentoFuncionario.objects
-        .filter(funcionario__funcao='pedreiro', etapa__isnull=False)
+        .filter(
+            funcionario__funcao='pedreiro',
+            etapa__isnull=False,
+            # Excluir etapas concluídas
+            etapa__concluida=False,
+            # Excluir obras concluídas
+            obra__status__in=['planejamento', 'em_andamento'],
+        )
         .select_related('funcionario', 'obra', 'etapa')
     )
     

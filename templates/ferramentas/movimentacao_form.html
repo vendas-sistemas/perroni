@@ -9,10 +9,10 @@
       <div class="card">
         <div class="card-body">
           <h4 class="card-title mb-3">{{ title }}</h4>
-          <form method="post">
+          <form method="post" id="movimentacao-form">
             {% csrf_token %}
             {% for field in form %}
-              <div class="mb-3">
+              <div class="mb-3" id="wrap_{{ field.name }}">
                 {{ field.label_tag }}
                 {{ field }}
                 {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
@@ -29,4 +29,129 @@
     </div>
   </div>
 </div>
+{{ form.ferramenta_obras_map|json_script:"ferramenta-obras-map" }}
+
+<script>
+(function () {
+  const tipoEl = document.getElementById('id_tipo');
+  const ferramentaEl = document.getElementById('id_ferramenta');
+  const origemEl = document.getElementById('id_obra_origem');
+  const destinoEl = document.getElementById('id_obra_destino');
+
+  const wrapOrigem = document.getElementById('wrap_obra_origem');
+  const wrapDestino = document.getElementById('wrap_obra_destino');
+
+  if (!tipoEl || !ferramentaEl || !origemEl || !destinoEl || !wrapOrigem || !wrapDestino) {
+    return;
+  }
+
+  const obrasMapEl = document.getElementById('ferramenta-obras-map');
+  const ferramentaObrasMap = obrasMapEl ? JSON.parse(obrasMapEl.textContent || '{}') : {};
+
+  const origemBaseOptions = Array.from(origemEl.options).map((opt) => ({
+    value: opt.value,
+    text: opt.text,
+  }));
+
+  const destinoBaseOptions = Array.from(destinoEl.options).map((opt) => ({
+    value: opt.value,
+    text: opt.text,
+  }));
+
+  function setFieldState(wrapper, input, visible, enabled, required) {
+    wrapper.style.display = visible ? '' : 'none';
+    input.disabled = !enabled;
+    input.required = !!required;
+    if (!enabled) {
+      input.value = '';
+    }
+  }
+
+  function rebuildOptions(selectEl, options, allowedSet, excludedValue) {
+    const currentValue = selectEl.value;
+    selectEl.innerHTML = '';
+
+    options.forEach((item) => {
+      const value = String(item.value || '');
+      if (value && allowedSet && !allowedSet.has(value)) {
+        return;
+      }
+      if (value && excludedValue && value === String(excludedValue)) {
+        return;
+      }
+
+      const opt = document.createElement('option');
+      opt.value = item.value;
+      opt.textContent = item.text;
+      selectEl.appendChild(opt);
+    });
+
+    const canKeepCurrent = Array.from(selectEl.options).some((opt) => opt.value === currentValue);
+    if (canKeepCurrent) {
+      selectEl.value = currentValue;
+    }
+  }
+
+  function getAllowedOrigemSet() {
+    const ferramentaId = String(ferramentaEl.value || '');
+    const obras = ferramentaObrasMap[ferramentaId] || [];
+    return new Set(obras.map((id) => String(id)));
+  }
+
+  function applyRules() {
+    const tipo = tipoEl.value;
+
+    if (tipo === 'transferencia' || tipo === 'retorno_deposito') {
+      rebuildOptions(origemEl, origemBaseOptions, getAllowedOrigemSet(), null);
+    } else {
+      rebuildOptions(origemEl, origemBaseOptions, null, null);
+    }
+
+    if (tipo === 'transferencia') {
+      rebuildOptions(destinoEl, destinoBaseOptions, null, origemEl.value || null);
+    } else {
+      rebuildOptions(destinoEl, destinoBaseOptions, null, null);
+    }
+
+    if (tipo === 'entrada_deposito') {
+      setFieldState(wrapOrigem, origemEl, true, false, false);
+      setFieldState(wrapDestino, destinoEl, true, false, false);
+      return;
+    }
+
+    if (tipo === 'saida_obra') {
+      setFieldState(wrapOrigem, origemEl, false, false, false);
+      setFieldState(wrapDestino, destinoEl, true, true, true);
+      return;
+    }
+
+    if (tipo === 'transferencia') {
+      setFieldState(wrapOrigem, origemEl, true, true, true);
+      setFieldState(wrapDestino, destinoEl, true, true, true);
+      return;
+    }
+
+    if (tipo === 'retorno_deposito') {
+      setFieldState(wrapOrigem, origemEl, true, true, true);
+      setFieldState(wrapDestino, destinoEl, false, false, false);
+      return;
+    }
+
+    if (['envio_manutencao', 'retorno_manutencao', 'perda', 'descarte'].includes(tipo)) {
+      setFieldState(wrapOrigem, origemEl, false, false, false);
+      setFieldState(wrapDestino, destinoEl, false, false, false);
+      return;
+    }
+
+    setFieldState(wrapOrigem, origemEl, true, true, false);
+    setFieldState(wrapDestino, destinoEl, true, true, false);
+  }
+
+  tipoEl.addEventListener('change', applyRules);
+  ferramentaEl.addEventListener('change', applyRules);
+  origemEl.addEventListener('change', applyRules);
+
+  applyRules();
+})();
+</script>
 {% endblock %}

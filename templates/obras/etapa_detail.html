@@ -228,43 +228,85 @@
 </div>
 
 <div class="card detail-card shadow-sm mt-3">
-  <div class="detail-header" style="background: rgba(13,110,253,.1);">
-    <h6 class="mb-0 text-primary"><i class="bi bi-clock-history"></i> Histórico da Etapa</h6>
+  <div class="card-header bg-primary text-white">
+    <h5 class="mb-0">
+      <i class="bi bi-clock-history"></i> Histórico da Etapa
+    </h5>
+    <small class="opacity-75">
+      <i class="bi bi-building"></i> Obra: {{ etapa.obra.nome }}
+      {% if etapa.obra.cliente %} — Cliente: {{ etapa.obra.cliente.nome }}{% endif %}
+    </small>
   </div>
   <div class="card-body">
     {% if historicos %}
       <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
-          <thead>
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
             <tr>
-              <th style="width: 170px;">Data e Hora</th>
-              <th style="width: 240px;">Origem</th>
-              <th>Alterações</th>
-              <th style="width: 180px;">Usuário</th>
+              <th style="width: 20%;">Data/Hora</th>
+              <th style="width: 25%;">Obra</th>
+              <th style="width: 15%;">Tipo</th>
+              <th style="width: 30%;">Descrição</th>
+              <th style="width: 10%;">Usuário</th>
             </tr>
           </thead>
           <tbody>
             {% for h in historicos %}
               <tr>
-                <td>{{ h.data_hora|date:"d/m/Y H:i" }}</td>
+                <td>
+                  <strong>{{ h.data_hora|date:"d/m/Y" }}</strong>
+                  <br>
+                  <small class="text-muted">{{ h.data_hora|date:"H:i" }}</small>
+                </td>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-building text-primary me-2"></i>
+                    <div>
+                      <strong>{{ etapa.obra.nome }}</strong>
+                      <br>
+                      <small class="text-muted">
+                        Cliente: {{ etapa.obra.cliente.nome|default:"N/A" }}
+                      </small>
+                    </div>
+                  </div>
+                </td>
                 <td>
                   {% if 'Apontamento' in h.origem %}
-                    <span class="badge bg-info text-dark"><i class="bi bi-clipboard-check"></i> {{ h.origem }}</span>
-                  {% elif 'Criação' in h.origem %}
-                    <span class="badge bg-success"><i class="bi bi-plus-circle"></i> {{ h.origem }}</span>
+                    <span class="badge bg-info text-dark">
+                      <i class="bi bi-clipboard-check"></i> Apontamento
+                    </span>
+                  {% elif 'Criação' in h.origem or 'criação' in h.origem %}
+                    <span class="badge bg-success">
+                      <i class="bi bi-plus-circle"></i> Criação
+                    </span>
+                  {% elif 'Edição' in h.origem or 'edição' in h.origem or 'Editar' in h.origem %}
+                    <span class="badge bg-warning text-dark">
+                      <i class="bi bi-pencil"></i> Edição
+                    </span>
+                  {% elif 'Exclusão' in h.origem or 'exclusão' in h.origem or 'Excluir' in h.origem %}
+                    <span class="badge bg-danger">
+                      <i class="bi bi-trash"></i> Exclusão
+                    </span>
                   {% else %}
-                    {{ h.origem }}
+                    <span class="badge bg-secondary">{{ h.origem }}</span>
                   {% endif %}
                 </td>
                 <td><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit;">{{ h.descricao }}</pre></td>
-                <td>{% if h.usuario %}{{ h.usuario.get_full_name|default:h.usuario.username }}{% else %}<span class="text-muted">Sistema</span>{% endif %}</td>
+                <td>
+                  <small class="text-muted">
+                    <i class="bi bi-person"></i>
+                    {% if h.usuario %}{{ h.usuario.get_full_name|default:h.usuario.username }}{% else %}Sistema{% endif %}
+                  </small>
+                </td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     {% else %}
-      <div class="text-muted">Nenhum histórico registrado para esta etapa.</div>
+      <div class="alert alert-info mb-0">
+        <i class="bi bi-info-circle"></i> Nenhuma alteração registrada para esta etapa.
+      </div>
     {% endif %}
   </div>
 </div>

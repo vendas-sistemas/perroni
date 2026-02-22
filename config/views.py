@@ -11,7 +11,8 @@ def home_redirect(request):
 
     ordered_modules = [
         ('obras', 'obras:obra_list'),
-        ('fiscalizacao', 'fiscalizacao:fiscalizacao_list'),
+        # DESCONTINUADO em 21/02/2026: módulo fiscalização removido
+        # ('fiscalizacao', 'fiscalizacao:fiscalizacao_list'),
         ('funcionarios', 'funcionarios:funcionario_list'),
         ('ferramentas', 'ferramentas:ferramenta_list'),
         ('clientes', 'clientes:cliente_list'),

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load obras_extras %}
 
 {% block content %}
 <div class="container-fluid mt-4">
@@ -78,7 +79,7 @@
                     </thead>
                     <tbody>
                         {% for lote in lotes %}
-                        <tr>
+                        <tr class="{{ lote_cor_map|get_item:lote.pk }}">
                             <td>{{ lote.data|date:"d/m/Y" }}</td>
                             <td>
                                 <a href="{% url 'obras:obra_detail' lote.obra.pk %}">

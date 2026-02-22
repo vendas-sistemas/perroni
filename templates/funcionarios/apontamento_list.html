@@ -8,8 +8,10 @@
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
     <h3 class="mb-0">Diárias</h3>
     <div class="d-flex gap-2">
-      <a href="{% url 'funcionarios:apontamento_diario' %}" class="btn btn-sm btn-success">📋 Registro Diário</a>
-      <a href="{% url 'funcionarios:apontamento_create' %}" class="btn btn-sm btn-primary">+ Novo Individual</a>
+      <!-- Botões antigos removidos em 21/02/2026: Registro Diário e Novo Individual -->
+      <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-sm btn-primary">
+        <i class="bi bi-plus-circle"></i> Novo Apontamento em Lote
+      </a>
     </div>
   </div>
 

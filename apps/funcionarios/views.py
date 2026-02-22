@@ -635,14 +635,33 @@ def apontamento_create(request, funcionario_id=None):
     return render(request, 'funcionarios/apontamento_form.html', {'form': form, 'title': 'Novo Apontamento'})
 
 
-@login_required
-def apontamento_diario(request):
-    """
-    Registro diário em lote — simplificado:
-    1. Fiscal seleciona obra + data + clima
-    2. Tabela mostra todos os funcionários ativos → marca quem trabalhou
-    3. Salva todos de uma vez com um clique
-    """
+# DESCONTINUADO em 21/02/2026: usar apontamento_lote_create no lugar.
+# Esta view foi removida em favor do sistema de apontamento em lote
+# que permite registrar múltiplos funcionários de uma vez com indicadores de produção.
+# @login_required
+# def apontamento_diario(request):
+#     """
+#     Registro diário em lote — simplificado:
+#     1. Fiscal seleciona obra + data + clima
+#     2. Tabela mostra todos os funcionários ativos → marca quem trabalhou
+#     3. Salva todos de uma vez com um clique
+#     """
+#     cab_form = ApontamentoDiarioCabecalhoForm(request.GET or None)
+
+# REMOVIDO em 21/02/2026: usar apontamento_lote_create no lugar
+# @login_required
+# def apontamento_diario(request):
+#     """
+#     DESCONTINUADO: Usar apontamento_lote_create no lugar.
+#     Mantida temporariamente para evitar erros de importação.
+#     Redireciona para o novo sistema de apontamento em lote.
+#     """
+#     from django.shortcuts import redirect as _redirect
+#     return _redirect('funcionarios:apontamento_lote_create')
+
+
+def _apontamento_diario_legado(request):
+    """Código legado da view apontamento_diario — não utilizado."""
     cab_form = ApontamentoDiarioCabecalhoForm(request.GET or None)
     obra = None
     data = None
@@ -2009,7 +2028,7 @@ def apontamento_lote_create(request):
 
 @login_required
 def apontamento_lote_list(request):
-    """Lista apontamentos em lote"""
+    """Lista apontamentos em lote com agrupamento visual por data/obra/etapa"""
     lotes = ApontamentoDiarioLote.objects.select_related(
         'obra', 'etapa', 'criado_por'
     ).prefetch_related('funcionarios__funcionario').order_by('-data', '-created_at')
@@ -2032,6 +2051,20 @@ def apontamento_lote_list(request):
         except ValueError:
             pass
     
+    # Agrupar por data + obra + etapa para destacar visualmente
+    cores = ['table-primary', 'table-success', 'table-warning', 'table-info', 'table-light']
+    grupo_cores = {}
+    idx_cor = 0
+    lotes_list = list(lotes)
+    lote_cor_map = {}
+    
+    for lote in lotes_list:
+        chave = f"{lote.data}_{lote.obra_id}_{lote.etapa_id if lote.etapa else 'sem_etapa'}"
+        if chave not in grupo_cores:
+            grupo_cores[chave] = cores[idx_cor % len(cores)]
+            idx_cor += 1
+        lote_cor_map[lote.pk] = grupo_cores[chave]
+    
     # Pagination
     paginator = Paginator(lotes, 20)
     page = request.GET.get('page')
@@ -2044,6 +2077,7 @@ def apontamento_lote_list(request):
     
     context = {
         'lotes': page_obj,
+        'lote_cor_map': lote_cor_map,
         'title': 'Apontamentos em Lote',
         'obras': Obra.objects.filter(ativo=True).order_by('nome'),
     }

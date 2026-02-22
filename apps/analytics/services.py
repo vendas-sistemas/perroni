@@ -9,7 +9,8 @@ from collections import defaultdict
 
 from apps.obras.models import Obra, Etapa
 from apps.funcionarios.models import Funcionario, ApontamentoFuncionario
-from apps.fiscalizacao.models import RegistroFiscalizacao
+# REMOVIDO em 22/02/2026: app fiscalização descontinuado
+# from apps.fiscalizacao.models import RegistroFiscalizacao
 
 
 class AnalyticsService:
@@ -466,9 +467,8 @@ class AnalyticsService:
             data__gte=inicio_mes
         ).aggregate(total=Sum('horas_trabalhadas'))['total'] or Decimal('0.0')
         
-        fiscalizacoes_mes = RegistroFiscalizacao.objects.filter(
-            data_fiscalizacao__gte=inicio_mes
-        ).count()
+        # REMOVIDO em 22/02/2026: app fiscalização descontinuado
+        fiscalizacoes_mes = 0
         
         # Ocorrências do mês
         apontamentos_mes = ApontamentoFuncionario.objects.filter(data__gte=inicio_mes)

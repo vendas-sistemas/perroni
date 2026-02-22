@@ -6,7 +6,7 @@
 <div class="container-fluid py-4">
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
     <h3>💰 Mão de Obra - {{ obra.nome }}</h3>
-    <a href="{% url 'funcionarios:apontamento_diario' %}?obra={{ obra.pk }}" class="btn btn-sm btn-success">📋 Novo Apontamento</a>
+    <a href="{% url 'funcionarios:apontamento_lote_create' %}?obra={{ obra.pk }}" class="btn btn-sm btn-success">📋 Novo Apontamento</a>
   </div>
 
   <!-- Summary -->

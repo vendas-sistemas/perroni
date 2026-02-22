@@ -17,7 +17,8 @@ urlpatterns = [
     path('apontamentos/', views.apontamento_list, name='apontamento_list'),
     path('apontamentos/criar/', views.apontamento_create, name='apontamento_create'),
     path('apontamentos/criar/<int:funcionario_id>/', views.apontamento_create, name='apontamento_create_funcionario'),
-    path('apontamentos/diario/', views.apontamento_diario, name='apontamento_diario'),
+    # REMOVIDO em 21/02/2026: usar apontamento_lote_create no lugar
+    # path('apontamentos/diario/', views.apontamento_diario, name='apontamento_diario'),
     path('apontamentos/<int:pk>/excluir/', views.apontamento_delete, name='apontamento_delete'),
 
     # Fechamentos

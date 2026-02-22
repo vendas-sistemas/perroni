@@ -113,8 +113,15 @@ def media_dias_por_etapa(filtros: dict | None = None):
     """
     Calcula, para cada etapa, quantos dias distintos foram trabalhados por
     cada obra e depois faz a média.
+    Exclui etapas concluídas e obras concluídas do cálculo.
     """
-    qs = _base_qs(filtros).filter(etapa__isnull=False)
+    qs = _base_qs(filtros).filter(
+        etapa__isnull=False,
+        # Excluir etapas concluídas
+        etapa__concluida=False,
+        # Excluir obras concluídas
+        obra__status__in=['planejamento', 'em_andamento'],
+    )
 
     dias_por_obra = (
         qs

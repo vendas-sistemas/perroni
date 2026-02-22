@@ -368,13 +368,7 @@
             </a>
           </li>
           {% endif %}
-          {% if nav_perms.fiscalizacao %}
-          <li class="nav-item">
-            <a class="nav-link" href="/fiscalizacao/">
-              <i class="bi bi-clipboard-check"></i> Fiscalização
-            </a>
-          </li>
-          {% endif %}
+          <!-- Fiscalização removida em 21/02/2026 -->
 
           <!-- Funcionários -->
           {% if nav_perms.funcionarios %}
@@ -387,9 +381,9 @@
               <li><a class="dropdown-item" href="/funcionarios/"><i class="bi bi-person-lines-fill text-primary"></i> Lista de Funcionários</a></li>
               <li><hr class="dropdown-divider"></li>
               <li class="dropdown-section-label">Apontamentos</li>
-              <li><a class="dropdown-item" href="/funcionarios/apontamentos/diario/"><i class="bi bi-calendar-check text-success"></i> <strong>Registro Diário</strong></a></li>
-              <li><a class="dropdown-item" href="{% url 'funcionarios:apontamento_lote_create' %}"><i class="bi bi-person-plus-fill text-info"></i> Apontamento em Lote</a></li>
-              <li><a class="dropdown-item" href="{% url 'funcionarios:apontamento_lote_list' %}"><i class="bi bi-list-ul text-info"></i> Ver Apontamentos em Lote</a></li>
+              <!-- Registro Diário removido em 21/02/2026: usar Fiscalizar Obras -->
+              <li><a class="dropdown-item" href="{% url 'funcionarios:apontamento_lote_create' %}"><i class="bi bi-person-plus-fill text-info"></i> Fiscalizar Obras</a></li>
+              <li><a class="dropdown-item" href="{% url 'funcionarios:apontamento_lote_list' %}"><i class="bi bi-list-ul text-info"></i> Ver Obras Fiscalizadas</a></li>
               <li><a class="dropdown-item" href="/funcionarios/apontamentos/"><i class="bi bi-list-check text-muted"></i> Todos as dárias</a></li>
               <li><hr class="dropdown-divider"></li>
               <li class="dropdown-section-label">Fechamentos</li>
@@ -533,11 +527,7 @@
             <a class="nav-link" href="{% url 'obras:obra_list' %}"><i class="bi bi-buildings"></i> Obras</a>
           </li>
           {% endif %}
-          {% if nav_perms.fiscalizacao %}
-          <li class="nav-item">
-            <a class="nav-link" href="/fiscalizacao/"><i class="bi bi-clipboard-check"></i> Fiscalização</a>
-          </li>
-          {% endif %}
+          <!-- Fiscalização removida em 21/02/2026 -->
 
           {% if nav_perms.funcionarios %}
           <hr class="offcanvas-divider">
@@ -550,7 +540,7 @@
             <ul class="dropdown-menu">
               <li><a class="dropdown-item" href="/funcionarios/"><i class="bi bi-person-lines-fill"></i> Lista</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="/funcionarios/apontamentos/diario/"><i class="bi bi-calendar-check"></i> <strong>Registro Diário</strong></a></li>
+              <!-- Registro Diário removido em 21/02/2026: usar Apontamento em Lote -->
               <li><a class="dropdown-item" href="{% url 'funcionarios:apontamento_lote_create' %}"><i class="bi bi-person-plus-fill"></i> Apontamento em Lote</a></li>
               <li><a class="dropdown-item" href="{% url 'funcionarios:apontamento_lote_list' %}"><i class="bi bi-list-ul"></i> Ver Apontamentos em Lote</a></li>
               <li><a class="dropdown-item" href="/funcionarios/apontamentos/"><i class="bi bi-list-check"></i> Todos as dárias</a></li>

@@ -40,6 +40,10 @@ db.sqlite3-journal
 /media
 /staticfiles
 /static
+scripts/
+docs/
+media/
+
 
 # IDEs
 .vscode/
@@ -53,6 +57,8 @@ db.sqlite3-journal
 .env
 .env.local
 .env.*.local
+venv/
+.venv/
 
 # Secrets
 secrets.json
