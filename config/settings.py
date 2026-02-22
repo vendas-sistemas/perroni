@@ -61,6 +61,7 @@ INSTALLED_APPS += [
     'apps.analytics',
     'apps.clientes',
     'apps.relatorios',
+    'apps.configuracoes',
 ]
 
 MIDDLEWARE = [

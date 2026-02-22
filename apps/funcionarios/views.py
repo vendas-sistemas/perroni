@@ -255,6 +255,50 @@ def _registrar_historico_apontamento(etapa, apontamento, request, is_update=Fals
     )
 
 
+def _calcular_producao_lote_por_campos(valores_producao_dia):
+    """
+    Calcula producao total do dia e infere unidade com base nos campos da etapa.
+    """
+    if not valores_producao_dia:
+        return Decimal('0.00'), 'blocos'
+
+    totais = {
+        'blocos': Decimal('0.00'),
+        'm2': Decimal('0.00'),
+        'percentual': Decimal('0.00'),
+        'unidades': Decimal('0.00'),
+    }
+
+    for campo, valor in valores_producao_dia.items():
+        try:
+            v = Decimal(str(valor))
+        except Exception:
+            continue
+        if v <= 0:
+            continue
+
+        campo_lower = (campo or '').lower()
+        if 'm2' in campo_lower:
+            totais['m2'] += v
+        elif 'percentual' in campo_lower:
+            totais['percentual'] += v
+        elif 'bloco' in campo_lower or 'fiadas' in campo_lower:
+            totais['blocos'] += v
+        else:
+            totais['unidades'] += v
+
+    ativos = [(u, t) for u, t in totais.items() if t > 0]
+    if not ativos:
+        return Decimal('0.00'), 'blocos'
+
+    # Se houve mistura de unidades, nao soma entre si no campo escalar do lote
+    if len(ativos) > 1:
+        return Decimal('0.00'), 'blocos'
+
+    unidade, total = ativos[0]
+    return total, unidade
+
+
 @login_required
 def funcionario_list(request):
     """Lista funcionários"""
@@ -1908,22 +1952,10 @@ def apontamento_lote_create(request):
                     
                     # ========== CALCULAR PRODUÇÃO TOTAL DOS CAMPOS ==========
                     # Se não foi preenchido producao_total manualmente, usar os campos da etapa
-                    if valores_producao and (not lote.producao_total or lote.producao_total == 0):
-                        # Pegar o primeiro valor de produção encontrado
-                        nome_campo, valor = valores_producao[0]
-                        lote.producao_total = valor
-                        
-                        # Inferir unidade de medida pelo nome do campo
-                        nome_lower = nome_campo.lower()
-                        if 'bloco' in nome_lower or 'fiada' in nome_lower:
-                            lote.unidade_medida = 'blocos'
-                        elif 'm²' in nome_lower or 'm2' in nome_lower or 'metro' in nome_lower:
-                            lote.unidade_medida = 'm2'
-                        elif '%' in nome_lower or 'percentual' in nome_lower or 'porcento' in nome_lower:
-                            lote.unidade_medida = 'percentual'
-                        
-                        lote.save(update_fields=['producao_total', 'unidade_medida'])
-                        messages.info(request, f'📐 Produção calculada: {valor} (baseado em "{nome_campo}")')
+                    producao_total_dia, unidade_dia = _calcular_producao_lote_por_campos(valores_producao_dia)
+                    lote.producao_total = producao_total_dia
+                    lote.unidade_medida = unidade_dia
+                    lote.save(update_fields=['producao_total', 'unidade_medida'])
             
             # ========== FIM PROCESSAMENTO CAMPOS ==========
             
@@ -2698,11 +2730,30 @@ def apontamento_lote_edit(request, pk):
                     if campos_atualizados:
                         detalhes.save()
 
-            # PASSO 7: Gerar nova produção
+            # PASSO 7: Recalcular producao do lote com base nos campos da etapa
+            producao_total_dia, unidade_dia = _calcular_producao_lote_por_campos(valores_producao_dia)
+            lote.producao_total = producao_total_dia
+            lote.unidade_medida = unidade_dia
+            lote.save(update_fields=['producao_total', 'unidade_medida'])
+
+            # PASSO 8: Gerar nova producao
             lote._valores_dia = valores_producao_dia
             lote.gerar_apontamentos_individuais()
 
-            # PASSO 8: Registrar no histórico
+            # PASSO 9: Registrar no historico
+            detalhes_unidades = []
+            for campo_nome, valor in valores_producao_dia.items():
+                campo_lower = (campo_nome or '').lower()
+                if 'm2' in campo_lower:
+                    unidade = 'm2'
+                elif 'percentual' in campo_lower:
+                    unidade = '%'
+                elif 'bloco' in campo_lower or 'fiadas' in campo_lower:
+                    unidade = 'blocos'
+                else:
+                    unidade = 'unidades'
+                detalhes_unidades.append(f'{valor} {unidade} ({campo_nome})')
+
             HistoricoAlteracaoEtapa.objects.create(
                 obra=lote.obra,
                 etapa=lote.etapa,
@@ -2710,8 +2761,9 @@ def apontamento_lote_edit(request, pk):
                 data_referencia=lote.data,
                 descricao=(
                     f'Apontamento em lote editado. '
-                    f'Produção anterior: {valores_antigos["producao_total"]}. '
-                    f'Produção nova: {lote.producao_total or 0}'
+                    f'Producao anterior: {valores_antigos["producao_total"]}. '
+                    f'Producao nova (campo escalar): {lote.producao_total or 0}. '
+                    f'Campos do dia: {", ".join(detalhes_unidades) if detalhes_unidades else "sem producao numerica"}'
                 ),
                 usuario=request.user,
                 dados_anteriores=valores_antigos,
@@ -2720,7 +2772,6 @@ def apontamento_lote_edit(request, pk):
                     'funcionarios': list(lote.funcionarios.values_list('funcionario_id', flat=True)),
                 }
             )
-
             if etapa:
                 try:
                     EtapaHistorico.objects.create(

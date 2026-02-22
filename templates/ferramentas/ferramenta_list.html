@@ -38,6 +38,9 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
   <h1 class="h3 mb-0"><i class="bi bi-tools text-primary"></i> Ferramentas</h1>
   <div class="d-flex flex-wrap gap-2">
+    <button type="button" id="btn-imprimir-relatorio" class="btn btn-outline-dark btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-printer"></i> Imprimir Relatório
+    </button>
     <a href="{% url 'ferramentas:ferramenta_create' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
       <i class="bi bi-plus-circle-fill"></i> Nova Ferramenta
     </a>
@@ -166,6 +169,9 @@
     <table class="table table-borderless mb-0">
       <thead>
         <tr class="border-bottom" style="background-color: #e9ecef;">
+          <th class="text-center" style="width: 44px;">
+            <input type="checkbox" id="selecionar-todos" class="form-check-input" title="Selecionar todas">
+          </th>
           <th class="ps-3" style="width: 100px;">
             <a class="sort-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}order=codigo&dir={% if current_order == 'codigo' and current_dir == 'asc' %}desc{% else %}asc{% endif %}">
               Código
@@ -197,6 +203,9 @@
       <tbody>
         {% for f in ferramentas %}
         <tr class="ferr-row border-bottom">
+          <td class="text-center">
+            <input type="checkbox" class="form-check-input chk-ferramenta" value="{{ f.id }}">
+          </td>
           <td class="ps-3">
             <span class="badge bg-light text-dark border font-monospace">{{ f.codigo }}</span>
           </td>
@@ -355,5 +364,42 @@
   </div>
 </div>
 {% endif %}
+
+<script>
+(function () {
+  const btnImprimir = document.getElementById('btn-imprimir-relatorio');
+  const selecionarTodos = document.getElementById('selecionar-todos');
+
+  function getSelecionadas() {
+    return Array.from(document.querySelectorAll('.chk-ferramenta:checked')).map(el => el.value);
+  }
+
+  if (selecionarTodos) {
+    selecionarTodos.addEventListener('change', function () {
+      const checked = this.checked;
+      document.querySelectorAll('.chk-ferramenta').forEach(el => { el.checked = checked; });
+    });
+  }
+
+  if (btnImprimir) {
+    btnImprimir.addEventListener('click', function () {
+      const selecionadas = getSelecionadas();
+      const url = new URL("{% url 'ferramentas:ferramenta_relatorio_impressao' %}", window.location.origin);
+
+      if (selecionadas.length > 0) {
+        selecionadas.forEach(id => url.searchParams.append('ids', id));
+      } else {
+        const paramsAtual = new URLSearchParams(window.location.search);
+        const q = paramsAtual.get('q');
+        const categoria = paramsAtual.get('categoria');
+        if (q) url.searchParams.set('q', q);
+        if (categoria) url.searchParams.set('categoria', categoria);
+      }
+
+      window.open(url.toString(), '_blank');
+    });
+  }
+})();
+</script>
 
 {% endblock %}

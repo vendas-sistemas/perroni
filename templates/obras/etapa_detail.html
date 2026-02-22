@@ -18,6 +18,24 @@
     font-size: 1.4rem; font-weight: 700;
   }
   .progress-lg { height: 10px; border-radius: 5px; }
+  tr.grupo-cor-a {
+    --bs-table-bg: #eaf4ff;
+    --bs-table-hover-bg: #dcecff;
+  }
+  tr.grupo-cor-b {
+    --bs-table-bg: #fff2e2;
+    --bs-table-hover-bg: #ffe7cc;
+  }
+  tr.grupo-inicio td { border-top: 2px solid #c6d2e3 !important; }
+  .legenda-grupo {
+    width: 14px;
+    height: 14px;
+    border: 1px solid #cfd6df;
+    border-radius: 3px;
+    display: inline-block;
+    margin-right: .4rem;
+    vertical-align: middle;
+  }
 </style>
 {% endblock %}
 
@@ -239,6 +257,11 @@
   </div>
   <div class="card-body">
     {% if historicos %}
+      <div class="d-flex flex-wrap align-items-center gap-3 mb-2 small text-muted">
+        <span><strong>Leitura:</strong> itens do mesmo apontamento ficam com a mesma cor.</span>
+        <span><span class="legenda-grupo" style="background:#eaf4ff;"></span>Grupo A</span>
+        <span><span class="legenda-grupo" style="background:#fff2e2;"></span>Grupo B</span>
+      </div>
       <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
           <thead class="table-light">
@@ -252,7 +275,7 @@
           </thead>
           <tbody>
             {% for h in historicos %}
-              <tr>
+              <tr class="{{ h.grupo_cor }} {% if h.grupo_inicio %}grupo-inicio{% endif %}">
                 <td>
                   <strong>{{ h.data_hora|date:"d/m/Y" }}</strong>
                   <br>

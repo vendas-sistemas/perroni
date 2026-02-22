@@ -604,8 +604,9 @@ class ApontamentoDiarioLote(models.Model):
         
         # Calcular produção por pedreiro (somente se producao_total foi preenchida)
         quantidade_pedreiros = len(pedreiros)
-        if self.producao_total and self.producao_total > 0:
-            producao_por_pedreiro = (self.producao_total / Decimal(quantidade_pedreiros)).quantize(Decimal('0.01'))
+        producao_total_dia = self._calcular_producao_total_dia()
+        if producao_total_dia > 0:
+            producao_por_pedreiro = (producao_total_dia / Decimal(quantidade_pedreiros)).quantize(Decimal('0.01'))
         else:
             producao_por_pedreiro = Decimal('0.00')
         
@@ -627,7 +628,64 @@ class ApontamentoDiarioLote(models.Model):
             self._registrar_historico_etapa(pedreiros)
         
         return apontamentos_criados
-    
+
+    def _calcular_producao_total_dia(self):
+        """
+        Calcula um valor escalar para metragem_executada.
+        Se houver mistura de unidades (ex.: blocos + percentual), retorna 0 para evitar soma incorreta.
+        """
+        producao_por_unidade = self._get_producao_por_unidade()
+        if producao_por_unidade:
+            if len(producao_por_unidade) == 1:
+                return next(iter(producao_por_unidade.values()))
+            return Decimal('0.00')
+        return self.producao_total or Decimal('0.00')
+
+    def _inferir_unidade_por_campo(self, campo_nome):
+        campo = (campo_nome or '').lower()
+        if 'm2' in campo:
+            return 'm2'
+        if 'percentual' in campo:
+            return 'percentual'
+        if 'bloco' in campo or 'fiadas' in campo:
+            return 'blocos'
+        return 'unidades'
+
+    def _get_producao_por_unidade(self):
+        """
+        Retorna producao do dia agrupada por unidade, sem misturar grandezas.
+        Ex.: {'blocos': 200, 'percentual': 40}
+        """
+        if not (hasattr(self, '_valores_dia') and self._valores_dia):
+            return {}
+
+        totais = {}
+        for campo, valor in self._valores_dia.items():
+            try:
+                v = Decimal(str(valor))
+            except Exception:
+                continue
+            if v <= 0:
+                continue
+            unidade = self._inferir_unidade_por_campo(campo)
+            totais[unidade] = totais.get(unidade, Decimal('0.00')) + v
+        return totais
+
+    def _inferir_unidade_producao_dia(self):
+        """Infere unidade textual para exibicao sem misturar tipos diferentes."""
+        producao_por_unidade = self._get_producao_por_unidade()
+        if len(producao_por_unidade) == 1:
+            unidade = next(iter(producao_por_unidade.keys()))
+            return {'blocos': 'blocos', 'm2': 'm2', 'percentual': '%', 'unidades': 'unidades'}.get(unidade, unidade)
+        if len(producao_por_unidade) > 1:
+            return 'multiplas'
+
+        return {
+            'blocos': 'blocos',
+            'm2': 'm2',
+            'percentual': '%',
+        }.get(self.unidade_medida, self.unidade_medida or 'unidades')
+
     def _criar_apontamento_individual(self, func_lote, valor_produzido):
         """Cria um apontamento individual para um funcionário"""
         ApontamentoFuncionario.objects.create(
@@ -668,72 +726,74 @@ class ApontamentoDiarioLote(models.Model):
             )
     
     def _registrar_historico_etapa(self, pedreiros):
-        """Registra o apontamento em lote no histórico da etapa"""
+        """Registra o apontamento em lote no historico da etapa"""
         from apps.obras.models import EtapaHistorico
-        
+
         quantidade_pedreiros = len(pedreiros)
-        
-        # Verificar se há produção total
-        if self.producao_total and self.producao_total > 0:
-            producao_por_pedreiro = (self.producao_total / Decimal(quantidade_pedreiros)).quantize(Decimal('0.01'))
-        else:
-            producao_por_pedreiro = Decimal('0.00')
-        
-        unidade_texto = {
-            'blocos': 'blocos',
-            'm2': 'm²',
-            'percentual': '%'
-        }.get(self.unidade_medida, self.unidade_medida)
-        
+        producao_por_unidade = self._get_producao_por_unidade()
+
         linhas = [
-            f"🔄 APONTAMENTO EM LOTE",
+            "APONTAMENTO EM LOTE",
             f"Obra: {self.obra.nome}",
             f"Data: {self.data.strftime('%d/%m/%Y')}",
             f"Etapa: {self.etapa.get_numero_etapa_display()}",
             f"",
         ]
-        
-        # Adicionar informação de produção apenas se houver
-        if self.producao_total and self.producao_total > 0:
-            linhas.append(f"📊 PRODUÇÃO TOTAL: {self.producao_total} {unidade_texto}")
+
+        # Producao por unidade (sem somar blocos + percentual + m2)
+        if producao_por_unidade:
+            linhas.append("PRODUCAO DO DIA:")
+            for unidade, total in producao_por_unidade.items():
+                unidade_label = {'blocos': 'blocos', 'm2': 'm2', 'percentual': '%', 'unidades': 'unidades'}.get(unidade, unidade)
+                linhas.append(f"  - {total} {unidade_label}")
         else:
-            linhas.append(f"📊 PRODUÇÃO TOTAL: 0.00 {unidade_texto}")
-        
-        linhas.append(f"")
-        linhas.append(f"👷 EQUIPE ({self.funcionarios.count()} funcionário(s)):")
-        
+            linhas.append("PRODUCAO DO DIA: 0.00")
+
+        linhas.append("")
+        linhas.append(f"EQUIPE ({self.funcionarios.count()} funcionario(s)):")
+
         for func_lote in self.funcionarios.all():
             func = func_lote.funcionario
             if func.funcao == 'pedreiro':
-                linhas.append(f"  • {func.nome_completo} (Pedreiro) - {producao_por_pedreiro} {unidade_texto}")
+                if producao_por_unidade and quantidade_pedreiros > 0:
+                    partes = []
+                    for unidade, total in producao_por_unidade.items():
+                        unidade_label = {'blocos': 'blocos', 'm2': 'm2', 'percentual': '%', 'unidades': 'unidades'}.get(unidade, unidade)
+                        valor = (total / Decimal(quantidade_pedreiros)).quantize(Decimal('0.01'))
+                        partes.append(f"{valor} {unidade_label}")
+                    linhas.append(f"  - {func.nome_completo} (Pedreiro) - " + " + ".join(partes))
+                else:
+                    linhas.append(f"  - {func.nome_completo} (Pedreiro) - 0")
             else:
-                linhas.append(f"  • {func.nome_completo} (Servente) - 0 {unidade_texto}")
-        
-        # Mostrar divisão apenas se houver produção
-        if self.producao_total and self.producao_total > 0:
-            linhas.append(f"")
-            linhas.append(f"📋 DIVISÃO AUTOMÁTICA:")
-            linhas.append(f"  {self.producao_total} {unidade_texto} ÷ {quantidade_pedreiros} pedreiro(s) = {producao_por_pedreiro} {unidade_texto}/pedreiro")
-        
+                linhas.append(f"  - {func.nome_completo} (Servente) - 0")
+
+        if producao_por_unidade and quantidade_pedreiros > 0:
+            linhas.append("")
+            linhas.append("DIVISAO AUTOMATICA:")
+            for unidade, total in producao_por_unidade.items():
+                unidade_label = {'blocos': 'blocos', 'm2': 'm2', 'percentual': '%', 'unidades': 'unidades'}.get(unidade, unidade)
+                valor = (total / Decimal(quantidade_pedreiros)).quantize(Decimal('0.01'))
+                linhas.append(f"  {total} {unidade_label} / {quantidade_pedreiros} pedreiro(s) = {valor} {unidade_label}/pedreiro")
+
         if self.houve_ociosidade:
-            linhas.append(f"")
-            linhas.append(f"⚠️ Ociosidade: {self.observacao_ociosidade or 'Sem justificativa'}")
-        
+            linhas.append("")
+            linhas.append(f"Ociosidade: {self.observacao_ociosidade or 'Sem justificativa'}")
+
         if self.houve_retrabalho:
-            linhas.append(f"")
-            linhas.append(f"⚠️ Retrabalho: {self.motivo_retrabalho or 'Sem motivo informado'}")
-        
+            linhas.append("")
+            linhas.append(f"Retrabalho: {self.motivo_retrabalho or 'Sem motivo informado'}")
+
         if self.observacoes:
-            linhas.append(f"")
-            linhas.append(f"💬 Observações: {self.observacoes}")
-        
+            linhas.append("")
+            linhas.append(f"Observacoes: {self.observacoes}")
+
         EtapaHistorico.objects.create(
             etapa=self.etapa,
             origem='Apontamento em Lote',
             descricao='\n'.join(linhas),
             usuario=self.criado_por
         )
-    
+
     def _criar_registro_producao(self, funcionario, obra, etapa, data, detalhes_producao):
         """Cria registros de produção individuais com base nos campos da etapa e seus valores"""
         
@@ -841,6 +901,9 @@ class UserProfile(models.Model):
     ]
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
+    telefone = models.CharField(max_length=30, blank=True, default='')
+    endereco = models.TextField(blank=True, default='')
+    cargo = models.CharField(max_length=100, blank=True, default='')
     theme_preference = models.CharField(max_length=10, choices=USER_THEME_CHOICES, default='light')
     # Theme variant provides alternate palettes for the dark theme
     THEME_VARIANT_CHOICES = [

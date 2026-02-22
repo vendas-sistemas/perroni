@@ -1,13 +1,10 @@
 from django.http import HttpResponseForbidden
 
+from config.access_control import resolve_area_from_request
+
 
 class ModulePermissionMiddleware:
-    """Enforce app-level permissions for project modules.
-
-    - Safe methods (GET/HEAD/OPTIONS): user must have any permission in the app.
-    - Unsafe methods (POST/PUT/PATCH/DELETE): user must also have any write
-      permission (add/change/delete) in the app.
-    """
+    """Enforce module/area permissions based on group settings."""
 
     PROTECTED_APPS = {
         'obras',
@@ -46,20 +43,52 @@ class ModulePermissionMiddleware:
         if view_name in self.ALLOWED_VIEW_NAMES:
             return self.get_response(request)
 
-        if not user.has_module_perms(app_name):
+        area = resolve_area_from_request(app_name, view_name)
+        if not self._has_area_permission(user, area, 'view'):
             return HttpResponseForbidden('Você não tem permissão para acessar este módulo.')
 
-        if request.method not in self.SAFE_METHODS and not self._has_write_permission(user, app_name):
+        required_action = self._required_action(request.method, view_name)
+        if request.method not in self.SAFE_METHODS and not self._has_area_permission(user, area, required_action):
             return HttpResponseForbidden('Você não tem permissão para alterar dados neste módulo.')
 
         return self.get_response(request)
 
     @staticmethod
-    def _has_write_permission(user, app_name: str) -> bool:
-        for perm in user.get_all_permissions():
-            if not perm.startswith(f'{app_name}.'):
-                continue
-            codename = perm.split('.', 1)[1]
-            if codename.startswith(('add_', 'change_', 'delete_')):
-                return True
-        return False
+    def _has_area_permission(user, area: str, action: str) -> bool:
+        if not area:
+            return True
+        if user.is_superuser:
+            return True
+        try:
+            from apps.configuracoes.models import GroupAreaPermission
+        except Exception:
+            return False
+
+        field_name = {
+            'view': 'can_view',
+            'create': 'can_create',
+            'edit': 'can_edit',
+            'delete': 'can_delete',
+        }.get(action, 'can_view')
+
+        return GroupAreaPermission.objects.filter(
+            group__user=user,
+            area=area,
+            **{field_name: True},
+        ).exists()
+
+    @staticmethod
+    def _required_action(method: str, view_name: str) -> str:
+        if method in {'DELETE'}:
+            return 'delete'
+
+        lower = (view_name or '').lower()
+        if any(token in lower for token in ('delete', 'excluir', 'remove')):
+            return 'delete'
+        if any(token in lower for token in ('create', 'criar', 'novo')):
+            return 'create'
+        if any(token in lower for token in ('update', 'edit', 'editar')):
+            return 'edit'
+        if method in {'POST', 'PUT', 'PATCH'}:
+            return 'edit'
+        return 'view'

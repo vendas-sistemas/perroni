@@ -20,6 +20,7 @@ urlpatterns = [
     path('clientes/', include('apps.clientes.urls')),
     path('analytics/', include('apps.analytics.urls')),
     path('relatorios/', include('apps.relatorios.urls')),
+    path('configuracoes/', include('apps.configuracoes.urls')),
     
     # Authentication
     path('accounts/', include('django.contrib.auth.urls')),

@@ -429,6 +429,14 @@
             </ul>
           </li>
           {% endif %}
+
+          {% if nav_perms.configuracoes %}
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'configuracoes:user_list' %}">
+              <i class="bi bi-sliders"></i> Configurações
+            </a>
+          </li>
+          {% endif %}
         </ul>
 
         <!-- Right side -->
@@ -465,6 +473,11 @@
               <button id="themeApplyBtn" class="btn btn-sm btn-primary">Aplicar</button>
             </div>
           </div>
+          {% if nav_perms.configuracoes %}
+          <a href="{% url 'configuracoes:user_list' %}" class="nav-link py-1 px-2" title="Configurações" style="color:rgba(255,255,255,.7);">
+            <i class="bi bi-sliders"></i>
+          </a>
+          {% endif %}
           {% if nav_perms.admin %}
           <a href="/admin/" class="nav-link py-1 px-2" title="Admin" style="color:rgba(255,255,255,.7);">
             <i class="bi bi-gear"></i>
@@ -581,6 +594,15 @@
               <li><a class="dropdown-item" href="{% url 'clientes:cliente_list' %}"><i class="bi bi-people"></i> Lista de Clientes</a></li>
               <li><a class="dropdown-item" href="{% url 'clientes:cliente_create' %}"><i class="bi bi-person-plus"></i> Cadastrar Cliente</a></li>
             </ul>
+          </li>
+          {% endif %}
+
+
+
+          {% if nav_perms.configuracoes %}
+          <hr class="offcanvas-divider">
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'configuracoes:user_list' %}"><i class="bi bi-sliders"></i> Configurações</a>
           </li>
           {% endif %}
 
@@ -809,3 +831,4 @@
     </script>
   </body>
 </html>
+

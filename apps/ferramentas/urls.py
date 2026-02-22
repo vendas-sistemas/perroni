@@ -5,6 +5,7 @@ app_name = 'ferramentas'
 
 urlpatterns = [
     path('', views.ferramenta_list, name='ferramenta_list'),
+    path('imprimir-localizacao/', views.ferramenta_relatorio_impressao, name='ferramenta_relatorio_impressao'),
     path('<int:pk>/', views.ferramenta_detail, name='ferramenta_detail'),
     path('<int:pk>/editar/', views.ferramenta_update, name='ferramenta_update'),
     path('criar/', views.ferramenta_create, name='ferramenta_create'),

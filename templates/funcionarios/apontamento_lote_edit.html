@@ -64,19 +64,11 @@
                 </div>
 
                 <div class="row mb-4">
-                    <div class="col-md-4">
+                    <div class="col-md-8">
                         <label class="form-label fw-bold">Etapa</label>
                         {{ form.etapa }}
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label fw-bold">Produção Total</label>
-                        {{ form.producao_total }}
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label fw-bold">Unidade</label>
-                        {{ form.unidade_medida }}
-                    </div>
-                    <div class="col-md-2">
                         <label class="form-label fw-bold">Placa</label>
                         <div class="form-check mt-2">
                             {{ form.possui_placa }}
@@ -199,6 +191,12 @@
 </div>
 
 <script>
+const dataLoteIso = '{{ lote.data|date:"Y-m-d" }}';
+const inputData = document.getElementById('id_data');
+if (inputData && dataLoteIso) {
+    inputData.value = dataLoteIso;
+}
+
 const funcionariosDisponiveis = {{ funcionarios_json|safe }};
 
 function getFuncionariosOptions(excluirIds) {

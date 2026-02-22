@@ -20,11 +20,19 @@ def home_redirect(request):
         ('relatorios', 'relatorios:dashboard'),
     ]
 
-    for app_label, route_name in ordered_modules:
-        if user.has_module_perms(app_label):
-            return redirect(route_name)
+    try:
+        from apps.configuracoes.models import GroupAreaPermission
+        for area, route_name in ordered_modules:
+            if GroupAreaPermission.objects.filter(
+                group__user=user, area=area, can_view=True
+            ).exists():
+                return redirect(route_name)
+    except Exception:
+        for app_label, route_name in ordered_modules:
+            if user.has_module_perms(app_label):
+                return redirect(route_name)
 
     if user.is_staff:
-        return redirect('/admin/')
+        return redirect('configuracoes:user_list')
 
     return redirect('login')

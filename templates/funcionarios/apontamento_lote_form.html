@@ -39,6 +39,12 @@
     box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
     transform: translateY(-2px);
   }
+  .foto-item-remover {
+    position: absolute;
+    top: .35rem;
+    right: .35rem;
+    z-index: 2;
+  }
 </style>
 {% endblock %}
 
@@ -130,20 +136,6 @@
                 
                 <hr class="my-4">
                 
-                <!-- PRODUÇÃO TOTAL (SIMPLIFICADO) -->
-                <div class="row mb-3" style="display: none;">
-                    <div class="col-md-3">
-                        <label class="form-label">Quantidade Total</label>
-                        {{ form.producao_total }}
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Unidade</label>
-                        {{ form.unidade_medida }}
-                    </div>
-                </div>
-                
-                <hr>
-                
                 <!-- INDICADORES -->
                 <h5 class="mb-3"><i class="bi bi-exclamation-triangle"></i> Indicadores</h5>
                 
@@ -197,6 +189,16 @@
                            multiple
                            accept="image/*"
                            id="input-fotos">
+                    <div class="mt-2">
+                        <label for="input-fotos-camera" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-camera-fill"></i> Tirar Foto (celular)
+                        </label>
+                        <input type="file"
+                               class="d-none"
+                               accept="image/*"
+                               capture="environment"
+                               id="input-fotos-camera">
+                    </div>
                     <small class="text-muted">
                         Você pode selecionar múltiplas fotos (Ctrl+clique)
                     </small>
@@ -277,7 +279,6 @@ document.getElementById('btn-adicionar-funcionario').addEventListener('click', f
     tbody.appendChild(row);
     contadorFuncionarios++;
     atualizarSelects();
-    calcularDivisao();
 });
 
 // Remover funcionário
@@ -292,7 +293,6 @@ document.addEventListener('click', function(e) {
         row.remove();
         contadorFuncionarios--;
         atualizarSelects();
-        calcularDivisao();
     }
 });
 
@@ -322,57 +322,8 @@ document.addEventListener('change', function(e) {
         });
 
         atualizarSelects();
-        calcularDivisao();
     }
 });
-
-// Calcular divisão ao mudar quantidade
-document.getElementById('id_producao_total').addEventListener('input', calcularDivisao);
-document.getElementById('id_unidade_medida').addEventListener('change', calcularDivisao);
-
-function calcularDivisao() {
-    const producaoTotal = parseFloat(document.getElementById('id_producao_total').value) || 0;
-    const unidade = document.getElementById('id_unidade_medida').value;
-    
-    // Contar pedreiros
-    const selects = document.querySelectorAll('.funcionario-select');
-    let qtdPedreiros = 0;
-    let qtdServentes = 0;
-    
-    selects.forEach(select => {
-        const option = select.options[select.selectedIndex];
-        if (option && option.value) {
-            if (option.getAttribute('data-funcao') === 'pedreiro') {
-                qtdPedreiros++;
-            } else {
-                qtdServentes++;
-            }
-        }
-    });
-    
-    if (producaoTotal > 0 && qtdPedreiros > 0) {
-        const porPedreiro = (producaoTotal / qtdPedreiros).toFixed(2);
-        const unidadeTexto = unidade === 'blocos' ? 'blocos' : 
-                           unidade === 'm2' ? 'm²' : 
-                           unidade === 'percentual' ? '%' : unidade;
-        
-        document.getElementById('info-divisao').style.display = 'block';
-        
-        let texto = `
-            <strong style="font-size: 1.2em;">${producaoTotal} ${unidadeTexto}</strong> ÷ 
-            <strong style="font-size: 1.2em;">${qtdPedreiros} pedreiro(s)</strong> = 
-            <strong style="font-size: 1.4em; color: #ffd700;">${porPedreiro} ${unidadeTexto}/pedreiro</strong>
-        `;
-        
-        if (qtdServentes > 0) {
-            texto += `<br><small>+ ${qtdServentes} servente(s) (não contam na divisão de produção)</small>`;
-        }
-        
-        document.getElementById('texto-divisao').innerHTML = texto;
-    } else {
-        document.getElementById('info-divisao').style.display = 'none';
-    }
-}
 
 // Mostrar/ocultar campos de ociosidade e retrabalho
 document.getElementById('id_houve_ociosidade').addEventListener('change', function() {
@@ -577,32 +528,96 @@ window.addEventListener('DOMContentLoaded', function() {
     document.getElementById('btn-adicionar-funcionario').click();
 });
 
-// Preview de fotos antes de enviar
-document.getElementById('input-fotos').addEventListener('change', function(e) {
-    const preview = document.getElementById('preview-fotos');
-    preview.innerHTML = '';
-    
-    if (e.target.files.length > 0) {
-        for (let file of e.target.files) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const col = document.createElement('div');
-                col.className = 'col-md-3 mb-2';
-                col.innerHTML = `
-                    <div class="card">
-                        <img src="${e.target.result}" 
-                             class="card-img-top" 
-                             style="max-height: 150px; object-fit: cover;">
-                        <div class="card-body p-2">
-                            <small class="text-muted">${file.name}</small>
-                        </div>
-                    </div>
-                `;
-                preview.appendChild(col);
-            };
-            reader.readAsDataURL(file);
-        }
+// Fila de fotos: permite adicionar em lotes sem substituir as anteriores
+const inputFotos = document.getElementById('input-fotos');
+const inputFotosCamera = document.getElementById('input-fotos-camera');
+const previewFotos = document.getElementById('preview-fotos');
+let fotosQueue = [];
+
+function fotoKey(file) {
+    return `${file.name}|${file.size}|${file.lastModified}`;
+}
+
+function sincronizarInputFotos() {
+    if (typeof DataTransfer === 'undefined') {
+        return;
     }
+    const dataTransfer = new DataTransfer();
+    fotosQueue.forEach(item => dataTransfer.items.add(item.file));
+    inputFotos.files = dataTransfer.files;
+}
+
+function renderizarPreviewFotos() {
+    previewFotos.innerHTML = '';
+    if (!fotosQueue.length) return;
+
+    fotosQueue.forEach((item, index) => {
+        const col = document.createElement('div');
+        col.className = 'col-6 col-md-3 mb-2';
+        col.innerHTML = `
+            <div class="card position-relative h-100">
+                <button type="button" class="btn btn-danger btn-sm foto-item-remover" data-index="${index}" title="Remover foto">
+                    <i class="bi bi-trash"></i>
+                </button>
+                <img src="${item.preview}"
+                     class="card-img-top"
+                     style="max-height: 150px; object-fit: cover;"
+                     alt="Foto selecionada">
+                <div class="card-body p-2">
+                    <small class="text-muted d-block text-truncate" title="${item.file.name}">${item.file.name}</small>
+                </div>
+            </div>
+        `;
+        previewFotos.appendChild(col);
+    });
+}
+
+function adicionarArquivosNaFila(fileList) {
+    if (!fileList || !fileList.length) return;
+    const chavesExistentes = new Set(fotosQueue.map(item => item.key));
+
+    Array.from(fileList).forEach(file => {
+        const key = fotoKey(file);
+        if (chavesExistentes.has(key)) return;
+        fotosQueue.push({
+            key: key,
+            file: file,
+            preview: URL.createObjectURL(file)
+        });
+        chavesExistentes.add(key);
+    });
+
+    sincronizarInputFotos();
+    renderizarPreviewFotos();
+}
+
+inputFotos.addEventListener('change', function(e) {
+    adicionarArquivosNaFila(e.target.files);
+    e.target.value = '';
+});
+
+if (inputFotosCamera) {
+    inputFotosCamera.addEventListener('change', function(e) {
+        adicionarArquivosNaFila(e.target.files);
+        e.target.value = '';
+    });
+}
+
+previewFotos.addEventListener('click', function(e) {
+    const botao = e.target.closest('.foto-item-remover');
+    if (!botao) return;
+
+    const index = parseInt(botao.getAttribute('data-index'), 10);
+    if (Number.isNaN(index) || !fotosQueue[index]) return;
+
+    URL.revokeObjectURL(fotosQueue[index].preview);
+    fotosQueue.splice(index, 1);
+    sincronizarInputFotos();
+    renderizarPreviewFotos();
+});
+
+document.getElementById('form-apontamento-lote').addEventListener('submit', function() {
+    sincronizarInputFotos();
 });
 </script>
 {% endblock %}

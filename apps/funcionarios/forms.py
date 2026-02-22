@@ -271,12 +271,20 @@ class FuncionarioForm(forms.ModelForm):
 # ================ APONTAMENTO EM LOTE ================
 
 class ApontamentoDiarioLoteForm(forms.ModelForm):
+    data = forms.DateField(
+        input_formats=['%Y-%m-%d', '%d/%m/%Y'],
+        widget=forms.DateInput(
+            format='%Y-%m-%d',
+            attrs={'type': 'date', 'class': 'form-control'}
+        ),
+        label='Data'
+    )
     """Formulário principal do apontamento em lote"""
     
     class Meta:
         model = ApontamentoDiarioLote
         fields = [
-            'obra', 'data', 'etapa', 'producao_total', 'unidade_medida',
+            'obra', 'data', 'etapa',
             'clima', 'houve_ociosidade', 'observacao_ociosidade',
             'houve_retrabalho', 'motivo_retrabalho', 'possui_placa', 'observacoes'
         ]
@@ -302,7 +310,19 @@ class ApontamentoDiarioLoteForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['data'].initial = datetime.date.today()
+        # input date HTML5 precisa de YYYY-MM-DD para exibir valor preenchido
+        self.fields['data'].localize = False
+        self.fields['data'].widget = forms.DateInput(
+            format='%Y-%m-%d',
+            attrs={'type': 'date', 'class': 'form-control'}
+        )
+        # Bloqueia selecao de datas futuras no navegador
+        self.fields['data'].widget.attrs['max'] = datetime.date.today().isoformat()
+
+        if not self.instance.pk and not self.initial.get('data'):
+            self.fields['data'].initial = datetime.date.today()
+        elif self.instance and self.instance.pk and getattr(self.instance, 'data', None):
+            self.initial['data'] = self.instance.data.strftime('%Y-%m-%d')
         
         # Filtrar obras ativas
         self.fields['obra'].queryset = Obra.objects.filter(
@@ -365,5 +385,10 @@ class ApontamentoDiarioLoteForm(forms.ModelForm):
             self.fields['etapa'].queryset = Etapa.objects.none()
         
         self.fields['etapa'].required = False
-        self.fields['producao_total'].required = False
-        self.fields['unidade_medida'].required = False
+
+    def clean_data(self):
+        """Impede salvamento com data futura."""
+        data = self.cleaned_data.get('data')
+        if data and data > datetime.date.today():
+            raise ValidationError('Não é permitido salvar apontamento com data futura.')
+        return data

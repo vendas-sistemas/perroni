@@ -10,6 +10,7 @@ def navigation_permissions(request):
         'analytics': False,
         'relatorios': False,
         'admin': False,
+        'configuracoes': False,
     }
 
     if not user or not user.is_authenticated:
@@ -20,14 +21,31 @@ def navigation_permissions(request):
             nav_perms[key] = True
         return {'nav_perms': nav_perms}
 
-    nav_perms['obras'] = user.has_module_perms('obras')
-    # DESCONTINUADO em 21/02/2026: módulo fiscalização removido – sempre False
+    try:
+        from apps.configuracoes.models import GroupAreaPermission
+    except Exception:
+        nav_perms['admin'] = bool(user.is_staff)
+        nav_perms['configuracoes'] = bool(user.is_staff)
+        return {'nav_perms': nav_perms}
+
+    area_map = {
+        'obras': 'obras',
+        'funcionarios': 'funcionarios',
+        'ferramentas': 'ferramentas',
+        'clientes': 'clientes',
+        'analytics': 'analytics',
+        'relatorios': 'relatorios',
+    }
+    for nav_key, area in area_map.items():
+        nav_perms[nav_key] = GroupAreaPermission.objects.filter(
+            group__user=user,
+            area=area,
+            can_view=True,
+        ).exists()
+
     nav_perms['fiscalizacao'] = False
-    nav_perms['funcionarios'] = user.has_module_perms('funcionarios')
-    nav_perms['ferramentas'] = user.has_module_perms('ferramentas')
-    nav_perms['clientes'] = user.has_module_perms('clientes')
-    nav_perms['analytics'] = user.has_module_perms('analytics')
-    nav_perms['relatorios'] = user.has_module_perms('relatorios')
     nav_perms['admin'] = bool(user.is_staff)
+    nav_perms['configuracoes'] = bool(user.is_staff or user.is_superuser)
 
     return {'nav_perms': nav_perms}
+

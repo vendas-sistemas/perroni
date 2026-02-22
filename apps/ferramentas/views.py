@@ -19,14 +19,13 @@ from django.http import Http404
 from django.utils import timezone
 import random
 from decimal import Decimal
+import json
 
 
-@login_required
-def ferramenta_list(request):
-    """Lista ferramentas"""
+def _filtrar_ferramentas_queryset(request):
+    """Aplica os filtros de listagem de ferramentas."""
     qs = Ferramenta.objects.filter(ativo=True)
 
-    # Filters from GET
     codigo = request.GET.get('codigo')
     nome = request.GET.get('nome')
     categoria = request.GET.get('categoria')
@@ -43,6 +42,14 @@ def ferramenta_list(request):
         qs = qs.filter(nome__icontains=nome)
     if categoria:
         qs = qs.filter(categoria=categoria)
+
+    return qs, busca, categoria
+
+
+@login_required
+def ferramenta_list(request):
+    """Lista ferramentas"""
+    qs, busca, categoria = _filtrar_ferramentas_queryset(request)
 
     # Ordering
     order = request.GET.get('order', 'nome')
@@ -118,6 +125,74 @@ def ferramenta_list(request):
         'total_resultado': total_resultado,
     }
     return render(request, 'ferramentas/ferramenta_list.html', context)
+
+
+@login_required
+def ferramenta_relatorio_impressao(request):
+    """
+    Relatório imprimível de localização e histórico de ferramentas.
+    Se ids forem informados, imprime apenas os selecionados.
+    Se não houver ids, usa o filtro atual da listagem.
+    """
+    ids = request.GET.getlist('ids')
+
+    if ids:
+        ferramentas_qs = Ferramenta.objects.filter(ativo=True, id__in=ids).order_by('nome')
+    else:
+        ferramentas_qs, _, _ = _filtrar_ferramentas_queryset(request)
+        ferramentas_qs = ferramentas_qs.order_by('nome')
+
+    ferramentas = list(ferramentas_qs)
+    ferramenta_ids = [f.id for f in ferramentas]
+
+    # Totais consolidados
+    total_modelos = len(ferramentas)
+    total_unidades = sum((f.quantidade_total or 0) for f in ferramentas)
+    total_deposito = sum((f.quantidade_deposito or 0) for f in ferramentas)
+    total_em_obra = sum((f.quantidade_em_obras or 0) for f in ferramentas)
+    total_manutencao = sum((f.quantidade_manutencao or 0) for f in ferramentas)
+    total_perdida = sum((f.quantidade_perdida or 0) for f in ferramentas)
+
+    total_descartada = MovimentacaoFerramenta.objects.filter(
+        ferramenta_id__in=ferramenta_ids,
+        tipo='descarte'
+    ).aggregate(total=models.Sum('quantidade'))['total'] or 0
+
+    # Onde estão atualmente (obras)
+    obras_distribuicao = (
+        LocalizacaoFerramenta.objects
+        .filter(ferramenta_id__in=ferramenta_ids, local_tipo='obra', quantidade__gt=0)
+        .values('obra_id', 'obra__nome')
+        .annotate(total=models.Sum('quantidade'))
+        .order_by('obra__nome')
+    )
+
+    # Histórico para impressão em lote
+    movimentacoes = (
+        MovimentacaoFerramenta.objects
+        .filter(ferramenta_id__in=ferramenta_ids)
+        .select_related('ferramenta', 'responsavel', 'obra_origem', 'obra_destino')
+        .order_by('-data_movimentacao', '-id')
+    )
+
+    context = {
+        'title': 'Relatório de Ferramentas',
+        'ferramentas': ferramentas,
+        'movimentacoes': movimentacoes,
+        'obras_distribuicao': obras_distribuicao,
+        'total_modelos': total_modelos,
+        'total_unidades': total_unidades,
+        'total_deposito': total_deposito,
+        'total_em_obra': total_em_obra,
+        'total_manutencao': total_manutencao,
+        'total_perdida': total_perdida,
+        'total_descartada': total_descartada,
+        'filtros': {
+            'q': request.GET.get('q', '').strip(),
+            'categoria': request.GET.get('categoria', '').strip(),
+        },
+    }
+    return render(request, 'ferramentas/ferramenta_relatorio_impressao.html', context)
 
 
 @login_required
@@ -216,14 +291,50 @@ def ferramenta_update(request, pk):
 
 @login_required
 def movimentacao_create(request):
-    """Registra movimentação de ferramenta"""
+    """Registra movimenta??o de ferramenta"""
     if request.method == 'POST':
+        itens_json = request.POST.get('itens_json', '').strip()
+        if itens_json:
+            try:
+                itens = json.loads(itens_json)
+            except json.JSONDecodeError:
+                messages.error(request, 'Lista de movimenta??es inv?lida.')
+                return render(request, 'ferramentas/movimentacao_form.html', {'form': MovimentacaoForm(), 'title': 'Movimentar Ferramenta'})
+
+            if not isinstance(itens, list) or not itens:
+                messages.error(request, 'Adicione ao menos uma movimenta??o antes de salvar.')
+                return render(request, 'ferramentas/movimentacao_form.html', {'form': MovimentacaoForm(), 'title': 'Movimentar Ferramenta'})
+
+            with transaction.atomic():
+                total_criadas = 0
+                for idx, item in enumerate(itens, start=1):
+                    form_item = MovimentacaoForm(item)
+                    if not form_item.is_valid():
+                        erro = '; '.join(
+                            f'{campo}: {", ".join(msgs)}'
+                            for campo, msgs in form_item.errors.items()
+                        )
+                        messages.error(request, f'Erro no item {idx}: {erro}')
+                        return render(
+                            request,
+                            'ferramentas/movimentacao_form.html',
+                            {'form': MovimentacaoForm(), 'title': 'Movimentar Ferramenta'}
+                        )
+
+                    mov = form_item.save(commit=False)
+                    mov.responsavel = request.user
+                    mov.save()
+                    total_criadas += 1
+
+            messages.success(request, f'{total_criadas} movimenta??o(?es) registrada(s).')
+            return redirect('ferramentas:ferramenta_list')
+
         form = MovimentacaoForm(request.POST)
         if form.is_valid():
             mov = form.save(commit=False)
             mov.responsavel = request.user
             mov.save()
-            messages.success(request, 'Movimentação registrada.')
+            messages.success(request, 'Movimenta??o registrada.')
             return redirect('ferramentas:ferramenta_detail', pk=mov.ferramenta.pk)
     else:
         # allow preselecting ferramenta via GET param ?f=<pk>

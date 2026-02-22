@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+
+{% block title %}Relatório de Ferramentas{% endblock %}
+
+{% block extra_css %}
+<style>
+  .report-wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .summary-card {
+    border: 1px solid #dee2e6;
+    border-radius: .6rem;
+    background: #fff;
+  }
+  .summary-card .label {
+    font-size: .8rem;
+    color: #6c757d;
+  }
+  .summary-card .value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .table th, .table td {
+    vertical-align: middle;
+  }
+  @media print {
+    .no-print { display: none !important; }
+    .card { box-shadow: none !important; }
+    body { background: #fff !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 report-wrap">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 no-print">
+    <h1 class="h4 mb-0"><i class="bi bi-printer"></i> Relatório de Localização de Ferramentas</h1>
+    <div class="d-flex gap-2">
+      <button class="btn btn-dark btn-sm" onclick="window.print()">
+        <i class="bi bi-printer"></i> Imprimir
+      </button>
+      <a href="{% url 'ferramentas:ferramenta_list' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Voltar
+      </a>
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <h2 class="h5 mb-1">Resumo Geral</h2>
+    <small class="text-muted">
+      Ferramentas selecionadas: {{ total_modelos }} modelo(s) | Total de unidades: {{ total_unidades }}
+      {% if filtros.q or filtros.categoria %}
+      | Filtros: {% if filtros.q %}Busca "{{ filtros.q }}"{% endif %}{% if filtros.categoria %}{% if filtros.q %} - {% endif %}Categoria "{{ filtros.categoria }}"{% endif %}
+      {% endif %}
+    </small>
+  </div>
+
+  <div class="row g-2 mb-3">
+    <div class="col-6 col-md-4 col-lg-2"><div class="summary-card p-2"><div class="label">Depósito</div><div class="value">{{ total_deposito }}</div></div></div>
+    <div class="col-6 col-md-4 col-lg-2"><div class="summary-card p-2"><div class="label">Em Obra</div><div class="value">{{ total_em_obra }}</div></div></div>
+    <div class="col-6 col-md-4 col-lg-2"><div class="summary-card p-2"><div class="label">Manutenção</div><div class="value">{{ total_manutencao }}</div></div></div>
+    <div class="col-6 col-md-4 col-lg-2"><div class="summary-card p-2"><div class="label">Perdidas</div><div class="value">{{ total_perdida }}</div></div></div>
+    <div class="col-6 col-md-4 col-lg-2"><div class="summary-card p-2"><div class="label">Descartadas/Baixa</div><div class="value">{{ total_descartada }}</div></div></div>
+    <div class="col-6 col-md-4 col-lg-2"><div class="summary-card p-2"><div class="label">Modelos</div><div class="value">{{ total_modelos }}</div></div></div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header fw-semibold">Onde Estão Atualmente (por obra)</div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Obra</th>
+              <th class="text-end">Quantidade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in obras_distribuicao %}
+            <tr>
+              <td>{{ item.obra__nome|default:"Sem obra" }}</td>
+              <td class="text-end">{{ item.total }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2" class="text-center text-muted py-3">Nenhuma ferramenta alocada em obra no momento.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header fw-semibold">Distribuição por Ferramenta</div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Código</th>
+              <th>Ferramenta</th>
+              <th class="text-end">Total</th>
+              <th class="text-end">Depósito</th>
+              <th class="text-end">Obras</th>
+              <th class="text-end">Manutenção</th>
+              <th class="text-end">Perdida</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in ferramentas %}
+            <tr>
+              <td class="font-monospace">{{ f.codigo }}</td>
+              <td>{{ f.nome }}</td>
+              <td class="text-end">{{ f.quantidade_total }}</td>
+              <td class="text-end">{{ f.quantidade_deposito }}</td>
+              <td class="text-end">{{ f.quantidade_em_obras }}</td>
+              <td class="text-end">{{ f.quantidade_manutencao }}</td>
+              <td class="text-end">{{ f.quantidade_perdida }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-3">Nenhuma ferramenta para imprimir.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header fw-semibold">Histórico de Movimentações (Lote)</div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Data/Hora</th>
+              <th>Ferramenta</th>
+              <th>Tipo</th>
+              <th class="text-end">Qtd</th>
+              <th>Origem</th>
+              <th>Destino</th>
+              <th>Responsável</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in movimentacoes %}
+            <tr>
+              <td>{{ m.data_movimentacao|date:"d/m/Y H:i" }}</td>
+              <td>{{ m.ferramenta.codigo }} - {{ m.ferramenta.nome }}</td>
+              <td>{{ m.get_tipo_display }}</td>
+              <td class="text-end">{{ m.quantidade }}</td>
+              <td>{% if m.obra_origem %}{{ m.obra_origem.nome }}{% else %}{{ m.get_origem_tipo_display }}{% endif %}</td>
+              <td>{% if m.obra_destino %}{{ m.obra_destino.nome }}{% else %}{{ m.get_destino_tipo_display }}{% endif %}</td>
+              <td>{% if m.responsavel %}{{ m.responsavel.username }}{% else %}-{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-3">Sem movimentações para as ferramentas selecionadas.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

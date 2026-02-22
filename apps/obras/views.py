@@ -74,6 +74,49 @@ def _resolver_usuario_historico(request, form=None):
     return None
 
 
+def _historico_eh_apontamento(historico):
+    origem = (historico.origem or '').lower()
+    descricao = (historico.descricao or '').lower()
+    return 'apontamento' in origem or 'apontamento' in descricao
+
+
+def _extrair_data_descricao_historico(descricao):
+    match = re.search(r'Data:\s*(\d{2}/\d{2}/\d{4})', descricao or '', flags=re.IGNORECASE)
+    return match.group(1) if match else ''
+
+
+def _extrair_etapa_descricao_historico(descricao):
+    match = re.search(r'Etapa:\s*([^\n\r]+)', descricao or '', flags=re.IGNORECASE)
+    return match.group(1).strip() if match else ''
+
+
+def _chave_grupo_historico(historico):
+    if not _historico_eh_apontamento(historico):
+        return f'outro:{historico.pk}'
+
+    minuto = historico.data_hora.strftime('%Y%m%d%H%M')
+    usuario_id = historico.usuario_id or 0
+    data_ref = _extrair_data_descricao_historico(historico.descricao)
+    etapa_ref = _extrair_etapa_descricao_historico(historico.descricao)
+    return f'apontamento:{minuto}:{usuario_id}:{data_ref}:{etapa_ref}'
+
+
+def _preparar_historicos_para_visualizacao(historicos):
+    itens = list(historicos)
+    chave_anterior = None
+    indice_grupo = -1
+
+    for item in itens:
+        chave_atual = _chave_grupo_historico(item)
+        item.grupo_inicio = chave_atual != chave_anterior
+        if item.grupo_inicio:
+            indice_grupo += 1
+        item.grupo_cor = 'grupo-cor-a' if indice_grupo % 2 == 0 else 'grupo-cor-b'
+        chave_anterior = chave_atual
+
+    return itens
+
+
 def _registrar_historico_inicial_etapa(etapa, usuario, origem='Criação da etapa'):
     EtapaHistorico.objects.create(
         etapa=etapa,
@@ -457,6 +500,21 @@ def obra_fotos(request, pk):
 
 
 @login_required
+@require_POST
+def obra_foto_delete(request, pk, foto_id):
+    """Exclui uma foto da galeria da obra."""
+    obra = get_object_or_404(Obra, pk=pk)
+    foto = get_object_or_404(FotoApontamento, pk=foto_id, obra=obra)
+
+    if foto.foto:
+        foto.foto.delete(save=False)
+    foto.delete()
+
+    messages.success(request, 'Foto excluida com sucesso.')
+    return redirect('obras:obra_fotos', pk=obra.pk)
+
+
+@login_required
 # Note: initialization of etapa detail records is now handled lazily
 # when the user opens the corresponding etapa detail view. The
 # explicit `obra_inicializar_detalhes` action/button was removed to
@@ -481,10 +539,13 @@ def etapa_detail(request, pk):
     except Exception:
         detalhe = None
 
+    historicos = etapa.historicos.select_related('usuario').all()[:100]
+    historicos = _preparar_historicos_para_visualizacao(historicos)
+
     context = {
         'etapa': etapa,
         'detalhe': detalhe,
-        'historicos': etapa.historicos.select_related('usuario').all()[:100],
+        'historicos': historicos,
         'title': f'Etapa {etapa.numero_etapa} - {etapa.obra.nome}'
     }
     return render(request, 'obras/etapa_detail.html', context)

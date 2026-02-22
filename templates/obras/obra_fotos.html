@@ -44,6 +44,12 @@
   .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); }
   .lightbox-nav.prev { left: -3rem; }
   .lightbox-nav.next { right: -3rem; }
+  .btn-excluir-foto {
+    position: absolute;
+    top: .35rem;
+    right: .35rem;
+    z-index: 5;
+  }
 </style>
 {% endblock %}
 
@@ -127,15 +133,23 @@
             <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-2">
               {% for foto in dia.fotos %}
               <div class="col">
-                <img src="{{ foto.foto.url }}"
-                     class="foto-thumb shadow-sm"
-                     loading="lazy"
-                     alt="Foto {{ grupo.nome }} - {{ dia.data }}"
-                     data-bs-toggle="modal"
-                     data-bs-target="#lightbox-modal"
-                     data-src="{{ foto.foto.url }}"
-                     data-caption="{{ grupo.nome }} | {{ dia.data }}{% if foto.descricao %} | {{ foto.descricao }}{% endif %}"
-                     title="{% if foto.descricao %}{{ foto.descricao }}{% else %}{{ dia.data }}{% endif %}">
+                <div class="position-relative">
+                  <form method="post" action="{% url 'obras:obra_foto_delete' obra.pk foto.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm btn-excluir-foto" onclick="return confirm('Excluir esta foto?');">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                  <img src="{{ foto.foto.url }}"
+                       class="foto-thumb shadow-sm"
+                       loading="lazy"
+                       alt="Foto {{ grupo.nome }} - {{ dia.data }}"
+                       data-bs-toggle="modal"
+                       data-bs-target="#lightbox-modal"
+                       data-src="{{ foto.foto.url }}"
+                       data-caption="{{ grupo.nome }} | {{ dia.data }}{% if foto.descricao %} | {{ foto.descricao }}{% endif %}"
+                       title="{% if foto.descricao %}{{ foto.descricao }}{% else %}{{ dia.data }}{% endif %}">
+                </div>
               </div>
               {% endfor %}
             </div>
@@ -178,15 +192,23 @@
             <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-2">
               {% for foto in dia.fotos %}
               <div class="col">
-                <img src="{{ foto.foto.url }}"
-                     class="foto-thumb shadow-sm"
-                     loading="lazy"
-                     alt="Sem Etapa - {{ dia.data }}"
-                     data-bs-toggle="modal"
-                     data-bs-target="#lightbox-modal"
-                     data-src="{{ foto.foto.url }}"
-                     data-caption="Sem Etapa | {{ dia.data }}{% if foto.descricao %} | {{ foto.descricao }}{% endif %}"
-                     title="{% if foto.descricao %}{{ foto.descricao }}{% else %}{{ dia.data }}{% endif %}">
+                <div class="position-relative">
+                  <form method="post" action="{% url 'obras:obra_foto_delete' obra.pk foto.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm btn-excluir-foto" onclick="return confirm('Excluir esta foto?');">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                  <img src="{{ foto.foto.url }}"
+                       class="foto-thumb shadow-sm"
+                       loading="lazy"
+                       alt="Sem Etapa - {{ dia.data }}"
+                       data-bs-toggle="modal"
+                       data-bs-target="#lightbox-modal"
+                       data-src="{{ foto.foto.url }}"
+                       data-caption="Sem Etapa | {{ dia.data }}{% if foto.descricao %} | {{ foto.descricao }}{% endif %}"
+                       title="{% if foto.descricao %}{{ foto.descricao }}{% else %}{{ dia.data }}{% endif %}">
+                </div>
               </div>
               {% endfor %}
             </div>

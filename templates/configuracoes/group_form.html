@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0"><i class="bi bi-shield-lock"></i> {{ title }}</h1>
+  <a href="{% url 'configuracoes:group_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+</div>
+
+<form method="post" class="card shadow-sm border-0">
+  {% csrf_token %}
+  <div class="card-body">
+    <div class="mb-3">
+      <label class="form-label fw-semibold">{{ form.name.label }}</label>
+      {{ form.name }}
+    </div>
+
+    <h5 class="mt-4">Permissões por Área</h5>
+    <small class="text-muted">Marque Ver/Criar/Editar/Excluir para cada área.</small>
+
+    <div class="table-responsive mt-2">
+      <table class="table table-sm align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Área</th>
+            <th class="text-center">Ver</th>
+            <th class="text-center">Criar</th>
+            <th class="text-center">Editar</th>
+            <th class="text-center">Excluir</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in area_rows %}
+          <tr>
+            <td>{{ row.label }}</td>
+            <td class="text-center">{{ row.view }}</td>
+            <td class="text-center">{{ row.create }}</td>
+            <td class="text-center">{{ row.edit }}</td>
+            <td class="text-center">{{ row.delete }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card-footer bg-white d-flex gap-2 justify-content-end">
+    <a href="{% url 'configuracoes:group_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+    <button type="submit" class="btn btn-primary">Salvar</button>
+  </div>
+</form>
+{% endblock %}

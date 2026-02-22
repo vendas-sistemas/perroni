@@ -11,6 +11,7 @@
           <h4 class="card-title mb-3">{{ title }}</h4>
           <form method="post" id="movimentacao-form">
             {% csrf_token %}
+            <input type="hidden" id="id_itens_json" name="itens_json" value="">
             {% for field in form %}
               <div class="mb-3" id="wrap_{{ field.name }}">
                 {{ field.label_tag }}
@@ -18,9 +19,50 @@
                 {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
                 {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
               </div>
+              {% if field.name == 'ferramenta' %}
+                <div class="card border-info mb-3">
+                  <div class="card-body py-2">
+                    <div class="small text-muted mb-1">Quantidade disponível</div>
+                    <div class="fw-semibold" id="qtd-disponivel-valor">-</div>
+                    <div class="small text-muted" id="qtd-disponivel-contexto"></div>
+                  </div>
+                </div>
+              {% endif %}
             {% endfor %}
+            <div class="mb-3 d-flex gap-2">
+              <button class="btn btn-outline-primary" type="button" id="btn-adicionar-item">Adicionar</button>
+            </div>
+
+            <div class="card mb-3">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h6 class="mb-0">Lista para salvar</h6>
+                  <span class="badge text-bg-secondary" id="badge-total-itens">0 item(ns)</span>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Ferramenta</th>
+                        <th>Qtd</th>
+                        <th>Tipo</th>
+                        <th>Origem</th>
+                        <th>Destino</th>
+                        <th>Observações</th>
+                        <th class="text-end">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody id="lista-movimentacoes-body">
+                      <tr id="lista-vazia-row">
+                        <td colspan="7" class="text-muted">Nenhuma movimentação adicionada.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
             <div class="d-flex gap-2">
-              <button class="btn btn-primary" type="submit">Salvar</button>
+              <button class="btn btn-primary" type="button" id="btn-salvar-lista">Salvar</button>
               <a href="{% url 'ferramentas:ferramenta_list' %}" class="btn btn-secondary">Voltar</a>
             </div>
           </form>
@@ -30,13 +72,23 @@
   </div>
 </div>
 {{ form.ferramenta_obras_map|json_script:"ferramenta-obras-map" }}
+{{ form.ferramenta_saldos_map|json_script:"ferramenta-saldos-map" }}
+{{ form.ferramenta_obras_quantidades_map|json_script:"ferramenta-obras-quantidades-map" }}
 
 <script>
 (function () {
   const tipoEl = document.getElementById('id_tipo');
   const ferramentaEl = document.getElementById('id_ferramenta');
+  const quantidadeEl = document.getElementById('id_quantidade');
   const origemEl = document.getElementById('id_obra_origem');
   const destinoEl = document.getElementById('id_obra_destino');
+  const observacoesEl = document.getElementById('id_observacoes');
+  const itensJsonEl = document.getElementById('id_itens_json');
+  const btnAdicionarEl = document.getElementById('btn-adicionar-item');
+  const btnSalvarListaEl = document.getElementById('btn-salvar-lista');
+  const listaBodyEl = document.getElementById('lista-movimentacoes-body');
+  const badgeTotalItensEl = document.getElementById('badge-total-itens');
+  const formEl = document.getElementById('movimentacao-form');
 
   const wrapOrigem = document.getElementById('wrap_obra_origem');
   const wrapDestino = document.getElementById('wrap_obra_destino');
@@ -47,6 +99,13 @@
 
   const obrasMapEl = document.getElementById('ferramenta-obras-map');
   const ferramentaObrasMap = obrasMapEl ? JSON.parse(obrasMapEl.textContent || '{}') : {};
+  const saldosMapEl = document.getElementById('ferramenta-saldos-map');
+  const ferramentaSaldosMap = saldosMapEl ? JSON.parse(saldosMapEl.textContent || '{}') : {};
+  const obrasQtdMapEl = document.getElementById('ferramenta-obras-quantidades-map');
+  const ferramentaObrasQtdMap = obrasQtdMapEl ? JSON.parse(obrasQtdMapEl.textContent || '{}') : {};
+
+  const qtdDisponivelValorEl = document.getElementById('qtd-disponivel-valor');
+  const qtdDisponivelContextoEl = document.getElementById('qtd-disponivel-contexto');
 
   const origemBaseOptions = Array.from(origemEl.options).map((opt) => ({
     value: opt.value,
@@ -98,6 +157,163 @@
     return new Set(obras.map((id) => String(id)));
   }
 
+  function setQuantidadeDisponivel(valor, contexto) {
+    if (!qtdDisponivelValorEl || !qtdDisponivelContextoEl) {
+      return;
+    }
+    qtdDisponivelValorEl.textContent = String(valor);
+    qtdDisponivelContextoEl.textContent = contexto || '';
+  }
+
+  const itensPendentes = [];
+
+  function atualizarBadgeItens() {
+    if (!badgeTotalItensEl) {
+      return;
+    }
+    badgeTotalItensEl.textContent = `${itensPendentes.length} item(ns)`;
+  }
+
+  function renderListaItens() {
+    if (!listaBodyEl) {
+      return;
+    }
+    listaBodyEl.innerHTML = '';
+
+    if (!itensPendentes.length) {
+      const tr = document.createElement('tr');
+      tr.id = 'lista-vazia-row';
+      tr.innerHTML = '<td colspan="7" class="text-muted">Nenhuma movimentação adicionada.</td>';
+      listaBodyEl.appendChild(tr);
+      atualizarBadgeItens();
+      return;
+    }
+
+    itensPendentes.forEach((item, index) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${item._ferramenta_label || '-'}</td>
+        <td>${item.quantidade}</td>
+        <td>${item._tipo_label || '-'}</td>
+        <td>${item._origem_label || '-'}</td>
+        <td>${item._destino_label || '-'}</td>
+        <td>${item.observacoes || '-'}</td>
+        <td class="text-end">
+          <button type="button" class="btn btn-sm btn-outline-danger btn-remover-item" data-index="${index}">Remover</button>
+        </td>
+      `;
+      listaBodyEl.appendChild(tr);
+    });
+
+    atualizarBadgeItens();
+  }
+
+  function limparCamposAposAdicionar() {
+    if (quantidadeEl) {
+      quantidadeEl.value = '1';
+    }
+    if (observacoesEl) {
+      observacoesEl.value = '';
+    }
+  }
+
+  function validarItemAtual() {
+    const ferramenta = String(ferramentaEl.value || '');
+    const quantidade = Number(quantidadeEl ? quantidadeEl.value : 0);
+    const tipo = String(tipoEl.value || '');
+    const obraOrigem = String(origemEl.value || '');
+    const obraDestino = String(destinoEl.value || '');
+
+    if (!ferramenta) {
+      return 'Selecione a ferramenta.';
+    }
+    if (!tipo) {
+      return 'Selecione o tipo de movimentação.';
+    }
+    if (!quantidade || quantidade < 1) {
+      return 'Informe uma quantidade válida.';
+    }
+
+    if (tipo === 'saida_obra' && !obraDestino) {
+      return 'Informe a obra de destino.';
+    }
+    if (tipo === 'transferencia') {
+      if (!obraOrigem) {
+        return 'Informe a obra de origem.';
+      }
+      if (!obraDestino) {
+        return 'Informe a obra de destino.';
+      }
+      if (obraOrigem === obraDestino) {
+        return 'Origem e destino devem ser diferentes.';
+      }
+    }
+    if (tipo === 'retorno_deposito' && !obraOrigem) {
+      return 'Informe a obra de origem.';
+    }
+
+    return '';
+  }
+
+  function montarItemAtual() {
+    const item = {
+      ferramenta: String(ferramentaEl.value || ''),
+      quantidade: String(quantidadeEl ? quantidadeEl.value : ''),
+      tipo: String(tipoEl.value || ''),
+      obra_origem: String(origemEl.value || ''),
+      obra_destino: String(destinoEl.value || ''),
+      observacoes: String(observacoesEl ? observacoesEl.value : ''),
+      _ferramenta_label: ferramentaEl.options[ferramentaEl.selectedIndex]?.text || '',
+      _tipo_label: tipoEl.options[tipoEl.selectedIndex]?.text || '',
+      _origem_label: origemEl.value ? (origemEl.options[origemEl.selectedIndex]?.text || '') : '',
+      _destino_label: destinoEl.value ? (destinoEl.options[destinoEl.selectedIndex]?.text || '') : '',
+    };
+    return item;
+  }
+
+  function prepararPayloadSalvar() {
+    return itensPendentes.map((item) => ({
+      ferramenta: item.ferramenta,
+      quantidade: item.quantidade,
+      tipo: item.tipo,
+      obra_origem: item.obra_origem || '',
+      obra_destino: item.obra_destino || '',
+      observacoes: item.observacoes || '',
+    }));
+  }
+
+  function getQuantidadeDisponivelAtual() {
+    const ferramentaId = String(ferramentaEl.value || '');
+    const tipo = String(tipoEl.value || '');
+    if (!ferramentaId) {
+      return { valor: '-', contexto: 'Selecione uma ferramenta.' };
+    }
+
+    const saldos = ferramentaSaldosMap[ferramentaId] || {};
+    const obrasQtd = ferramentaObrasQtdMap[ferramentaId] || {};
+    const obraOrigemId = String(origemEl.value || '');
+
+    if (tipo === 'retorno_manutencao') {
+      return { valor: saldos.manutencao ?? 0, contexto: 'Disponível em manutenção.' };
+    }
+
+    if (tipo === 'transferencia' || tipo === 'retorno_deposito') {
+      if (obraOrigemId) {
+        return {
+          valor: obrasQtd[obraOrigemId] ?? 0,
+          contexto: 'Disponível na obra de origem selecionada.'
+        };
+      }
+      return { valor: '-', contexto: 'Selecione a obra de origem para ver o saldo.' };
+    }
+
+    if (tipo === 'entrada_deposito') {
+      return { valor: saldos.total ?? 0, contexto: 'Estoque total atual da ferramenta.' };
+    }
+
+    return { valor: saldos.deposito ?? 0, contexto: 'Disponível no depósito.' };
+  }
+
   function applyRules() {
     const tipo = tipoEl.value;
 
@@ -116,42 +332,99 @@
     if (tipo === 'entrada_deposito') {
       setFieldState(wrapOrigem, origemEl, true, false, false);
       setFieldState(wrapDestino, destinoEl, true, false, false);
+      const info = getQuantidadeDisponivelAtual();
+      setQuantidadeDisponivel(info.valor, info.contexto);
       return;
     }
 
     if (tipo === 'saida_obra') {
       setFieldState(wrapOrigem, origemEl, false, false, false);
       setFieldState(wrapDestino, destinoEl, true, true, true);
+      const info = getQuantidadeDisponivelAtual();
+      setQuantidadeDisponivel(info.valor, info.contexto);
       return;
     }
 
     if (tipo === 'transferencia') {
       setFieldState(wrapOrigem, origemEl, true, true, true);
       setFieldState(wrapDestino, destinoEl, true, true, true);
+      const info = getQuantidadeDisponivelAtual();
+      setQuantidadeDisponivel(info.valor, info.contexto);
       return;
     }
 
     if (tipo === 'retorno_deposito') {
       setFieldState(wrapOrigem, origemEl, true, true, true);
       setFieldState(wrapDestino, destinoEl, false, false, false);
+      const info = getQuantidadeDisponivelAtual();
+      setQuantidadeDisponivel(info.valor, info.contexto);
       return;
     }
 
     if (['envio_manutencao', 'retorno_manutencao', 'perda', 'descarte'].includes(tipo)) {
       setFieldState(wrapOrigem, origemEl, false, false, false);
       setFieldState(wrapDestino, destinoEl, false, false, false);
+      const info = getQuantidadeDisponivelAtual();
+      setQuantidadeDisponivel(info.valor, info.contexto);
       return;
     }
 
     setFieldState(wrapOrigem, origemEl, true, true, false);
     setFieldState(wrapDestino, destinoEl, true, true, false);
+
+    const info = getQuantidadeDisponivelAtual();
+    setQuantidadeDisponivel(info.valor, info.contexto);
   }
 
   tipoEl.addEventListener('change', applyRules);
   ferramentaEl.addEventListener('change', applyRules);
   origemEl.addEventListener('change', applyRules);
+  if (btnAdicionarEl) {
+    btnAdicionarEl.addEventListener('click', function () {
+      const erro = validarItemAtual();
+      if (erro) {
+        alert(erro);
+        return;
+      }
+      const item = montarItemAtual();
+      itensPendentes.push(item);
+      renderListaItens();
+      limparCamposAposAdicionar();
+      applyRules();
+    });
+  }
+
+  if (listaBodyEl) {
+    listaBodyEl.addEventListener('click', function (event) {
+      const alvo = event.target;
+      if (!alvo.classList.contains('btn-remover-item')) {
+        return;
+      }
+      const idx = Number(alvo.getAttribute('data-index'));
+      if (Number.isNaN(idx) || idx < 0 || idx >= itensPendentes.length) {
+        return;
+      }
+      itensPendentes.splice(idx, 1);
+      renderListaItens();
+    });
+  }
+
+  if (btnSalvarListaEl) {
+    btnSalvarListaEl.addEventListener('click', function () {
+      if (!itensPendentes.length) {
+        alert('Adicione pelo menos uma movimentação antes de salvar.');
+        return;
+      }
+      if (!itensJsonEl || !formEl) {
+        return;
+      }
+      itensJsonEl.value = JSON.stringify(prepararPayloadSalvar());
+      formEl.submit();
+    });
+  }
 
   applyRules();
+  renderListaItens();
 })();
 </script>
 {% endblock %}

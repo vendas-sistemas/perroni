@@ -136,6 +136,10 @@ class MovimentacaoForm(forms.ModelForm):
 
         # Mapeamento para interface: ferramenta -> obras com saldo
         self.ferramenta_obras_map = self._build_ferramenta_obras_map()
+        # Mapeamento para interface: ferramenta -> saldos por local
+        self.ferramenta_saldos_map = self._build_ferramenta_saldos_map()
+        # Mapeamento para interface: ferramenta -> {obra_id: quantidade}
+        self.ferramenta_obras_quantidades_map = self._build_ferramenta_obras_quantidades_map()
 
         # Se ferramenta ja vier selecionada, restringe obras de origem no backend
         ferramenta_id = self._get_selected_ferramenta_id()
@@ -184,6 +188,36 @@ class MovimentacaoForm(forms.ModelForm):
             mapa.setdefault(ferramenta_id, [])
             if obra_id not in mapa[ferramenta_id]:
                 mapa[ferramenta_id].append(obra_id)
+        return mapa
+
+    def _build_ferramenta_saldos_map(self):
+        mapa = {}
+        ferramentas = Ferramenta.objects.filter(ativo=True).only('id', 'quantidade_total')
+        for ferramenta in ferramentas:
+            mapa[str(ferramenta.id)] = {
+                'deposito': ferramenta.quantidade_deposito,
+                'manutencao': ferramenta.quantidade_manutencao,
+                'perdida': ferramenta.quantidade_perdida,
+                'total': ferramenta.quantidade_total,
+            }
+        return mapa
+
+    def _build_ferramenta_obras_quantidades_map(self):
+        mapa = {}
+        localizacoes = LocalizacaoFerramenta.objects.filter(
+            local_tipo='obra',
+            quantidade__gt=0,
+            ferramenta__ativo=True,
+            obra__ativo=True
+        ).values('ferramenta_id', 'obra_id', 'quantidade')
+        for item in localizacoes:
+            ferramenta_id = str(item['ferramenta_id'])
+            obra_id = str(item['obra_id'])
+            quantidade = item['quantidade']
+            if not item['obra_id']:
+                continue
+            mapa.setdefault(ferramenta_id, {})
+            mapa[ferramenta_id][obra_id] = quantidade
         return mapa
 
     def clean(self):
