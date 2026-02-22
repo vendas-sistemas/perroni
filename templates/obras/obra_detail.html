@@ -60,7 +60,6 @@
           <p><strong>Término previsto:</strong> {{ obra.data_termino_previsto }}</p>
         </div>
       </div>
-      <!-- Fiscalização removida em 21/02/2026: usar apontamento em lote -->
       <a href="{% url 'funcionarios:apontamento_lote_create' %}?obra={{ obra.pk }}" class="btn btn-success w-100 mb-2">
         <i class="bi bi-clipboard-check"></i> Fiscalizar Obra
       </a>

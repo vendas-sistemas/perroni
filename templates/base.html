@@ -381,10 +381,9 @@
               <li><a class="dropdown-item" href="/funcionarios/"><i class="bi bi-person-lines-fill text-primary"></i> Lista de Funcionários</a></li>
               <li><hr class="dropdown-divider"></li>
               <li class="dropdown-section-label">Apontamentos</li>
-              <!-- Registro Diário removido em 21/02/2026: usar Fiscalizar Obras -->
               <li><a class="dropdown-item" href="{% url 'funcionarios:apontamento_lote_create' %}"><i class="bi bi-person-plus-fill text-info"></i> Fiscalizar Obras</a></li>
               <li><a class="dropdown-item" href="{% url 'funcionarios:apontamento_lote_list' %}"><i class="bi bi-list-ul text-info"></i> Ver Obras Fiscalizadas</a></li>
-              <li><a class="dropdown-item" href="/funcionarios/apontamentos/"><i class="bi bi-list-check text-muted"></i> Todos as dárias</a></li>
+              <li><a class="dropdown-item" href="/funcionarios/apontamentos/"><i class="bi bi-list-check text-muted"></i> Todas as diárias</a></li>
               <li><hr class="dropdown-divider"></li>
               <li class="dropdown-section-label">Fechamentos</li>
               <li><a class="dropdown-item" href="/funcionarios/fechamentos/"><i class="bi bi-calculator text-muted"></i> Fechamentos Semanais</a></li>
@@ -551,17 +550,19 @@
               <i class="bi bi-people"></i> Funcionários
             </a>
             <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="/funcionarios/"><i class="bi bi-person-lines-fill"></i> Lista</a></li>
+              <li class="dropdown-section-label">Cadastro</li>
+              <li><a class="dropdown-item" href="/funcionarios/"><i class="bi bi-person-lines-fill text-primary"></i> Lista de Funcionários</a></li>
               <li><hr class="dropdown-divider"></li>
-              <!-- Registro Diário removido em 21/02/2026: usar Apontamento em Lote -->
-              <li><a class="dropdown-item" href="{% url 'funcionarios:apontamento_lote_create' %}"><i class="bi bi-person-plus-fill"></i> Apontamento em Lote</a></li>
-              <li><a class="dropdown-item" href="{% url 'funcionarios:apontamento_lote_list' %}"><i class="bi bi-list-ul"></i> Ver Apontamentos em Lote</a></li>
-              <li><a class="dropdown-item" href="/funcionarios/apontamentos/"><i class="bi bi-list-check"></i> Todos as dárias</a></li>
+              <li class="dropdown-section-label">Apontamentos</li>
+              <li><a class="dropdown-item" href="{% url 'funcionarios:apontamento_lote_create' %}"><i class="bi bi-person-plus-fill text-info"></i> Fiscalizar Obras</a></li>
+              <li><a class="dropdown-item" href="{% url 'funcionarios:apontamento_lote_list' %}"><i class="bi bi-list-ul text-info"></i> Ver Obras Fiscalizadas</a></li>
+              <li><a class="dropdown-item" href="/funcionarios/apontamentos/"><i class="bi bi-list-check text-muted"></i> Todas as diárias</a></li>
               <li><hr class="dropdown-divider"></li>
+              <li class="dropdown-section-label">Fechamentos</li>
               <li><button id="themeToggleMobile" class="dropdown-item" type="button"><i class="bi bi-moon-fill"></i> Tema Escuro</button></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="/funcionarios/fechamentos/"><i class="bi bi-calculator"></i> Fechamentos</a></li>
-              <li><a class="dropdown-item" href="/funcionarios/fechamentos/auto/"><i class="bi bi-lightning-charge"></i> <strong>Fech. Automático</strong></a></li>
+              <li><a class="dropdown-item" href="/funcionarios/fechamentos/"><i class="bi bi-calculator text-muted"></i> Fechamentos Semanais</a></li>
+              <li><a class="dropdown-item" href="/funcionarios/fechamentos/auto/"><i class="bi bi-lightning-charge text-warning"></i> <strong>Fechamento Automático</strong></a></li>
             </ul>
           </li>
           {% endif %}

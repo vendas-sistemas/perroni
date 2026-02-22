@@ -29,6 +29,7 @@
   }
   .mobile-card:nth-child(odd)  { background-color: #f8f9fa; }
   .mobile-card:nth-child(even) { background-color: #ffffff; }
+  .ferr-inativa { opacity: .72; }
 </style>
 {% endblock %}
 
@@ -108,13 +109,14 @@
       <!-- Search -->
       <form method="get" class="d-flex search-box flex-grow-1" action="">
         {% if categoria_filter %}<input type="hidden" name="categoria" value="{{ categoria_filter }}">{% endif %}
+        {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
         <input type="hidden" name="per_page" value="{{ per_page }}">
         <div class="input-group input-group-sm">
           <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
           <input type="text" name="q" value="{{ busca }}" class="form-control border-start-0"
                  placeholder="Buscar por nome ou código...">
           {% if busca %}
-          <a href="?{% if categoria_filter %}categoria={{ categoria_filter }}&{% endif %}per_page={{ per_page }}" class="btn btn-outline-secondary btn-sm">
+          <a href="?{% if categoria_filter %}categoria={{ categoria_filter }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}per_page={{ per_page }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-x-lg"></i>
           </a>
           {% endif %}
@@ -131,14 +133,33 @@
           {% endif %}
         </button>
         <ul class="dropdown-menu">
-          <li><a class="dropdown-item" href="?{% if busca %}q={{ busca }}&{% endif %}per_page={{ per_page }}">Todas</a></li>
+          <li><a class="dropdown-item" href="?{% if busca %}q={{ busca }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}per_page={{ per_page }}">Todas</a></li>
           <li><hr class="dropdown-divider"></li>
           {% for k,v in category_choices %}
           <li>
             <a class="dropdown-item {% if categoria_filter == k %}active{% endif %}"
-               href="?categoria={{ k }}{% if busca %}&q={{ busca }}{% endif %}&per_page={{ per_page }}">{{ v }}</a>
+               href="?categoria={{ k }}{% if busca %}&q={{ busca }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}">{{ v }}</a>
           </li>
           {% endfor %}
+        </ul>
+      </div>
+
+      <!-- Status dropdown -->
+      <div class="dropdown">
+        <button class="btn btn-sm {% if status_filter %}btn-secondary{% else %}btn-outline-secondary{% endif %} dropdown-toggle d-flex align-items-center gap-1" type="button" data-bs-toggle="dropdown">
+          <i class="bi bi-toggle-on"></i>
+          {% if status_filter == 'ativas' %}
+            Ativas
+          {% elif status_filter == 'inativas' %}
+            Inativas
+          {% else %}
+            Status
+          {% endif %}
+        </button>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item {% if not status_filter %}active{% endif %}" href="?{% if busca %}q={{ busca }}&{% endif %}{% if categoria_filter %}categoria={{ categoria_filter }}&{% endif %}per_page={{ per_page }}">Todas</a></li>
+          <li><a class="dropdown-item {% if status_filter == 'ativas' %}active{% endif %}" href="?status=ativas{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}&per_page={{ per_page }}">Ativas</a></li>
+          <li><a class="dropdown-item {% if status_filter == 'inativas' %}active{% endif %}" href="?status=inativas{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}&per_page={{ per_page }}">Inativas</a></li>
         </ul>
       </div>
     </div>
@@ -152,11 +173,11 @@
   </small>
   <div class="d-flex align-items-center gap-1">
     <small class="text-muted me-1">Exibir:</small>
-    <a href="?per_page=10{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}"
+     <a href="?per_page=10{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
        class="badge text-decoration-none px-2 py-1 {% if per_page == 10 %}bg-dark{% else %}bg-light text-dark border{% endif %}">10</a>
-    <a href="?per_page=15{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}"
+     <a href="?per_page=15{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
        class="badge text-decoration-none px-2 py-1 {% if per_page == 15 %}bg-dark{% else %}bg-light text-dark border{% endif %}">15</a>
-    <a href="?per_page=20{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}"
+     <a href="?per_page=20{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
        class="badge text-decoration-none px-2 py-1 {% if per_page == 20 %}bg-dark{% else %}bg-light text-dark border{% endif %}">20</a>
   </div>
 </div>
@@ -202,7 +223,7 @@
       </thead>
       <tbody>
         {% for f in ferramentas %}
-        <tr class="ferr-row border-bottom">
+        <tr class="ferr-row border-bottom {% if not f.ativo %}ferr-inativa{% endif %}">
           <td class="text-center">
             <input type="checkbox" class="form-check-input chk-ferramenta" value="{{ f.id }}">
           </td>
@@ -219,6 +240,11 @@
               {% endif %}
               {{ f.nome }}
             </a>
+            {% if f.ativo %}
+            <span class="badge bg-success-subtle text-success border ms-2">Ativa</span>
+            {% else %}
+            <span class="badge bg-secondary-subtle text-secondary border ms-2">Inativa</span>
+            {% endif %}
           </td>
           <td class="text-center small">{{ f.get_categoria_display }}</td>
           <td class="text-center">
@@ -266,7 +292,7 @@
 <div class="ferr-mobile">
   {% for f in ferramentas %}
   <div class="card border-0 shadow-sm mb-2 mobile-card">
-    <div class="card-body py-2 px-3">
+    <div class="card-body py-2 px-3 {% if not f.ativo %}ferr-inativa{% endif %}">
       <div class="d-flex justify-content-between align-items-start">
         <div class="min-w-0 flex-grow-1">
           <a href="{% url 'ferramentas:ferramenta_detail' f.pk %}" class="text-decoration-none fw-semibold text-dark d-block text-truncate">
@@ -280,6 +306,11 @@
           </a>
           <div class="d-flex flex-wrap gap-2 mt-1 small">
             <span class="badge bg-light text-dark border font-monospace">{{ f.codigo }}</span>
+            {% if f.ativo %}
+            <span class="badge bg-success-subtle text-success border">Ativa</span>
+            {% else %}
+            <span class="badge bg-secondary-subtle text-secondary border">Inativa</span>
+            {% endif %}
             <span class="badge bg-primary px-2 py-1">
               <i class="bi bi-stack"></i> Total: {{ f.quantidade_total }}
             </span>
@@ -356,7 +387,7 @@
   <div class="card-body text-center py-5 text-muted">
     <i class="bi bi-tools fs-1"></i>
     <p class="mt-2 mb-0">Nenhuma ferramenta encontrada.</p>
-    {% if busca or categoria_filter %}
+    {% if busca or categoria_filter or status_filter %}
     <a href="{% url 'ferramentas:ferramenta_list' %}" class="btn btn-sm btn-outline-primary mt-3">
       <i class="bi bi-arrow-counterclockwise"></i> Limpar filtros
     </a>
@@ -392,8 +423,10 @@
         const paramsAtual = new URLSearchParams(window.location.search);
         const q = paramsAtual.get('q');
         const categoria = paramsAtual.get('categoria');
+        const status = paramsAtual.get('status');
         if (q) url.searchParams.set('q', q);
         if (categoria) url.searchParams.set('categoria', categoria);
+        if (status) url.searchParams.set('status', status);
       }
 
       window.open(url.toString(), '_blank');

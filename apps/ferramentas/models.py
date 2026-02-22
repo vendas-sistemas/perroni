@@ -79,7 +79,7 @@ class Ferramenta(models.Model):
     ativo = models.BooleanField(
         default=True,
         verbose_name="Ativo",
-        help_text="Ferramentas inativas não aparecem nas listagens"
+        help_text="Define se a ferramenta está ativa; itens inativos podem ser exibidos via filtro na listagem"
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Atualizado em")

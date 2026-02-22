@@ -24,12 +24,18 @@ import json
 
 def _filtrar_ferramentas_queryset(request):
     """Aplica os filtros de listagem de ferramentas."""
-    qs = Ferramenta.objects.filter(ativo=True)
+    qs = Ferramenta.objects.all()
 
     codigo = request.GET.get('codigo')
     nome = request.GET.get('nome')
     categoria = request.GET.get('categoria')
+    status = request.GET.get('status', '').strip()
     busca = request.GET.get('q', '').strip()
+
+    if status == 'ativas':
+        qs = qs.filter(ativo=True)
+    elif status == 'inativas':
+        qs = qs.filter(ativo=False)
 
     if busca:
         qs = qs.filter(
@@ -43,13 +49,13 @@ def _filtrar_ferramentas_queryset(request):
     if categoria:
         qs = qs.filter(categoria=categoria)
 
-    return qs, busca, categoria
+    return qs, busca, categoria, status
 
 
 @login_required
 def ferramenta_list(request):
     """Lista ferramentas"""
-    qs, busca, categoria = _filtrar_ferramentas_queryset(request)
+    qs, busca, categoria, status = _filtrar_ferramentas_queryset(request)
 
     # Ordering
     order = request.GET.get('order', 'nome')
@@ -66,21 +72,29 @@ def ferramenta_list(request):
     qs = qs.order_by(order_field)
 
     # Contadores
-    all_active = Ferramenta.objects.filter(ativo=True)
-    total_ferramentas = all_active.count()
+    base_status_qs = Ferramenta.objects.all()
+    localizacao_filters = {}
+    if status == 'ativas':
+        base_status_qs = base_status_qs.filter(ativo=True)
+        localizacao_filters['ferramenta__ativo'] = True
+    elif status == 'inativas':
+        base_status_qs = base_status_qs.filter(ativo=False)
+        localizacao_filters['ferramenta__ativo'] = False
+
+    total_ferramentas = base_status_qs.count()
     
     # Somar quantidades por localização
     from django.db.models import Sum
     total_deposito = LocalizacaoFerramenta.objects.filter(
-        local_tipo='deposito', ferramenta__ativo=True
+        local_tipo='deposito', **localizacao_filters
     ).aggregate(total=Sum('quantidade'))['total'] or 0
     
     total_em_obra = LocalizacaoFerramenta.objects.filter(
-        local_tipo='obra', ferramenta__ativo=True
+        local_tipo='obra', **localizacao_filters
     ).aggregate(total=Sum('quantidade'))['total'] or 0
     
     total_manutencao = LocalizacaoFerramenta.objects.filter(
-        local_tipo='manutencao', ferramenta__ativo=True
+        local_tipo='manutencao', **localizacao_filters
     ).aggregate(total=Sum('quantidade'))['total'] or 0
     
     total_resultado = qs.count()
@@ -118,6 +132,7 @@ def ferramenta_list(request):
         'category_choices': [(k, v) for k, v in Ferramenta._meta.get_field('categoria').choices],
         'busca': busca,
         'categoria_filter': categoria or '',
+        'status_filter': status,
         'total_ferramentas': total_ferramentas,
         'total_deposito': total_deposito,
         'total_em_obra': total_em_obra,
@@ -137,9 +152,9 @@ def ferramenta_relatorio_impressao(request):
     ids = request.GET.getlist('ids')
 
     if ids:
-        ferramentas_qs = Ferramenta.objects.filter(ativo=True, id__in=ids).order_by('nome')
+        ferramentas_qs = Ferramenta.objects.filter(id__in=ids).order_by('nome')
     else:
-        ferramentas_qs, _, _ = _filtrar_ferramentas_queryset(request)
+        ferramentas_qs, _, _, _ = _filtrar_ferramentas_queryset(request)
         ferramentas_qs = ferramentas_qs.order_by('nome')
 
     ferramentas = list(ferramentas_qs)
@@ -190,6 +205,7 @@ def ferramenta_relatorio_impressao(request):
         'filtros': {
             'q': request.GET.get('q', '').strip(),
             'categoria': request.GET.get('categoria', '').strip(),
+            'status': request.GET.get('status', '').strip(),
         },
     }
     return render(request, 'ferramentas/ferramenta_relatorio_impressao.html', context)
