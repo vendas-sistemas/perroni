@@ -43,6 +43,9 @@ db.sqlite3-journal
 scripts/
 docs/
 media/
+/scripts
+/media
+
 
 
 # IDEs
