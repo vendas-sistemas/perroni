@@ -48,7 +48,7 @@
       <a href="{% url 'funcionarios:apontamento_list' %}" class="btn btn-outline-primary btn-sm">
         <i class="bi bi-list-ul"></i> Apontamentos
       </a>
-      <a href="{% url 'funcionarios:apontamento_create' %}" class="btn btn-primary btn-sm">
+      <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-primary btn-sm">
         <i class="bi bi-plus-lg"></i> Novo Apontamento
       </a>
     </div>
@@ -88,24 +88,29 @@
               <i class="bi bi-funnel"></i> Filtrar
             </button>
           </div>
+          <div class="col-md-1 d-flex gap-1">
+            <a href="{% url 'relatorios:dashboard' %}" class="btn btn-outline-secondary btn-sm w-100">
+              <i class="bi bi-x-circle"></i> Limpar
+            </a>
+          </div>
         </div>
       </form>
     </div>
   </div>
 
-  {% if filtros_informados %}
+  
   <!-- Exportações -->
   <div class="d-flex gap-2 mb-4 flex-wrap">
-    <a href="{% url 'relatorios:exportar_pdf' %}?{{ request.GET.urlencode }}"
+    <a href="{% url 'relatorios:exportar_pdf' %}{% if export_querystring %}?{{ export_querystring }}{% endif %}"
        class="btn btn-danger btn-sm export-btn">
       <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
     </a>
-    <a href="{% url 'relatorios:exportar_excel' %}?{{ request.GET.urlencode }}"
+    <a href="{% url 'relatorios:exportar_excel' %}{% if export_querystring %}?{{ export_querystring }}{% endif %}"
        class="btn btn-success btn-sm export-btn">
       <i class="bi bi-file-earmark-excel"></i> Exportar Excel
     </a>
   </div>
-  {% endif %}
+  
 
   {% if not ranking_por_etapas and not media_dias_etapa and not media_individual and not apontamentos_periodo %}
     <div class="card section-card shadow-sm">
@@ -113,7 +118,7 @@
         <i class="bi bi-clipboard-data"></i>
         <h5>Nenhum dado encontrado</h5>
         <p>Cadastre apontamentos diários com metragem executada para visualizar os relatórios.</p>
-        <a href="{% url 'funcionarios:apontamento_create' %}" class="btn btn-primary btn-sm">
+        <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-primary btn-sm">
           <i class="bi bi-plus-lg"></i> Novo Apontamento
         </a>
       </div>
@@ -285,7 +290,6 @@
               <th rowspan="2" class="text-center align-middle">Retra<br>balho</th>
               <th rowspan="2" class="text-center align-middle">Horas</th>
               <th rowspan="2" class="text-center align-middle">Total<br>Recebido</th>
-              <th rowspan="2" class="text-center align-middle">Metrag.<br>(m²)</th>
             </tr>
             <tr>
               <th class="text-center border-start"><span class="badge bg-primary">7F</span><br><small class="text-muted fw-normal">blocos</small></th>
@@ -298,7 +302,7 @@
           <tbody>
             {% for r in media_individual %}
             <tr>
-              <td>{{ forloop.counter }}</td>
+              <td>{{ media_individual.start_index|add:forloop.counter0 }}</td>
               <td class="fw-semibold">{{ r.nome }}</td>
               <td class="text-center border-start">
                 {% if r.media_7fiadas != '-' %}<span class="badge bg-primary">{{ r.media_7fiadas }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
@@ -328,14 +332,36 @@
               </td>
               <td class="text-center">{{ r.total_horas|floatformat:1 }}</td>
               <td class="text-center">R$ {{ r.total_valor|floatformat:2 }}</td>
-              <td class="text-center">{{ r.total_metragem|floatformat:2 }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="12" class="text-muted text-center">Sem dados</td></tr>
+            <tr><td colspan="11" class="text-muted text-center">Sem dados</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+      {% if media_pag.page_obj.paginator.num_pages > 1 %}
+      <nav aria-label="Paginacao rendimento individual" class="mt-3">
+        <ul class="pagination pagination-sm flex-wrap mb-0">
+          <li class="page-item {% if not media_pag.page_obj.has_previous %}disabled{% endif %}">
+            <a class="page-link" href="{% if media_pag.page_obj.has_previous %}{{ media_pag.first_url }}{% else %}#{% endif %}">Primeira</a>
+          </li>
+          <li class="page-item {% if not media_pag.page_obj.has_previous %}disabled{% endif %}">
+            <a class="page-link" href="{% if media_pag.page_obj.has_previous %}{{ media_pag.prev_url }}{% else %}#{% endif %}">Anterior</a>
+          </li>
+          {% for n in media_pag.pages %}
+          <li class="page-item {% if media_pag.page_obj.number == n %}active{% endif %}">
+            <a class="page-link" href="?page_media={{ n }}{% if request.GET.page_apontamentos %}&page_apontamentos={{ request.GET.page_apontamentos }}{% endif %}{% if request.GET.obra %}&obra={{ request.GET.obra }}{% endif %}{% if request.GET.etapa %}&etapa={{ request.GET.etapa }}{% endif %}{% if request.GET.funcionario %}&funcionario={{ request.GET.funcionario }}{% endif %}{% if request.GET.clima %}&clima={{ request.GET.clima }}{% endif %}{% if request.GET.data_inicio %}&data_inicio={{ request.GET.data_inicio }}{% endif %}{% if request.GET.data_fim %}&data_fim={{ request.GET.data_fim }}{% endif %}">{{ n }}</a>
+          </li>
+          {% endfor %}
+          <li class="page-item {% if not media_pag.page_obj.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{% if media_pag.page_obj.has_next %}{{ media_pag.next_url }}{% else %}#{% endif %}">Proxima</a>
+          </li>
+          <li class="page-item {% if not media_pag.page_obj.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{% if media_pag.page_obj.has_next %}{{ media_pag.last_url }}{% else %}#{% endif %}">Ultima</a>
+          </li>
+        </ul>
+      </nav>
+      {% endif %}
     </div>
   </div>
 
@@ -394,6 +420,29 @@
           </tbody>
         </table>
       </div>
+      {% if apontamentos_pag.page_obj.paginator.num_pages > 1 %}
+      <nav aria-label="Paginacao apontamentos do periodo" class="mt-3">
+        <ul class="pagination pagination-sm flex-wrap mb-0">
+          <li class="page-item {% if not apontamentos_pag.page_obj.has_previous %}disabled{% endif %}">
+            <a class="page-link" href="{% if apontamentos_pag.page_obj.has_previous %}{{ apontamentos_pag.first_url }}{% else %}#{% endif %}">Primeira</a>
+          </li>
+          <li class="page-item {% if not apontamentos_pag.page_obj.has_previous %}disabled{% endif %}">
+            <a class="page-link" href="{% if apontamentos_pag.page_obj.has_previous %}{{ apontamentos_pag.prev_url }}{% else %}#{% endif %}">Anterior</a>
+          </li>
+          {% for n in apontamentos_pag.pages %}
+          <li class="page-item {% if apontamentos_pag.page_obj.number == n %}active{% endif %}">
+            <a class="page-link" href="?page_apontamentos={{ n }}{% if request.GET.page_media %}&page_media={{ request.GET.page_media }}{% endif %}{% if request.GET.obra %}&obra={{ request.GET.obra }}{% endif %}{% if request.GET.etapa %}&etapa={{ request.GET.etapa }}{% endif %}{% if request.GET.funcionario %}&funcionario={{ request.GET.funcionario }}{% endif %}{% if request.GET.clima %}&clima={{ request.GET.clima }}{% endif %}{% if request.GET.data_inicio %}&data_inicio={{ request.GET.data_inicio }}{% endif %}{% if request.GET.data_fim %}&data_fim={{ request.GET.data_fim }}{% endif %}">{{ n }}</a>
+          </li>
+          {% endfor %}
+          <li class="page-item {% if not apontamentos_pag.page_obj.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{% if apontamentos_pag.page_obj.has_next %}{{ apontamentos_pag.next_url }}{% else %}#{% endif %}">Proxima</a>
+          </li>
+          <li class="page-item {% if not apontamentos_pag.page_obj.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{% if apontamentos_pag.page_obj.has_next %}{{ apontamentos_pag.last_url }}{% else %}#{% endif %}">Ultima</a>
+          </li>
+        </ul>
+      </nav>
+      {% endif %}
     </div>
   </div>
 
@@ -464,3 +513,5 @@
   });
 </script>
 {% endblock %}
+
+

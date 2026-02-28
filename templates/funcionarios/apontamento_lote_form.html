@@ -45,6 +45,38 @@
     right: .35rem;
     z-index: 2;
   }
+  .etapas-salvas-fixas {
+    position: fixed;
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%);
+    width: min(1100px, calc(100% - 24px));
+    z-index: 1055;
+  }
+  .etapas-salvas-fixas .alert {
+    margin-bottom: 0;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  }
+  .etapas-salvas-lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: .5rem;
+  }
+  .etapas-salvas-item {
+    display: inline-flex;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #badbcc;
+    border-radius: 999px;
+    padding: .2rem .65rem;
+    font-size: .875rem;
+    line-height: 1.2;
+  }
+  .etapas-salvas-item small {
+    margin-left: .4rem;
+    color: #6c757d;
+  }
 </style>
 {% endblock %}
 
@@ -62,8 +94,9 @@
 
     <div class="card shadow">
         <div class="card-body">
-            <form method="post" enctype="multipart/form-data" id="form-apontamento-lote">
+            <form method="post" enctype="multipart/form-data" id="form-apontamento-lote" autocomplete="off">
                 {% csrf_token %}
+                <div id="mensagens-ui" class="mb-3"></div>
                 
                 <!-- CABEÇALHO -->
                 <h5 class="mb-3"><i class="bi bi-info-circle"></i> Informações Básicas</h5>
@@ -191,7 +224,7 @@
                            id="input-fotos">
                     <div class="mt-2">
                         <label for="input-fotos-camera" class="btn btn-outline-primary btn-sm">
-                            <i class="bi bi-camera-fill"></i> Tirar Foto (celular)
+                            <i class="bi bi-camera-fill"></i> Tirar Foto
                         </label>
                         <input type="file"
                                class="d-none"
@@ -210,25 +243,106 @@
                 <hr>
                 
                 <!-- BOTÕES -->
-                <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-success btn-lg">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <button type="submit" class="btn btn-success btn-sm" id="btn-salvar-apontamento">
                         <i class="bi bi-check-circle"></i> Salvar Apontamento
                     </button>
-                    <a href="{% url 'funcionarios:apontamento_list' %}" class="btn btn-secondary">
+                    <a href="{% url 'funcionarios:apontamento_list' %}" class="btn btn-secondary btn-sm" id="btn-cancelar-apontamento">
                         <i class="bi bi-x-circle"></i> Cancelar
                     </a>
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-salvar-etapa" style="display: none;">
+                        <i class="bi bi-save2"></i> Salvar Etapa
+                    </button>
                 </div>
+                <div id="mensagens-ui-acoes" class="mt-2"></div>
             </form>
         </div>
     </div>
 </div>
+<div id="resumo-etapas-salvas-fixo" class="etapas-salvas-fixas d-none" aria-live="polite"></div>
 
 <script>
 // Lista de funcionários disponível (serializada do servidor)
 const funcionariosDisponiveis = {{ funcionarios_json|safe }};
+const tbodyFuncionarios = document.getElementById('funcionarios-tbody');
+const btnAdicionarFuncionario = document.getElementById('btn-adicionar-funcionario');
+const selectObra = document.getElementById('id_obra');
+const selectEtapa = document.getElementById('id_etapa');
+const inputData = document.getElementById('id_data');
+const btnSalvarEtapa = document.getElementById('btn-salvar-etapa');
+const btnCancelarApontamento = document.getElementById('btn-cancelar-apontamento');
+const formApontamentoLote = document.getElementById('form-apontamento-lote');
+const mensagensUi = document.getElementById('mensagens-ui');
+const mensagensUiAcoes = document.getElementById('mensagens-ui-acoes');
+const resumoEtapasFixas = document.getElementById('resumo-etapas-salvas-fixo');
+const RASCUNHO_PREFIX = 'apontamento_lote_etapa_rascunho';
 
 // Conjunto para evitar duplicatas
 const funcionariosSelecionados = new Set();
+
+function mostrarMensagemUI(texto, tipo = 'info', autoOcultarMs = 4000) {
+    const alvo = mensagensUiAcoes || mensagensUi;
+    if (!alvo) return;
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${tipo} alert-dismissible fade show`;
+    alert.setAttribute('role', 'alert');
+    alert.innerHTML = `
+        ${texto}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    alvo.prepend(alert);
+
+    if (autoOcultarMs && autoOcultarMs > 0) {
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, autoOcultarMs);
+    }
+}
+
+function escapeHtml(texto) {
+    return String(texto || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatarHorarioSalvo(isoString) {
+    if (!isoString) return '';
+    const dt = new Date(isoString);
+    if (Number.isNaN(dt.getTime())) return '';
+    return dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderizarResumoEtapasSalvasFixas() {
+    if (!resumoEtapasFixas) return;
+
+    const rascunhos = listarRascunhosContextoAtual();
+    if (!rascunhos.length) {
+        resumoEtapasFixas.classList.add('d-none');
+        resumoEtapasFixas.innerHTML = '';
+        return;
+    }
+
+    const itensHtml = rascunhos.map(r => {
+        const etapaLabel = escapeHtml(r.etapa_label || `Etapa ${r.etapa_id || ''}`.trim());
+        const horario = formatarHorarioSalvo(r.salvo_em);
+        const horarioHtml = horario ? `<small>${escapeHtml(horario)}</small>` : '';
+        return `<span class="etapas-salvas-item"><i class="bi bi-check-circle-fill text-success me-1"></i>${etapaLabel}${horarioHtml}</span>`;
+    }).join('');
+
+    resumoEtapasFixas.innerHTML = `
+        <div class="alert alert-success border-success" role="status">
+            <strong>Etapas salvas no rascunho:</strong>
+            <div class="etapas-salvas-lista">${itensHtml}</div>
+            <div class="small mt-2">Revise e clique em "Salvar Apontamento" para confirmar no sistema.</div>
+        </div>
+    `;
+    resumoEtapasFixas.classList.remove('d-none');
+}
 
 function getFuncionariosOptions(excluirIds = []) {
     return funcionariosDisponiveis
@@ -239,21 +353,319 @@ function getFuncionariosOptions(excluirIds = []) {
 
 function atualizarSelects() {
     document.querySelectorAll('.funcionario-select').forEach(select => {
-        const valorAtual = select.value ? parseInt(select.value) : null;
+        const valorAtualStr = String(select.value || '').trim();
+        const valorAtual = valorAtualStr ? parseInt(valorAtualStr, 10) : null;
         const excluir = Array.from(funcionariosSelecionados).filter(id => id !== valorAtual);
         const optionsHtml = `<option value="">Selecione...</option>` + getFuncionariosOptions(excluir);
         select.innerHTML = optionsHtml;
-        if (valorAtual) select.value = String(valorAtual);
+        if (valorAtual) {
+            select.value = String(valorAtual);
+            // Se por algum motivo a opção não existir no HTML reconstruído, mantém visível.
+            if (select.value !== String(valorAtual)) {
+                const opt = document.createElement('option');
+                opt.value = String(valorAtual);
+                opt.textContent = `Funcionário #${valorAtual}`;
+                select.appendChild(opt);
+                select.value = String(valorAtual);
+            }
+        }
     });
+}
+
+function atualizarBotaoSalvarEtapa() {
+    if (!btnSalvarEtapa) return;
+    const optionSelecionada = selectEtapa.options[selectEtapa.selectedIndex];
+    const etapaLabel = optionSelecionada && selectEtapa.value ? optionSelecionada.textContent.trim() : '';
+    if (etapaLabel) {
+        btnSalvarEtapa.style.display = 'inline-block';
+        btnSalvarEtapa.innerHTML = `<i class="bi bi-save2"></i> Salvar ${etapaLabel}`;
+    } else {
+        btnSalvarEtapa.style.display = 'none';
+        btnSalvarEtapa.innerHTML = '<i class="bi bi-save2"></i> Salvar Etapa';
+    }
+}
+
+function atualizarBadgeFuncao(select) {
+    const option = select.options[select.selectedIndex];
+    const funcao = option ? option.getAttribute('data-funcao') : null;
+    const badge = select.closest('tr').querySelector('.funcao-badge');
+
+    if (funcao === 'pedreiro') {
+        badge.textContent = 'Pedreiro';
+        badge.className = 'badge badge-pedreiro';
+    } else if (funcao === 'servente') {
+        badge.textContent = 'Servente';
+        badge.className = 'badge badge-servente';
+    } else {
+        badge.textContent = '-';
+        badge.className = 'badge bg-secondary funcao-badge';
+    }
+}
+
+function obterLabelEtapaAtual() {
+    const option = selectEtapa.options[selectEtapa.selectedIndex];
+    return option && selectEtapa.value ? option.textContent.trim() : '';
+}
+
+function montarChaveRascunho(obraId, data, etapaId) {
+    return `${RASCUNHO_PREFIX}:${obraId}:${data}:${etapaId}`;
+}
+
+function obterChaveRascunhoAtual() {
+    const obraId = selectObra.value;
+    const data = inputData.value;
+    const etapaId = selectEtapa.value;
+    if (!obraId || !data || !etapaId) return null;
+    return montarChaveRascunho(obraId, data, etapaId);
+}
+
+function limparRascunhos() {
+    const keys = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith(`${RASCUNHO_PREFIX}:`)) {
+            keys.push(key);
+        }
+    }
+    keys.forEach(key => sessionStorage.removeItem(key));
+    renderizarResumoEtapasSalvasFixas();
+}
+
+function listarRascunhosContextoAtual() {
+    const obraId = selectObra.value;
+    const data = inputData.value;
+    if (!obraId || !data) return [];
+
+    const prefixo = `${RASCUNHO_PREFIX}:${obraId}:${data}:`;
+    const rascunhos = [];
+
+    for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (!key || !key.startsWith(prefixo)) continue;
+        try {
+            const raw = sessionStorage.getItem(key);
+            if (!raw) continue;
+            const payload = JSON.parse(raw);
+            if (payload && payload.etapa_id) {
+                rascunhos.push(payload);
+            }
+        } catch (err) {
+            // ignora rascunhos inválidos
+        }
+    }
+
+    rascunhos.sort((a, b) => {
+        const ta = Date.parse(a.salvo_em || '') || 0;
+        const tb = Date.parse(b.salvo_em || '') || 0;
+        return tb - ta;
+    });
+
+    return rascunhos;
+}
+
+function preencherSubmitComRascunhoSeNecessario() {
+    if (selectEtapa.value) return;
+
+    const rascunhos = listarRascunhosContextoAtual();
+    if (!rascunhos.length) return;
+
+    const rascunho = rascunhos[0];
+    const etapaId = String(rascunho.etapa_id || '').trim();
+    if (!etapaId) return;
+
+    const optionExistente = Array.from(selectEtapa.options).some(opt => String(opt.value) === etapaId);
+    if (!optionExistente) {
+        const opt = document.createElement('option');
+        opt.value = etapaId;
+        opt.textContent = rascunho.etapa_label || `Etapa ${etapaId}`;
+        selectEtapa.appendChild(opt);
+    }
+    selectEtapa.value = etapaId;
+
+    formApontamentoLote.querySelectorAll('input[data-rascunho-submit="1"]').forEach(el => el.remove());
+    const campos = rascunho.campos || {};
+    Object.entries(campos).forEach(([nomeCampo, valorCampo]) => {
+        const nomeInput = String(nomeCampo || '').trim();
+        if (!nomeInput) return;
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = nomeInput;
+        hidden.value = valorCampo === null || valorCampo === undefined ? '' : String(valorCampo);
+        hidden.setAttribute('data-rascunho-submit', '1');
+        formApontamentoLote.appendChild(hidden);
+    });
+}
+
+function anexarRascunhosNoSubmit() {
+    formApontamentoLote.querySelectorAll('input[data-rascunhos-json="1"]').forEach(el => el.remove());
+    const rascunhos = listarRascunhosContextoAtual();
+    if (!rascunhos.length) return;
+
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = 'rascunhos_etapas_json';
+    hidden.value = JSON.stringify(rascunhos);
+    hidden.setAttribute('data-rascunhos-json', '1');
+    formApontamentoLote.appendChild(hidden);
+}
+
+function coletarFuncionariosSelecionados() {
+    const funcionarios = [];
+    document.querySelectorAll('#funcionarios-tbody tr').forEach(row => {
+        const select = row.querySelector('select[name="funcionario"]');
+        const inputHoras = row.querySelector('input[name="horas_trabalhadas"]');
+        const valorSelecionado = select ? String(select.value || '').trim() : '';
+        if (!valorSelecionado) return;
+        const funcionarioId = parseInt(valorSelecionado, 10);
+        if (Number.isNaN(funcionarioId)) return;
+
+        funcionarios.push({
+            id: funcionarioId,
+            horas_trabalhadas: inputHoras ? (inputHoras.value || '8.0') : '8.0',
+        });
+    });
+    return funcionarios;
+}
+
+function coletarCamposEtapa() {
+    const campos = {};
+    document.querySelectorAll('#campos-etapa-fields [name^="campo_"]').forEach(input => {
+        if (input.type === 'checkbox') {
+            campos[input.name] = !!input.checked;
+        } else {
+            campos[input.name] = input.value || '';
+        }
+    });
+    return campos;
+}
+
+function aplicarCamposEtapa(campos) {
+    if (!campos) return;
+    Object.entries(campos).forEach(([campoNome, campoValor]) => {
+        const input = document.querySelector(`#campos-etapa-fields [name="${campoNome}"]`);
+        if (!input) return;
+        if (input.type === 'checkbox') {
+            input.checked = !!campoValor;
+        } else {
+            input.value = campoValor || '';
+        }
+    });
+}
+
+function zerarCamposNumericosEtapa() {
+    document.querySelectorAll('#campos-etapa-fields input[type="number"][name^="campo_"]').forEach((input) => {
+        if (input.disabled || input.readOnly) return;
+        input.value = '0';
+    });
+}
+
+function carregarRascunhoEtapaAtual() {
+    const chave = obterChaveRascunhoAtual();
+    if (!chave) return null;
+    const raw = sessionStorage.getItem(chave);
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch (err) {
+        sessionStorage.removeItem(chave);
+        return null;
+    }
+}
+
+function parseNumeroCampo(valor) {
+    if (valor === null || valor === undefined) return null;
+    if (typeof valor === 'number') {
+        return Number.isFinite(valor) ? valor : null;
+    }
+    const texto = String(valor).trim();
+    if (!texto) return null;
+    if (!/^[-+]?\d+(\.\d+)?$/.test(texto)) return null;
+    const numero = Number(texto);
+    return Number.isFinite(numero) ? numero : null;
+}
+
+function mesclarCamposEtapa(camposAnteriores, camposNovos) {
+    const resultado = { ...(camposAnteriores || {}) };
+
+    Object.entries(camposNovos || {}).forEach(([nomeCampo, valorNovo]) => {
+        const valorNovoNumero = parseNumeroCampo(valorNovo);
+
+        // Campos numericos nao devem acumular no rascunho.
+        // A soma real acontece no backend ao confirmar o apontamento.
+        if (valorNovoNumero !== null) {
+            resultado[nomeCampo] = String(valorNovoNumero);
+            return;
+        }
+
+        // Campo vazio não sobrescreve valor anterior.
+        if (valorNovo === '' || valorNovo === null || valorNovo === undefined) {
+            return;
+        }
+
+        // Boolean e date/text: último valor informado prevalece.
+        resultado[nomeCampo] = valorNovo;
+    });
+
+    return resultado;
+}
+
+function salvarRascunhoEtapaAtual() {
+    try {
+        // Garante sincronismo mesmo se o browser atrasar evento "change" do select.
+        document.querySelectorAll('#funcionarios-tbody select[name="funcionario"]').forEach(select => {
+            if (select && String(select.value || '').trim()) {
+                const id = parseInt(select.value, 10);
+                if (!Number.isNaN(id)) funcionariosSelecionados.add(id);
+            }
+        });
+
+        const chave = obterChaveRascunhoAtual();
+        if (!chave) {
+            mostrarMensagemUI('Selecione obra, data e etapa para salvar.', 'warning');
+            return false;
+        }
+
+        const funcionarios = coletarFuncionariosSelecionados();
+        if (!funcionarios.length) {
+            mostrarMensagemUI('Selecione pelo menos 1 funcionario para salvar a etapa.', 'warning');
+            return false;
+        }
+
+        const rascunhoAtual = carregarRascunhoEtapaAtual() || {};
+        const camposMesclados = mesclarCamposEtapa(rascunhoAtual.campos, coletarCamposEtapa());
+
+        const payload = {
+            obra_id: selectObra.value,
+            data: inputData.value,
+            etapa_id: selectEtapa.value,
+            etapa_label: obterLabelEtapaAtual(),
+            funcionarios: funcionarios,
+            campos: camposMesclados,
+            salvo_em: new Date().toISOString(),
+        };
+        sessionStorage.setItem(chave, JSON.stringify(payload));
+        mostrarMensagemUI(`${payload.etapa_label || 'Etapa'} salva no rascunho. Clique em "Salvar Apontamento" para confirmar no sistema.`, 'success');
+        renderizarResumoEtapasSalvasFixas();
+        return true;
+    } catch (err) {
+        console.error('Erro ao salvar rascunho da etapa:', err);
+        mostrarMensagemUI('Nao foi possivel salvar a etapa no rascunho.', 'danger', 6000);
+        return false;
+    }
+}
+
+function resetarCamposProducaoDoDia() {
+    selectEtapa.value = '';
+    document.getElementById('campos-etapa-container').style.display = 'none';
+    document.getElementById('campos-etapa-fields').innerHTML = '';
+    atualizarBotaoSalvarEtapa();
+    selectEtapa.focus();
 }
 
 let contadorFuncionarios = 0;
 
-// Adicionar linha de funcionário
-document.getElementById('btn-adicionar-funcionario').addEventListener('click', function() {
-    const tbody = document.getElementById('funcionarios-tbody');
+function adicionarLinhaFuncionario(funcionarioId = '', horas = '8.0') {
     const row = document.createElement('tr');
-    // Options excluem já selecionados
     const excluir = Array.from(funcionariosSelecionados);
     const optionsHtml = `<option value="">Selecione...</option>` + getFuncionariosOptions(excluir);
 
@@ -268,7 +680,7 @@ document.getElementById('btn-adicionar-funcionario').addEventListener('click', f
         </td>
         <td>
             <input type="number" name="horas_trabalhadas" class="form-control" 
-                   value="8.0" step="0.5" min="0.5" max="24" required>
+                   value="${horas}" step="0.5" min="0.5" max="24" required>
         </td>
         <td class="text-center">
             <button type="button" class="btn btn-sm btn-danger btn-remover-funcionario">
@@ -276,55 +688,67 @@ document.getElementById('btn-adicionar-funcionario').addEventListener('click', f
             </button>
         </td>
     `;
-    tbody.appendChild(row);
+    tbodyFuncionarios.appendChild(row);
     contadorFuncionarios++;
+
+    if (funcionarioId) {
+        const select = row.querySelector('.funcionario-select');
+        select.value = String(funcionarioId);
+        atualizarBadgeFuncao(select);
+        funcionariosSelecionados.add(parseInt(funcionarioId, 10));
+    }
+
     atualizarSelects();
+}
+
+function preencherFuncionarios(funcionarios) {
+    tbodyFuncionarios.innerHTML = '';
+    funcionariosSelecionados.clear();
+    contadorFuncionarios = 0;
+
+    if (funcionarios && funcionarios.length) {
+        funcionarios.forEach(item => {
+            adicionarLinhaFuncionario(item.id, item.horas_trabalhadas || '8.0');
+        });
+        return;
+    }
+
+    adicionarLinhaFuncionario();
+}
+
+btnAdicionarFuncionario.addEventListener('click', function() {
+    adicionarLinhaFuncionario();
 });
 
-// Remover funcionário
-// Remover funcionário
 document.addEventListener('click', function(e) {
     if (e.target.closest('.btn-remover-funcionario')) {
         const row = e.target.closest('tr');
         const select = row.querySelector('.funcionario-select');
         if (select && select.value) {
-            funcionariosSelecionados.delete(parseInt(select.value));
+            funcionariosSelecionados.delete(parseInt(select.value, 10));
         }
         row.remove();
         contadorFuncionarios--;
+        if (contadorFuncionarios <= 0) {
+            adicionarLinhaFuncionario();
+        }
         atualizarSelects();
     }
 });
 
-// Atualizar função ao selecionar funcionário e evitar duplicatas
 document.addEventListener('change', function(e) {
     if (e.target.classList.contains('funcionario-select')) {
         const select = e.target;
-        const option = select.options[select.selectedIndex];
-        const funcao = option ? option.getAttribute('data-funcao') : null;
-        const badge = select.closest('tr').querySelector('.funcao-badge');
+        atualizarBadgeFuncao(select);
 
-        if (funcao === 'pedreiro') {
-            badge.textContent = 'Pedreiro';
-            badge.className = 'badge badge-pedreiro';
-        } else if (funcao === 'servente') {
-            badge.textContent = 'Servente';
-            badge.className = 'badge badge-servente';
-        } else {
-            badge.textContent = '-';
-            badge.className = 'badge bg-secondary funcao-badge';
-        }
-
-        // Recalcular conjunto de selecionados a partir dos selects atuais
         funcionariosSelecionados.clear();
         document.querySelectorAll('.funcionario-select').forEach(s => {
-            if (s.value) funcionariosSelecionados.add(parseInt(s.value));
+            if (s.value) funcionariosSelecionados.add(parseInt(s.value, 10));
         });
 
         atualizarSelects();
     }
 });
-
 // Mostrar/ocultar campos de ociosidade e retrabalho
 document.getElementById('id_houve_ociosidade').addEventListener('change', function() {
     document.getElementById('div-ociosidade').style.display = this.checked ? 'block' : 'none';
@@ -334,17 +758,54 @@ document.getElementById('id_houve_retrabalho').addEventListener('change', functi
     document.getElementById('div-retrabalho').style.display = this.checked ? 'block' : 'none';
 });
 
+function carregarContextoEtapa() {
+    const obraId = selectObra.value;
+    const etapaId = selectEtapa.value;
+    const dataSelecionada = inputData.value;
+    const rascunho = carregarRascunhoEtapaAtual();
+    const funcionariosAtuais = coletarFuncionariosSelecionados();
+    const temFuncionariosAtuais = funcionariosAtuais.length > 0;
+
+    if (!obraId || !etapaId || !dataSelecionada) {
+        return;
+    }
+
+    if (rascunho && rascunho.funcionarios && rascunho.funcionarios.length) {
+        preencherFuncionarios(rascunho.funcionarios);
+        return;
+    }
+
+    fetch(`/funcionarios/api/lote-etapa-contexto/?obra_id=${obraId}&etapa_id=${etapaId}&data=${dataSelecionada}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.encontrado && data.funcionarios && data.funcionarios.length) {
+                preencherFuncionarios(data.funcionarios);
+            } else {
+                // Se não há contexto salvo para a etapa, preserva o que o usuário já selecionou.
+                if (!temFuncionariosAtuais) {
+                    preencherFuncionarios([]);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar contexto da etapa:', error);
+            preencherFuncionarios([]);
+        });
+}
+
 // Carregar etapas ao selecionar obra
-document.getElementById('id_obra').addEventListener('change', function() {
+selectObra.addEventListener('change', function() {
     const obraId = this.value;
-    const etapaSelect = document.getElementById('id_etapa');
     
     // Limpar campos da etapa
     document.getElementById('campos-etapa-container').style.display = 'none';
     document.getElementById('campos-etapa-fields').innerHTML = '';
     
     if (!obraId) {
-        etapaSelect.innerHTML = '<option value="">Selecione uma obra primeiro</option>';
+        selectEtapa.innerHTML = '<option value="">Selecione uma obra primeiro</option>';
+        atualizarBotaoSalvarEtapa();
+        preencherFuncionarios([]);
+        renderizarResumoEtapasSalvasFixas();
         return;
     }
     
@@ -362,37 +823,46 @@ document.getElementById('id_obra').addEventListener('change', function() {
             console.error('Erro ao buscar possui_placa:', error);
         });
     
-    etapaSelect.disabled = true;
-    etapaSelect.innerHTML = '<option value="">Carregando...</option>';
+    selectEtapa.disabled = true;
+    selectEtapa.innerHTML = '<option value="">Carregando...</option>';
     
     fetch(`/funcionarios/api/etapas-por-obra/?obra_id=${obraId}`)
         .then(response => response.json())
         .then(data => {
-            etapaSelect.innerHTML = '<option value="">Selecione a etapa</option>';
+            selectEtapa.innerHTML = '<option value="">Selecione a etapa</option>';
             data.etapas.forEach(etapa => {
                 const option = document.createElement('option');
                 option.value = etapa.id;
                 option.textContent = etapa.label;
-                etapaSelect.appendChild(option);
+                selectEtapa.appendChild(option);
             });
-            etapaSelect.disabled = false;
+            selectEtapa.disabled = false;
+            atualizarBotaoSalvarEtapa();
+            preencherFuncionarios([]);
+            renderizarResumoEtapasSalvasFixas();
         })
         .catch(error => {
             console.error('Erro ao carregar etapas:', error);
-            etapaSelect.innerHTML = '<option value="">Erro ao carregar</option>';
-            etapaSelect.disabled = false;
+            selectEtapa.innerHTML = '<option value="">Erro ao carregar</option>';
+            selectEtapa.disabled = false;
+            atualizarBotaoSalvarEtapa();
+            preencherFuncionarios([]);
+            renderizarResumoEtapasSalvasFixas();
         });
 });
 
 // Carregar campos ao selecionar etapa
-document.getElementById('id_etapa').addEventListener('change', function() {
+selectEtapa.addEventListener('change', function() {
     const etapaId = this.value;
+    atualizarBotaoSalvarEtapa();
     
     if (!etapaId) {
         document.getElementById('campos-etapa-container').style.display = 'none';
         document.getElementById('campos-etapa-fields').innerHTML = '';
+        preencherFuncionarios([]);
         return;
     }
+    carregarContextoEtapa();
     
     console.log('Carregando campos da etapa:', etapaId);
     
@@ -403,7 +873,7 @@ document.getElementById('id_etapa').addEventListener('change', function() {
             console.log('Dados recebidos:', data);
             
             if (data.error) {
-                alert('Erro: ' + data.error);
+                mostrarMensagemUI('Erro: ' + data.error, 'danger', 6000);
                 return;
             }
             
@@ -446,6 +916,9 @@ document.getElementById('id_etapa').addEventListener('change', function() {
                     const min = campo.min !== undefined ? campo.min : '0';
                     const max = campo.max !== undefined ? `max="${campo.max}"` : '';
                     const valorAtualDisplay = campo.valor_atual_display || '0';
+                    const valorInicial = (campo.valor_atual !== undefined && campo.valor_atual !== null && String(campo.valor_atual).trim() !== '')
+                        ? String(campo.valor_atual)
+                        : '0';
                     const hasValue = parseFloat(valorAtualDisplay) > 0;
                     const bloqueado = campo.bloqueado || false;
                     const aviso = campo.aviso || '';
@@ -475,11 +948,12 @@ document.getElementById('id_etapa').addEventListener('change', function() {
                                        name="campo_${campo.nome}"
                                        id="id_campo_${campo.nome}"
                                        class="form-control"
+                                       autocomplete="off"
                                        step="${step}"
                                        min="${min}"
                                        ${max}
-                                       value=""
-                                       placeholder="Quanto foi feito HOJE?"
+                                       value="${valorInicial}"
+                                       placeholder="0"
                                        ${disabledAttr}>
                                 <small class="form-text text-muted d-block mt-1">${campo.help_text}</small>
                                 ${aviso ? `<div class="alert alert-success mt-2 mb-0 py-1 px-2"><small><i class="bi bi-check-circle-fill"></i> ${aviso}</small></div>` : ''}
@@ -516,16 +990,47 @@ document.getElementById('id_etapa').addEventListener('change', function() {
             
             // Mostrar container
             document.getElementById('campos-etapa-container').style.display = 'block';
+            const rascunho = carregarRascunhoEtapaAtual();
+            if (rascunho && rascunho.campos) {
+                aplicarCamposEtapa(rascunho.campos);
+            } else {
+                // Sem rascunho da etapa: garantir início zerado para evitar soma acidental.
+                zerarCamposNumericosEtapa();
+            }
         })
         .catch(error => {
             console.error('Erro ao carregar campos:', error);
-            alert('Erro ao carregar campos da etapa');
+            mostrarMensagemUI('Erro ao carregar campos da etapa', 'danger', 6000);
         });
 });
 
+inputData.addEventListener('change', function() {
+    renderizarResumoEtapasSalvasFixas();
+    if (!selectEtapa.value) return;
+    // Evita limpar seleção do usuário ao clicar em "Salvar Etapa".
+    if (coletarFuncionariosSelecionados().length > 0) return;
+    carregarContextoEtapa();
+});
+
+btnSalvarEtapa.addEventListener('click', function(e) {
+    e.preventDefault();
+    const salvou = salvarRascunhoEtapaAtual();
+    if (salvou) {
+        resetarCamposProducaoDoDia();
+    }
+});
+
+if (btnCancelarApontamento) {
+    btnCancelarApontamento.addEventListener('click', function() {
+        limparRascunhos();
+    });
+}
+
 // Adicionar primeira linha automaticamente ao carregar
 window.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('btn-adicionar-funcionario').click();
+    preencherFuncionarios([]);
+    atualizarBotaoSalvarEtapa();
+    renderizarResumoEtapasSalvasFixas();
 });
 
 // Fila de fotos: permite adicionar em lotes sem substituir as anteriores
@@ -616,8 +1121,14 @@ previewFotos.addEventListener('click', function(e) {
     renderizarPreviewFotos();
 });
 
-document.getElementById('form-apontamento-lote').addEventListener('submit', function() {
+formApontamentoLote.addEventListener('submit', function() {
+    preencherSubmitComRascunhoSeNecessario();
+    anexarRascunhosNoSubmit();
     sincronizarInputFotos();
+    // Evita reaproveitar rascunhos antigos ao reabrir mesma obra/data:
+    // os dados seguem no submit atual via hidden fields, mas o cache local e limpo.
+    limparRascunhos();
 });
 </script>
 {% endblock %}
+

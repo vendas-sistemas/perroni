@@ -8,6 +8,28 @@
   .form-card { border: none; border-radius: .75rem; }
   .form-header { border-radius: .75rem .75rem 0 0; padding: .6rem 1rem; }
   .field-icon { width: 18px; text-align: center; }
+  .highlight-obra {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .22rem .6rem;
+    border-radius: .45rem;
+    background: #fff3cd;
+    border: 1px solid #ffe69c;
+    color: #7a4b00;
+    font-weight: 700;
+  }
+  .highlight-data {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .22rem .6rem;
+    border-radius: .45rem;
+    background: #cfe2ff;
+    border: 1px solid #9ec5fe;
+    color: #084298;
+    font-weight: 700;
+  }
 </style>
 {% endblock %}
 
@@ -89,6 +111,8 @@
             <table class="table table-sm">
                 <thead class="table-light">
                     <tr>
+                        <th>Obra</th>
+                        <th>Data da Obra</th>
                         <th>Data/Hora</th>
                         <th>Tipo</th>
                         <th>Descrição</th>
@@ -98,6 +122,18 @@
                 <tbody>
                     {% for h in historico_alteracoes %}
                     <tr>
+                        <td>
+                            <span class="highlight-obra">
+                                <i class="bi bi-building"></i>
+                                Obra: {{ etapa.obra.nome }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="highlight-data">
+                                <i class="bi bi-calendar-event"></i>
+                                Data: {{ h.data_referencia|date:"d/m/Y" }}
+                            </span>
+                        </td>
                         <td>{{ h.created_at|date:"d/m/Y H:i" }}</td>
                         <td>
                             <span class="badge {% if h.tipo_alteracao == 'exclusao' %}bg-danger{% elif h.tipo_alteracao == 'edicao' %}bg-warning text-dark{% else %}bg-success{% endif %}">
@@ -105,7 +141,7 @@
                             </span>
                         </td>
                         <td>{{ h.descricao|truncatewords:30 }}</td>
-                        <td>{{ h.usuario.username }}</td>
+                        <td>{{ h.usuario.username|default:"Sistema" }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

@@ -299,6 +299,188 @@ def _calcular_producao_lote_por_campos(valores_producao_dia):
     return total, unidade
 
 
+def _obter_detalhes_etapa(etapa):
+    """Busca/cria o model de detalhes da etapa."""
+    if not etapa:
+        return None
+    numero_etapa = etapa.numero_etapa
+    if numero_etapa == 1:
+        detalhes, _ = Etapa1Fundacao.objects.get_or_create(etapa=etapa)
+    elif numero_etapa == 2:
+        detalhes, _ = Etapa2Estrutura.objects.get_or_create(etapa=etapa)
+    elif numero_etapa == 3:
+        detalhes, _ = Etapa3Instalacoes.objects.get_or_create(etapa=etapa)
+    elif numero_etapa == 4:
+        detalhes, _ = Etapa4Acabamentos.objects.get_or_create(etapa=etapa)
+    elif numero_etapa == 5:
+        detalhes, _ = Etapa5Finalizacao.objects.get_or_create(etapa=etapa)
+    else:
+        detalhes = None
+    return detalhes
+
+
+def _processar_campos_etapa_payload(etapa, campos_payload, usuario=None):
+    """
+    Aplica payload de campos da etapa (formato rascunho do frontend).
+    Campos numéricos são incrementais; boolean/date sobrescrevem.
+    """
+    detalhes = _obter_detalhes_etapa(etapa)
+    if not detalhes:
+        return {}, []
+
+    campos_atualizados = []
+    valores_producao_dia = {}
+
+    for chave, valor in (campos_payload or {}).items():
+        campo_nome = str(chave or '').strip()
+        if not campo_nome:
+            continue
+        if campo_nome.startswith('campo_'):
+            campo_nome = campo_nome.replace('campo_', '', 1)
+
+        if not hasattr(detalhes, campo_nome):
+            continue
+
+        try:
+            field = detalhes._meta.get_field(campo_nome)
+            valor_anterior = getattr(detalhes, campo_nome, None)
+            field_type = field.get_internal_type()
+
+            if field_type == 'BooleanField':
+                if isinstance(valor, bool):
+                    novo_valor = valor
+                else:
+                    novo_valor = str(valor).strip().lower() in ('1', 'true', 'on', 'sim')
+                if valor_anterior != novo_valor:
+                    setattr(detalhes, campo_nome, novo_valor)
+                    campos_atualizados.append(f"{field.verbose_name}: {'✓' if novo_valor else '✗'}")
+                continue
+
+            valor_str = '' if valor is None else str(valor).strip()
+            if not valor_str or valor_str in ('0', '0.00'):
+                continue
+
+            if field_type == 'DecimalField':
+                novo_valor = Decimal(valor_str)
+                if novo_valor <= 0:
+                    continue
+
+                valor_anterior_decimal = valor_anterior if valor_anterior else Decimal('0.00')
+                valor_final = valor_anterior_decimal + novo_valor
+
+                tem_max_100 = any(
+                    hasattr(v, 'limit_value') and v.limit_value == Decimal('100.00')
+                    for v in field.validators
+                )
+                if tem_max_100 and valor_final > Decimal('100.00'):
+                    diferenca = Decimal('100.00') - valor_anterior_decimal
+                    if diferenca <= 0:
+                        continue
+                    valor_final = Decimal('100.00')
+                    valores_producao_dia[campo_nome] = diferenca
+                    campos_atualizados.append(f"{field.verbose_name}: +{diferenca} (total: 100.00)")
+                else:
+                    valores_producao_dia[campo_nome] = novo_valor
+                    campos_atualizados.append(f"{field.verbose_name}: +{novo_valor} (total: {valor_final})")
+
+                setattr(detalhes, campo_nome, valor_final)
+                continue
+
+            if field_type in ['IntegerField', 'PositiveIntegerField']:
+                novo_valor = int(Decimal(valor_str))
+                if novo_valor <= 0:
+                    continue
+
+                valor_anterior_int = valor_anterior if valor_anterior else 0
+                valor_final = valor_anterior_int + novo_valor
+                setattr(detalhes, campo_nome, valor_final)
+                valores_producao_dia[campo_nome] = novo_valor
+                campos_atualizados.append(f"{field.verbose_name}: +{novo_valor} (total: {valor_final})")
+                continue
+
+            if field_type == 'DateField':
+                novo_valor = datetime.datetime.strptime(valor_str, '%Y-%m-%d').date()
+                if valor_anterior != novo_valor:
+                    setattr(detalhes, campo_nome, novo_valor)
+                    campos_atualizados.append(f"{field.verbose_name}: {novo_valor.strftime('%d/%m/%Y')}")
+
+        except Exception:
+            continue
+
+    if campos_atualizados:
+        detalhes.save()
+        try:
+            EtapaHistorico.objects.create(
+                etapa=etapa,
+                origem='Apontamento em Lote',
+                descricao="📝 Campos atualizados via apontamento em lote:\n" + "\n".join([f"  • {c}" for c in campos_atualizados]),
+                usuario=usuario
+            )
+        except Exception:
+            pass
+
+    return valores_producao_dia, campos_atualizados
+
+
+def _criar_lote_por_payload(base_data, etapa, request, funcionarios_ids, horas_trabalhadas_list, campos_payload, fotos=None):
+    lote = ApontamentoDiarioLote.objects.create(
+        obra=base_data['obra'],
+        data=base_data['data'],
+        etapa=etapa,
+        clima=base_data['clima'],
+        houve_ociosidade=base_data['houve_ociosidade'],
+        observacao_ociosidade=base_data['observacao_ociosidade'],
+        houve_retrabalho=base_data['houve_retrabalho'],
+        motivo_retrabalho=base_data['motivo_retrabalho'],
+        possui_placa=base_data['possui_placa'],
+        observacoes=base_data['observacoes'],
+        criado_por=request.user,
+    )
+
+    funcionarios_criados = 0
+    for i, func_id in enumerate(funcionarios_ids):
+        try:
+            funcionario = Funcionario.objects.get(pk=func_id, ativo=True)
+            horas = Decimal(horas_trabalhadas_list[i]) if i < len(horas_trabalhadas_list) else Decimal('8.0')
+            FuncionarioLote.objects.create(
+                lote=lote,
+                funcionario=funcionario,
+                horas_trabalhadas=horas
+            )
+            funcionarios_criados += 1
+        except (Funcionario.DoesNotExist, ValueError, InvalidOperation):
+            continue
+
+    if funcionarios_criados == 0:
+        lote.delete()
+        return None, 0, 0
+
+    valores_producao_dia, _campos_atualizados = _processar_campos_etapa_payload(
+        etapa=etapa,
+        campos_payload=campos_payload,
+        usuario=request.user
+    )
+
+    producao_total_dia, unidade_dia = _calcular_producao_lote_por_campos(valores_producao_dia)
+    lote.producao_total = producao_total_dia
+    lote.unidade_medida = unidade_dia
+    lote.save(update_fields=['producao_total', 'unidade_medida'])
+
+    lote._valores_dia = valores_producao_dia
+    apontamentos_criados = lote.gerar_apontamentos_individuais() or 0
+
+    for foto in (fotos or []):
+        FotoApontamento.objects.create(
+            apontamento_lote=lote,
+            obra=lote.obra,
+            etapa=lote.etapa,
+            data_foto=lote.data,
+            foto=foto
+        )
+
+    return lote, funcionarios_criados, apontamentos_criados
+
+
 @login_required
 def funcionario_list(request):
     """Lista funcionários"""
@@ -839,6 +1021,35 @@ def apontamento_delete(request, pk):
     ap = get_object_or_404(ApontamentoFuncionario, pk=pk)
     obra_id = ap.obra_id
     data = ap.data
+    funcionario_id = ap.funcionario_id
+    etapa_id = ap.etapa_id
+
+    def _limpar_registros_producao_orfaos(func_id, ob_id, dt, et_id):
+        """
+        Remove RegistroProducao órfão após exclusão de apontamento individual.
+        Só exclui quando não existe mais apontamento para o mesmo funcionário/obra/data/etapa.
+        """
+        qs_ap = ApontamentoFuncionario.objects.filter(
+            funcionario_id=func_id,
+            obra_id=ob_id,
+            data=dt,
+        )
+        qs_reg = RegistroProducao.objects.filter(
+            funcionario_id=func_id,
+            obra_id=ob_id,
+            data=dt,
+        )
+
+        if et_id is None:
+            qs_ap = qs_ap.filter(etapa__isnull=True)
+            qs_reg = qs_reg.filter(etapa__isnull=True)
+        else:
+            qs_ap = qs_ap.filter(etapa_id=et_id)
+            qs_reg = qs_reg.filter(etapa_id=et_id)
+
+        if not qs_ap.exists():
+            qs_reg.delete()
+
     if request.method == 'POST':
         # Registrar exclusão no histórico da etapa antes de deletar
         if ap.etapa:
@@ -867,6 +1078,7 @@ def apontamento_delete(request, pk):
             )
 
         ap.delete()
+        _limpar_registros_producao_orfaos(funcionario_id, obra_id, data, etapa_id)
         messages.success(request, 'Apontamento removido.')
         # Redirect back to diario if referer suggests it
         next_url = request.POST.get('next', '')
@@ -1789,6 +2001,82 @@ def apontamento_lote_create(request):
                 }
                 return render(request, 'funcionarios/apontamento_lote_form.html', context)
             
+            # Fluxo multi-etapas: processa todos os rascunhos salvos no frontend.
+            rascunhos_json = request.POST.get('rascunhos_etapas_json', '').strip()
+            if rascunhos_json:
+                try:
+                    rascunhos = json.loads(rascunhos_json)
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    rascunhos = []
+
+                if isinstance(rascunhos, list) and rascunhos:
+                    base_data = {
+                        'obra': form_lote.cleaned_data.get('obra'),
+                        'data': form_lote.cleaned_data.get('data'),
+                        'clima': form_lote.cleaned_data.get('clima'),
+                        'houve_ociosidade': form_lote.cleaned_data.get('houve_ociosidade', False),
+                        'observacao_ociosidade': form_lote.cleaned_data.get('observacao_ociosidade'),
+                        'houve_retrabalho': form_lote.cleaned_data.get('houve_retrabalho', False),
+                        'motivo_retrabalho': form_lote.cleaned_data.get('motivo_retrabalho'),
+                        'possui_placa': form_lote.cleaned_data.get('possui_placa', False),
+                        'observacoes': form_lote.cleaned_data.get('observacoes'),
+                    }
+                    fotos_uploaded = request.FILES.getlist('fotos')
+                    lotes_criados = []
+                    etapas_invalidas = 0
+
+                    for idx, rascunho in enumerate(reversed(rascunhos)):
+                        if not isinstance(rascunho, dict):
+                            continue
+                        etapa_id = rascunho.get('etapa_id')
+                        if not etapa_id:
+                            continue
+
+                        etapa_obj = Etapa.objects.filter(
+                            pk=etapa_id,
+                            obra=base_data['obra'],
+                            status='em_andamento'
+                        ).first()
+                        if not etapa_obj:
+                            etapas_invalidas += 1
+                            continue
+
+                        lote, funcionarios_criados, apontamentos_criados = _criar_lote_por_payload(
+                            base_data=base_data,
+                            etapa=etapa_obj,
+                            request=request,
+                            funcionarios_ids=funcionarios_ids,
+                            horas_trabalhadas_list=horas_trabalhadas_list,
+                            campos_payload=rascunho.get('campos') or {},
+                            fotos=fotos_uploaded if idx == 0 else []
+                        )
+                        if lote:
+                            lotes_criados.append((lote, funcionarios_criados, apontamentos_criados))
+
+                    if lotes_criados:
+                        total_etapas = len(lotes_criados)
+                        total_funcionarios = sum(item[1] for item in lotes_criados)
+                        total_apontamentos = sum(item[2] for item in lotes_criados)
+
+                        messages.success(
+                            request,
+                            f'✅ {total_etapas} etapa(s) salva(s) com sucesso! '
+                            f'{total_funcionarios} registro(s) de funcionários e {total_apontamentos} apontamento(s) individual(is) gerado(s).'
+                        )
+                        if etapas_invalidas:
+                            messages.warning(request, f'⚠️ {etapas_invalidas} etapa(s) não puderam ser salvas.')
+                        if fotos_uploaded:
+                            messages.info(request, f'📷 {len(fotos_uploaded)} foto(s) anexada(s)!')
+                        return redirect('funcionarios:apontamento_list')
+
+                    messages.error(request, '❌ Nenhuma etapa salva no rascunho pôde ser processada.')
+                    context = {
+                        'form': form_lote,
+                        'funcionarios': Funcionario.objects.filter(ativo=True).order_by('nome_completo'),
+                        'title': 'Apontamento Diário em Lote'
+                    }
+                    return render(request, 'funcionarios/apontamento_lote_form.html', context)
+
             # Salvar lote
             lote = form_lote.save(commit=False)
             lote.criado_por = request.user
@@ -1807,7 +2095,7 @@ def apontamento_lote_create(request):
                         horas_trabalhadas=horas
                     )
                     funcionarios_criados += 1
-                except (Funcionario.DoesNotExist, ValueError, decimal.InvalidOperation):
+                except (Funcionario.DoesNotExist, ValueError, InvalidOperation):
                     continue
             
             if funcionarios_criados == 0:
@@ -1997,7 +2285,11 @@ def apontamento_lote_create(request):
                 messages.info(request, f'📷 {len(fotos_uploaded)} foto(s) anexada(s)!')
             # ========================================
             
-            msg = f'✅ Apontamento criado com sucesso! {funcionarios_criados} funcionário(s) registrado(s).'
+            etapa_label = lote.etapa.get_numero_etapa_display() if lote.etapa else 'Sem Etapa'
+            msg = (
+                f'✅ Apontamento da {etapa_label} criado com sucesso! '
+                f'{funcionarios_criados} funcionário(s) registrado(s).'
+            )
             
             messages.success(request, msg)
             return redirect('funcionarios:apontamento_list')
@@ -2208,7 +2500,7 @@ def api_campos_etapa(request):
                 'max': 100,
                 'step': '0.01',
                 'help_text': 'Quanto foi executado HOJE (será somado ao total)',
-                'valor_atual': '',  # Campo vazio para input
+                'valor_atual': '0',  # Campo inicia em zero para evitar soma acidental
                 'valor_atual_display': str(valores_atuais.get('levantar_alicerce_percentual', '0.00')),
                 'bloqueado': Decimal(str(valores_atuais.get('levantar_alicerce_percentual', '0.00'))) >= Decimal('100.00'),
                 'aviso': '✅ 100% concluído!' if Decimal(str(valores_atuais.get('levantar_alicerce_percentual', '0.00'))) >= Decimal('100.00') else None
@@ -2228,7 +2520,7 @@ def api_campos_etapa(request):
                 'min': 0,
                 'step': '1',
                 'help_text': 'Quantidade de blocos assentados HOJE (será somado ao total)',
-                'valor_atual': '',  # Campo vazio para input
+                'valor_atual': '0',  # Campo inicia em zero para evitar soma acidental
                 'valor_atual_display': str(valores_atuais.get('parede_7fiadas_blocos', '0'))
             },
             {
@@ -2258,7 +2550,7 @@ def api_campos_etapa(request):
                 'min': 0,
                 'step': '1',
                 'help_text': 'Quantidade de blocos assentados HOJE (será somado ao total)',
-                'valor_atual': '',  # Campo vazio para input
+                'valor_atual': '0',  # Campo inicia em zero para evitar soma acidental
                 'valor_atual_display': str(valores_atuais.get('platibanda_blocos', '0'))
             },
             {
@@ -2281,7 +2573,7 @@ def api_campos_etapa(request):
                 'min': 0,
                 'step': '0.01',
                 'help_text': 'Metragem executada HOJE em m² (será somado ao total)',
-                'valor_atual': '',  # Campo vazio para input
+                'valor_atual': '0',  # Campo inicia em zero para evitar soma acidental
                 'valor_atual_display': str(valores_atuais.get('reboco_externo_m2', '0.00'))
             },
             {
@@ -2292,7 +2584,7 @@ def api_campos_etapa(request):
                 'min': 0,
                 'step': '0.01',
                 'help_text': 'Metragem executada HOJE em m² (será somado ao total)',
-                'valor_atual': '',  # Campo vazio para input
+                'valor_atual': '0',  # Campo inicia em zero para evitar soma acidental
                 'valor_atual_display': str(valores_atuais.get('reboco_interno_m2', '0.00'))
             },
             {
@@ -2436,6 +2728,67 @@ def api_obra_possui_placa(request):
         possui_placa = ultimo_lote.possui_placa
     
     return JsonResponse({'possui_placa': possui_placa})
+
+
+@login_required
+@require_GET
+def api_lote_etapa_contexto(request):
+    """Retorna contexto salvo de um lote para a etapa + data selecionadas."""
+    etapa_id = request.GET.get('etapa_id')
+    data_str = request.GET.get('data')
+    obra_id = request.GET.get('obra_id')
+
+    if not etapa_id or not data_str:
+        return JsonResponse({
+            'encontrado': False,
+            'funcionarios': [],
+        })
+
+    try:
+        data_ref = datetime.date.fromisoformat(data_str)
+    except ValueError:
+        return JsonResponse({
+            'encontrado': False,
+            'funcionarios': [],
+        })
+
+    lotes = ApontamentoDiarioLote.objects.filter(
+        etapa_id=etapa_id,
+        data=data_ref,
+    )
+    if obra_id:
+        lotes = lotes.filter(obra_id=obra_id)
+
+    lote = lotes.select_related('obra', 'etapa').prefetch_related(
+        'funcionarios__funcionario'
+    ).order_by('-created_at').first()
+
+    if not lote:
+        return JsonResponse({
+            'encontrado': False,
+            'funcionarios': [],
+            'data': data_ref.isoformat(),
+        })
+
+    funcionarios = []
+    for item in lote.funcionarios.all():
+        funcionarios.append({
+            'id': item.funcionario_id,
+            'nome_completo': item.funcionario.nome_completo,
+            'funcao': item.funcionario.funcao,
+            'funcao_display': item.funcionario.get_funcao_display(),
+            'horas_trabalhadas': str(item.horas_trabalhadas),
+        })
+
+    return JsonResponse({
+        'encontrado': True,
+        'lote_id': lote.id,
+        'data': lote.data.isoformat(),
+        'obra_id': lote.obra_id,
+        'etapa_id': lote.etapa_id,
+        'clima': lote.clima,
+        'funcionarios': funcionarios,
+    })
 
 
 # ================ APONTAMENTO EM LOTE - CRUD (EDIÇÃO / EXCLUSÃO / DETALHES) ================

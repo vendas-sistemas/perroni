@@ -16,6 +16,7 @@ from django.forms import inlineformset_factory
 from django.db import transaction
 from django.shortcuts import render
 from django.http import Http404
+from django.core.paginator import Paginator
 from django.utils import timezone
 import random
 from decimal import Decimal
@@ -150,13 +151,24 @@ def ferramenta_relatorio_impressao(request):
     Se não houver ids, usa o filtro atual da listagem.
     """
     ids = request.GET.getlist('ids')
+    ferramenta_filtro = request.GET.get('ferramenta', '').strip()
+    tipo_filtro = request.GET.get('tipo', '').strip()
+    origem_filtro = request.GET.get('origem', '').strip()
+    destino_filtro = request.GET.get('destino', '').strip()
 
     if ids:
-        ferramentas_qs = Ferramenta.objects.filter(id__in=ids).order_by('nome')
+        base_ferramentas_qs = Ferramenta.objects.filter(id__in=ids)
     else:
-        ferramentas_qs, _, _, _ = _filtrar_ferramentas_queryset(request)
-        ferramentas_qs = ferramentas_qs.order_by('nome')
+        base_ferramentas_qs, _, _, _ = _filtrar_ferramentas_queryset(request)
 
+    ferramentas_filtro_opcoes = list(
+        base_ferramentas_qs.order_by('nome').values('id', 'codigo', 'nome')
+    )
+
+    if ferramenta_filtro:
+        base_ferramentas_qs = base_ferramentas_qs.filter(id=ferramenta_filtro)
+
+    ferramentas_qs = base_ferramentas_qs.order_by('nome')
     ferramentas = list(ferramentas_qs)
     ferramenta_ids = [f.id for f in ferramentas]
 
@@ -174,7 +186,7 @@ def ferramenta_relatorio_impressao(request):
     ).aggregate(total=models.Sum('quantidade'))['total'] or 0
 
     # Onde estão atualmente (obras)
-    obras_distribuicao = (
+    obras_distribuicao_qs = (
         LocalizacaoFerramenta.objects
         .filter(ferramenta_id__in=ferramenta_ids, local_tipo='obra', quantidade__gt=0)
         .values('obra_id', 'obra__nome')
@@ -183,18 +195,48 @@ def ferramenta_relatorio_impressao(request):
     )
 
     # Histórico para impressão em lote
-    movimentacoes = (
+    movimentacoes_qs = (
         MovimentacaoFerramenta.objects
         .filter(ferramenta_id__in=ferramenta_ids)
         .select_related('ferramenta', 'responsavel', 'obra_origem', 'obra_destino')
         .order_by('-data_movimentacao', '-id')
     )
 
+    if tipo_filtro:
+        movimentacoes_qs = movimentacoes_qs.filter(tipo=tipo_filtro)
+    if origem_filtro:
+        movimentacoes_qs = movimentacoes_qs.filter(
+            models.Q(origem_tipo__icontains=origem_filtro) |
+            models.Q(obra_origem__nome__icontains=origem_filtro)
+        )
+    if destino_filtro:
+        movimentacoes_qs = movimentacoes_qs.filter(
+            models.Q(destino_tipo__icontains=destino_filtro) |
+            models.Q(obra_destino__nome__icontains=destino_filtro)
+        )
+
+    per_page = 10
+    obras_distribuicao = Paginator(obras_distribuicao_qs, per_page).get_page(request.GET.get('page_obra', 1))
+    ferramentas = Paginator(ferramentas, per_page).get_page(request.GET.get('page_ferramenta', 1))
+    movimentacoes = Paginator(movimentacoes_qs, per_page).get_page(request.GET.get('page_historico', 1))
+
+    def _query_sem(*remove_keys):
+        params = request.GET.copy()
+        for key in remove_keys:
+            params.pop(key, None)
+        return params.urlencode()
+
     context = {
         'title': 'Relatório de Ferramentas',
         'ferramentas': ferramentas,
         'movimentacoes': movimentacoes,
         'obras_distribuicao': obras_distribuicao,
+        'tipo_choices': MovimentacaoFerramenta.TIPO_CHOICES,
+        'ferramentas_filtro_opcoes': ferramentas_filtro_opcoes,
+        'ids_selecionados': ids,
+        'qs_sem_page_obras': _query_sem('page_obra'),
+        'qs_sem_page_ferramenta': _query_sem('page_ferramenta'),
+        'qs_sem_page_historico': _query_sem('page_historico'),
         'total_modelos': total_modelos,
         'total_unidades': total_unidades,
         'total_deposito': total_deposito,
@@ -206,6 +248,10 @@ def ferramenta_relatorio_impressao(request):
             'q': request.GET.get('q', '').strip(),
             'categoria': request.GET.get('categoria', '').strip(),
             'status': request.GET.get('status', '').strip(),
+            'ferramenta': ferramenta_filtro,
+            'tipo': tipo_filtro,
+            'origem': origem_filtro,
+            'destino': destino_filtro,
         },
     }
     return render(request, 'ferramentas/ferramenta_relatorio_impressao.html', context)

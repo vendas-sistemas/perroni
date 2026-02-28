@@ -107,6 +107,8 @@ def _preparar_historicos_para_visualizacao(historicos):
     indice_grupo = -1
 
     for item in itens:
+        data_ref = _extrair_data_descricao_historico(getattr(item, 'descricao', ''))
+        item.data_referencia_display = data_ref or item.data_hora.strftime('%d/%m/%Y')
         chave_atual = _chave_grupo_historico(item)
         item.grupo_inicio = chave_atual != chave_anterior
         if item.grupo_inicio:

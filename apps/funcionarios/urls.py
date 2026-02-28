@@ -15,8 +15,6 @@ urlpatterns = [
 
     # Apontamentos
     path('apontamentos/', views.apontamento_list, name='apontamento_list'),
-    path('apontamentos/criar/', views.apontamento_create, name='apontamento_create'),
-    path('apontamentos/criar/<int:funcionario_id>/', views.apontamento_create, name='apontamento_create_funcionario'),
     # REMOVIDO em 21/02/2026: usar apontamento_lote_create no lugar
     # path('apontamentos/diario/', views.apontamento_diario, name='apontamento_diario'),
     path('apontamentos/<int:pk>/excluir/', views.apontamento_delete, name='apontamento_delete'),
@@ -47,6 +45,7 @@ urlpatterns = [
     path('api/etapas-por-obra/', views.etapas_por_obra_api, name='etapas_por_obra_api'),
     path('api/campos-etapa/', views.api_campos_etapa, name='api_campos_etapa'),
     path('api/obra-possui-placa/', views.api_obra_possui_placa, name='api_obra_possui_placa'),
+    path('api/lote-etapa-contexto/', views.api_lote_etapa_contexto, name='api_lote_etapa_contexto'),
     path('api/itens-etapa/', views.itens_etapa_api, name='itens_etapa_api'),
     path('api/itens-obra/', views.itens_obra_api, name='itens_obra_api'),
     path('set-theme/', views.set_theme, name='set_theme'),

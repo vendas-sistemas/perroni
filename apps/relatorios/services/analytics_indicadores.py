@@ -6,7 +6,7 @@ Este módulo substitui/complementa o analytics.py oferecendo detalhamento por in
 from collections import defaultdict
 from decimal import Decimal
 
-from django.db.models import Avg, Count, Sum, Q, Max, Min, Value, DecimalField
+from django.db.models import Avg, Count, Sum, Q, Max, Min, Value, DecimalField, Exists, OuterRef
 from django.db.models.functions import Coalesce
 
 from apps.funcionarios.models import RegistroProducao, Funcionario, ApontamentoFuncionario
@@ -93,9 +93,19 @@ UNIDADES_INDICADORES = {
 
 def _base_qs(filtros: dict | None = None):
     """Retorna queryset base de RegistroProducao com filtros opcionais."""
+    # Mantém relatórios consistentes com apontamentos reais:
+    # só considera registros de produção que ainda possuem apontamento correspondente.
+    apontamento_relacionado = ApontamentoFuncionario.objects.filter(
+        funcionario_id=OuterRef('funcionario_id'),
+        obra_id=OuterRef('obra_id'),
+        data=OuterRef('data'),
+    )
+
     qs = (
         RegistroProducao.objects
         .filter(funcionario__funcao='pedreiro')
+        .annotate(_tem_apontamento=Exists(apontamento_relacionado))
+        .filter(_tem_apontamento=True)
         .select_related('funcionario', 'obra', 'etapa')
     )
     if not filtros:

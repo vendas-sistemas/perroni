@@ -215,6 +215,15 @@
           <label class="form-label fw-semibold"><i class="bi bi-chat-left-text me-1 text-muted"></i> Motivo da Inativação</label>
           {{ form.motivo_inativacao }}
         </div>
+        {% if funcionario %}
+        <div class="form-group-row">
+          <label class="form-label fw-semibold"><i class="bi bi-clock-history me-1 text-muted"></i> Controle de Cadastro</label>
+          <div class="small text-muted">
+            <div><i class="bi bi-clock me-1"></i> Criado em: {{ funcionario.created_at|date:"d/m/Y H:i" }}</div>
+            <div><i class="bi bi-arrow-clockwise me-1"></i> Atualizado em: {{ funcionario.updated_at|date:"d/m/Y H:i" }}</div>
+          </div>
+        </div>
+        {% endif %}
       </div>
     </div>
 

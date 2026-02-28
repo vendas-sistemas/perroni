@@ -9,6 +9,8 @@ class Cliente(models.Model):
     cpf = models.CharField(
         max_length=14,
         unique=True,
+        blank=True,
+        null=True,
         verbose_name='CPF',
         help_text='Somente números ou formatado (000.000.000-00)',
         validators=[RegexValidator(r'^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{11}$', 'CPF inválido')]

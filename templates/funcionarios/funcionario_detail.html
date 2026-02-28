@@ -51,7 +51,7 @@
       </div>
     </div>
     <div class="d-flex flex-wrap gap-2">
-      <a href="{% url 'funcionarios:apontamento_create_funcionario' funcionario.pk %}" class="btn btn-success btn-sm">
+      <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-success btn-sm">
         <i class="bi bi-plus-circle"></i> Registrar Dia
       </a>
       <a href="{% url 'funcionarios:funcionario_historico' funcionario.pk %}" class="btn btn-outline-primary btn-sm">
@@ -119,14 +119,6 @@
       </div>
     </div>
     <div class="col-6 col-md-4 col-lg-2">
-      <div class="card kpi-card bg-secondary bg-opacity-10">
-        <div class="card-body text-center py-2">
-          <div class="kpi-value">{{ total_metragem|decimal_br }} m²</div>
-          <div class="kpi-label">Metragem Total</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-md-4 col-lg-2">
       <div class="card kpi-card bg-warning bg-opacity-10">
         <div class="card-body text-center py-2">
           <div class="kpi-value text-warning">{{ taxa_ociosidade }}%</div>
@@ -160,7 +152,6 @@
                   <th class="text-center">Dias</th>
                   <th class="text-center">Horas</th>
                   <th class="text-end">Valor</th>
-                  <th class="text-center">m²</th>
                 </tr>
               </thead>
               <tbody>
@@ -174,7 +165,6 @@
                   <td class="text-center">{{ o.dias }}</td>
                   <td class="text-center">{{ o.horas }}h</td>
                   <td class="text-end fw-semibold">{{ o.valor|brl }}</td>
-                  <td class="text-center">{{ o.metragem|decimal_br }}</td>
                 </tr>
                 {% endfor %}
               </tbody>
@@ -193,7 +183,6 @@
             <div class="border rounded p-2 text-center" style="min-width: 120px;">
               <div class="fw-bold small">{{ ep.etapa_nome }}</div>
               <div class="text-muted small">{{ ep.dias }} dia{{ ep.dias|pluralize:"s" }}</div>
-              {% if ep.metragem %}<div class="small text-primary">{{ ep.metragem|decimal_br }} m²</div>{% endif %}
             </div>
             {% endfor %}
           </div>
@@ -305,7 +294,7 @@
       <div class="card border-0 shadow-sm mb-3">
         <div class="card-body">
           <h6 class="section-header"><i class="bi bi-lightning text-warning"></i> Ações Rápidas</h6>
-          <a href="{% url 'funcionarios:apontamento_create_funcionario' funcionario.pk %}" class="quick-action text-success">
+          <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="quick-action text-success">
             <i class="bi bi-plus-circle fs-5"></i> Registrar apontamento
           </a>
           <a href="{% url 'funcionarios:funcionario_historico' funcionario.pk %}" class="quick-action text-primary">
@@ -323,3 +312,4 @@
   </div>
 </div>
 {% endblock %}
+

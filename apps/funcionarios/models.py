@@ -9,20 +9,20 @@ class Funcionario(models.Model):
     """Cadastro de pedreiros e serventes"""
     
     # Dados pessoais
-    nome_completo = models.CharField(max_length=200, verbose_name="Nome Completo")
-    cpf = models.CharField(max_length=14, unique=True, verbose_name="CPF")
+    nome_completo = models.CharField(max_length=200, blank=True, null=True, verbose_name="Nome Completo")
+    cpf = models.CharField(max_length=14, unique=True, blank=True, null=True, verbose_name="CPF")
     rg = models.CharField(max_length=20, blank=True, null=True, verbose_name="RG")
     data_nascimento = models.DateField(blank=True, null=True, verbose_name="Data de Nascimento")
     
     # Contato
-    telefone = models.CharField(max_length=20, verbose_name="Telefone")
+    telefone = models.CharField(max_length=20, blank=True, verbose_name="Telefone")
     email = models.EmailField(blank=True, null=True, verbose_name="E-mail")
     
     # Endereço
-    endereco = models.TextField(verbose_name="Endereço")
-    cidade = models.CharField(max_length=100, verbose_name="Cidade")
-    estado = models.CharField(max_length=2, verbose_name="Estado")
-    cep = models.CharField(max_length=9, verbose_name="CEP")
+    endereco = models.TextField(blank=True, null=True, verbose_name="Endereço")
+    cidade = models.CharField(max_length=100, blank=True, null=True, verbose_name="Cidade")
+    estado = models.CharField(max_length=2, blank=True, null=True, verbose_name="Estado")
+    cep = models.CharField(max_length=9, blank=True, null=True, verbose_name="CEP")
     
     # Função
     FUNCAO_CHOICES = [
