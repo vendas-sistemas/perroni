@@ -2,6 +2,7 @@ from django import forms
 from django.forms.widgets import ClearableFileInput
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Field, Submit, Row, Column
+from django.conf import settings
 from django.utils import timezone
 import datetime
 
@@ -85,8 +86,9 @@ class RegistroFiscalizacaoForm(forms.ModelForm):
         for f in files:
             if hasattr(f, 'content_type') and not f.content_type.startswith('image/'):
                 raise forms.ValidationError('Apenas arquivos de imagem são permitidos.')
-            if hasattr(f, 'size') and f.size > 10 * 1024 * 1024:  # 10MB
-                raise forms.ValidationError('Cada imagem deve ter no máximo 10MB.')
+            if hasattr(f, 'size') and f.size > settings.DATA_UPLOAD_MAX_MEMORY_SIZE:
+                max_mb = settings.DATA_UPLOAD_MAX_MEMORY_SIZE // (1024 * 1024)
+                raise forms.ValidationError(f'Cada imagem deve ter no máximo {max_mb}MB.')
 
         return files
 
