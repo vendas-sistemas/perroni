@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 
 {% block title %}Etapa {{ etapa.numero_etapa }} - {{ etapa.obra.nome }}{% endblock %}
 
@@ -151,6 +151,14 @@
         <h6 class="mb-0 text-success"><i class="bi bi-clipboard-data"></i> Detalhes Específicos</h6>
       </div>
       <div class="card-body">
+        {% if datas_execucao %}
+          {% for item_label, item_inicio in datas_execucao %}
+          <div class="detail-item d-flex justify-content-between">
+            <span class="label">{{ item_label }} (Início)</span>
+            <span class="value">{% if item_inicio %}{{ item_inicio|date:"d/m/Y" }}{% else %}<span class="text-muted">—</span>{% endif %}</span>
+          </div>
+          {% endfor %}
+        {% endif %}
         {% if etapa.numero_etapa == 1 %}
           <div class="detail-item d-flex justify-content-between">
             <span class="label">Limpeza do Terreno</span>

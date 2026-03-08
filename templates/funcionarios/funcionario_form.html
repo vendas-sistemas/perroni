@@ -302,6 +302,22 @@ document.addEventListener('DOMContentLoaded', function(){
   setInputMask('input[name="cpf"]', maskCPF);
   setInputMask('input[name="telefone"]', maskPhone);
   setInputMask('input[name="cep"]', maskCEP);
+
+  const funcaoEl = document.querySelector('select[name="funcao"]');
+  const diariaEl = document.querySelector('input[name="valor_diaria"]');
+  if (!funcaoEl || !diariaEl) return;
+
+  function syncDiariaByFuncao() {
+    const isFiscal = funcaoEl.value === 'fiscal';
+    diariaEl.disabled = isFiscal;
+    diariaEl.readOnly = isFiscal;
+    if (isFiscal) {
+      diariaEl.value = '0.00';
+    }
+  }
+
+  funcaoEl.addEventListener('change', syncDiariaByFuncao);
+  syncDiariaByFuncao();
 });
 </script>
 {% endblock %}

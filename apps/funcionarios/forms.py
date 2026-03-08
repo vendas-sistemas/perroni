@@ -134,11 +134,19 @@ class ApontamentoForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         obra = cleaned.get('obra')
-        
+        funcionario = cleaned.get('funcionario')
+        horas = cleaned.get('horas_trabalhadas')
+
         if cleaned.get('houve_ociosidade') and not cleaned.get('observacao_ociosidade'):
-            self.add_error('observacao_ociosidade', 'Justificativa obrigatória quando há ociosidade.')
+            self.add_error('observacao_ociosidade', 'Justificativa obrigatoria quando ha ociosidade.')
         if cleaned.get('houve_retrabalho') and not cleaned.get('motivo_retrabalho'):
-            self.add_error('motivo_retrabalho', 'Motivo obrigatório quando há retrabalho.')
+            self.add_error('motivo_retrabalho', 'Motivo obrigatorio quando ha retrabalho.')
+
+        if funcionario and funcionario.funcao == 'fiscal':
+            cleaned['horas_trabalhadas'] = Decimal('0.0')
+            cleaned['metragem_executada'] = Decimal('0.00')
+        elif horas is not None and horas <= Decimal('0.0'):
+            self.add_error('horas_trabalhadas', 'Horas devem ser maiores que zero para pedreiro/servente.')
 
         if obra and obra.status not in ('planejamento', 'em_andamento'):
             self.add_error('obra', 'Apontamento permitido somente para obras em Planejamento ou Em Andamento.')
@@ -146,11 +154,12 @@ class ApontamentoForm(forms.ModelForm):
         etapa = cleaned.get('etapa')
         if etapa:
             if obra and etapa.obra_id != obra.id:
-                self.add_error('etapa', 'A etapa selecionada não pertence à obra informada.')
+                self.add_error('etapa', 'A etapa selecionada nao pertence a obra informada.')
             elif etapa.status != 'em_andamento':
                 self.add_error('etapa', 'Selecione apenas etapas em andamento para apontamento.')
-        
+
         return cleaned
+
 
 
 class ApontamentoDiarioCabecalhoForm(forms.Form):
@@ -211,6 +220,7 @@ class FechamentoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['funcionario'].queryset = Funcionario.objects.filter(ativo=True).exclude(funcao='fiscal').order_by('nome_completo')
         if not self.instance.pk and not self.initial.get('data_inicio'):
             self.fields['data_inicio'].initial = datetime.date.today()
         if not self.instance.pk and not self.initial.get('data_fim'):
@@ -250,10 +260,11 @@ class FuncionarioForm(forms.ModelForm):
         self.fields['rg'].widget.attrs.update({'placeholder': 'RG'})
         self.fields['telefone'].widget.attrs.update({'placeholder': '(11) 9xxxx-xxxx'})
         self.fields['email'].widget.attrs.update({'placeholder': 'email@exemplo.com'})
-        self.fields['endereco'].widget.attrs.update({'placeholder': 'Rua, número, complemento'})
+        self.fields['endereco'].widget.attrs.update({'placeholder': 'Rua, numero, complemento'})
         self.fields['cidade'].widget.attrs.update({'placeholder': 'Cidade'})
         self.fields['estado'].widget.attrs.update({'placeholder': 'SP'})
         self.fields['cep'].widget.attrs.update({'placeholder': '00000-000', 'maxlength': '9'})
+        self.fields['valor_diaria'].required = False
         # file input
         self.fields['foto'].widget = forms.ClearableFileInput(attrs={'class': 'form-control'})
 
@@ -263,10 +274,23 @@ class FuncionarioForm(forms.ModelForm):
         if cpf:
             cleaned = ''.join(ch for ch in cpf if ch.isdigit())
             if len(cleaned) not in (11,):
-                raise forms.ValidationError('CPF inválido (deve conter 11 dígitos).')
+                raise forms.ValidationError('CPF invalido (deve conter 11 digitos).')
             return cpf
         return cpf
 
+    def clean(self):
+        cleaned = super().clean()
+        funcao = cleaned.get('funcao')
+        valor = cleaned.get('valor_diaria')
+
+        if funcao == 'fiscal':
+            cleaned['valor_diaria'] = Decimal('0.00')
+            return cleaned
+
+        if valor is None or valor <= Decimal('0.00'):
+            self.add_error('valor_diaria', 'Informe um valor de diaria maior que zero.')
+
+        return cleaned
 
 # ================ APONTAMENTO EM LOTE ================
 

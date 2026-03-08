@@ -45,15 +45,17 @@ class EtapaAdmin(admin.ModelAdmin):
 class Etapa1FundacaoAdmin(admin.ModelAdmin):
     list_display = [
         'etapa', 'limpeza_terreno', 'instalacao_energia_agua',
-        'marcacao_escavacao_conclusao', 'locacao_ferragem_conclusao',
-        'aterro_contrapiso_conclusao', 'fiadas_respaldo_conclusao'
+        'marcacao_escavacao_inicio', 'marcacao_escavacao_conclusao',
+        'locacao_ferragem_inicio', 'locacao_ferragem_conclusao',
+        'aterro_contrapiso_inicio', 'aterro_contrapiso_conclusao',
+        'fiadas_respaldo_inicio', 'fiadas_respaldo_conclusao'
     ]
     search_fields = ['etapa__obra__nome']
 
 
 @admin.register(Etapa2Estrutura)
 class Etapa2EstruturaAdmin(admin.ModelAdmin):
-    list_display = ['etapa', 'montagem_laje_conclusao', 'cobertura_conclusao']
+    list_display = ['etapa', 'montagem_laje_inicio', 'montagem_laje_conclusao', 'cobertura_inicio', 'cobertura_conclusao']
     search_fields = ['etapa__obra__nome']
 
 
@@ -67,9 +69,9 @@ class Etapa3InstalacoesAdmin(admin.ModelAdmin):
 class Etapa4AcabamentosAdmin(admin.ModelAdmin):
     list_display = [
         'etapa', 'portas_janelas',
-        'pintura_externa_1demao_conclusao',
-        'pintura_interna_1demao_conclusao',
-        'assentamento_piso_conclusao'
+        'pintura_externa_1demao_inicio', 'pintura_externa_1demao_conclusao',
+        'pintura_interna_1demao_inicio', 'pintura_interna_1demao_conclusao',
+        'assentamento_piso_inicio', 'assentamento_piso_conclusao'
     ]
     search_fields = ['etapa__obra__nome']
 
@@ -77,6 +79,9 @@ class Etapa4AcabamentosAdmin(admin.ModelAdmin):
 @admin.register(Etapa5Finalizacao)
 class Etapa5FinalizacaoAdmin(admin.ModelAdmin):
     list_display = [
-        'etapa', 'pintura_externa_2demao_conclusao', 'pintura_interna_2demao_conclusao', 'loucas_metais', 'eletrica'
+        'etapa',
+        'pintura_externa_2demao_inicio', 'pintura_externa_2demao_conclusao',
+        'pintura_interna_2demao_inicio', 'pintura_interna_2demao_conclusao',
+        'loucas_metais', 'eletrica'
     ]
     search_fields = ['etapa__obra__nome']

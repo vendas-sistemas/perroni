@@ -124,17 +124,19 @@
       return `${hh}:${mm}`;
     }
 
-    async function fetchApontamentos(){
-      const func = funcionarioEl ? funcionarioEl.value : '';
-      const di = dataInicioEl ? dataInicioEl.value : '';
-      if(!func || !di) {
-        preview.style.display = 'none';
-        return;
-      }
-      const params = new URLSearchParams({funcionario: func, data_inicio: di});
-      const resp = await fetch(apiUrl + '?' + params.toString());
-      if(!resp.ok){
-        preview.style.display = 'none';
+	    async function fetchApontamentos(){
+	      const func = funcionarioEl ? funcionarioEl.value : '';
+	      const di = dataInicioEl ? dataInicioEl.value : '';
+	      const df = dataFimEl ? dataFimEl.value : '';
+	      if(!func || !di) {
+	        preview.style.display = 'none';
+	        return;
+	      }
+	      const params = new URLSearchParams({funcionario: func, data_inicio: di});
+	      if (df) params.append('data_fim', df);
+	      const resp = await fetch(apiUrl + '?' + params.toString());
+	      if(!resp.ok){
+	        preview.style.display = 'none';
         return;
       }
       const data = await resp.json();

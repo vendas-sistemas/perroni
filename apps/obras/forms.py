@@ -58,7 +58,15 @@ class Etapa1FundacaoForm(forms.ModelForm):
         widgets = {
             'limpeza_terreno': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'instalacao_energia_agua': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'marcacao_escavacao_inicio': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
             'marcacao_escavacao_conclusao': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
+            'locacao_ferragem_inicio': forms.DateInput(
                 format='%Y-%m-%d',
                 attrs={'type': 'date', 'class': 'form-control'}
             ),
@@ -66,7 +74,15 @@ class Etapa1FundacaoForm(forms.ModelForm):
                 format='%Y-%m-%d',
                 attrs={'type': 'date', 'class': 'form-control'}
             ),
+            'aterro_contrapiso_inicio': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
             'aterro_contrapiso_conclusao': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
+            'fiadas_respaldo_inicio': forms.DateInput(
                 format='%Y-%m-%d',
                 attrs={'type': 'date', 'class': 'form-control'}
             ),
@@ -86,8 +102,12 @@ class Etapa1FundacaoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for fname in ['marcacao_escavacao_conclusao', 'locacao_ferragem_conclusao',
-                      'aterro_contrapiso_conclusao', 'fiadas_respaldo_conclusao']:
+        for fname in [
+            'marcacao_escavacao_inicio', 'marcacao_escavacao_conclusao',
+            'locacao_ferragem_inicio', 'locacao_ferragem_conclusao',
+            'aterro_contrapiso_inicio', 'aterro_contrapiso_conclusao',
+            'fiadas_respaldo_inicio', 'fiadas_respaldo_conclusao',
+        ]:
             if fname in self.fields:
                 self.fields[fname].input_formats = ['%Y-%m-%d']
 
@@ -97,7 +117,15 @@ class Etapa2EstruturaForm(forms.ModelForm):
         model = Etapa2Estrutura
         exclude = ('etapa',)
         widgets = {
+            'montagem_laje_inicio': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
             'montagem_laje_conclusao': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
+            'cobertura_inicio': forms.DateInput(
                 format='%Y-%m-%d',
                 attrs={'type': 'date', 'class': 'form-control'}
             ),
@@ -110,7 +138,7 @@ class Etapa2EstruturaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for fname in ['montagem_laje_conclusao', 'cobertura_conclusao']:
+        for fname in ['montagem_laje_inicio', 'montagem_laje_conclusao', 'cobertura_inicio', 'cobertura_conclusao']:
             if fname in self.fields:
                 self.fields[fname].input_formats = ['%Y-%m-%d']
 
@@ -134,10 +162,42 @@ class Etapa4AcabamentosForm(forms.ModelForm):
         model = Etapa4Acabamentos
         exclude = ('etapa',)
         widgets = {
-            'pintura_externa_1demao_dias': forms.NumberInput(attrs={'class': 'form-control'}),
-            'pintura_interna_1demao_dias': forms.NumberInput(attrs={'class': 'form-control'}),
-            'assentamento_piso_dias': forms.NumberInput(attrs={'class': 'form-control'}),
+            'portas_janelas': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'pintura_externa_1demao_inicio': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
+            'pintura_externa_1demao_conclusao': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
+            'pintura_interna_1demao_inicio': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
+            'pintura_interna_1demao_conclusao': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
+            'assentamento_piso_inicio': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
+            'assentamento_piso_conclusao': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for fname in [
+            'pintura_externa_1demao_inicio', 'pintura_externa_1demao_conclusao',
+            'pintura_interna_1demao_inicio', 'pintura_interna_1demao_conclusao',
+            'assentamento_piso_inicio', 'assentamento_piso_conclusao',
+        ]:
+            if fname in self.fields:
+                self.fields[fname].input_formats = ['%Y-%m-%d']
 
 
 class Etapa5FinalizacaoForm(forms.ModelForm):
@@ -145,9 +205,34 @@ class Etapa5FinalizacaoForm(forms.ModelForm):
         model = Etapa5Finalizacao
         exclude = ('etapa',)
         widgets = {
-            'pintura_externa_2demao_dias': forms.NumberInput(attrs={'class': 'form-control'}),
-            'pintura_interna_2demao_dias': forms.NumberInput(attrs={'class': 'form-control'}),
+            'pintura_externa_2demao_inicio': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
+            'pintura_externa_2demao_conclusao': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
+            'pintura_interna_2demao_inicio': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
+            'pintura_interna_2demao_conclusao': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control'}
+            ),
+            'loucas_metais': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'eletrica': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for fname in [
+            'pintura_externa_2demao_inicio', 'pintura_externa_2demao_conclusao',
+            'pintura_interna_2demao_inicio', 'pintura_interna_2demao_conclusao',
+        ]:
+            if fname in self.fields:
+                self.fields[fname].input_formats = ['%Y-%m-%d']
 from django import forms
 from .models import Obra
 from apps.clientes.models import Cliente

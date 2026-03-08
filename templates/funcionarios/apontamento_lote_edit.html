@@ -100,7 +100,7 @@
                                         <option value="">Selecione...</option>
                                         {% for f in funcionarios %}
                                         <option value="{{ f.id }}" 
-                                                data-funcao="{{ f.get_funcao_display }}"
+                                                data-funcao="{{ f.funcao }}"
                                                 {% if f.id == func_lote.funcionario.id %}selected{% endif %}>
                                             {{ f.nome_completo }}
                                         </option>
@@ -108,13 +108,13 @@
                                     </select>
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge {% if func_lote.funcionario.funcao == 'pedreiro' %}badge-pedreiro{% else %}badge-servente{% endif %} funcao-badge">
-                                        {{ func_lote.funcionario.get_funcao_display }}
+                                    <span class="badge {% if func_lote.funcionario.funcao == 'pedreiro' %}badge-pedreiro{% elif func_lote.funcionario.funcao == 'servente' %}badge-servente{% else %}bg-info text-dark{% endif %} funcao-badge">
+                                        {% if func_lote.funcionario.funcao == 'fiscal' %}Fiscalizacao (sem custo){% else %}{{ func_lote.funcionario.get_funcao_display }}{% endif %}
                                     </span>
                                 </td>
                                 <td>
                                     <input type="number" name="horas_trabalhadas" class="form-control"
-                                           value="{{ func_lote.horas_trabalhadas }}" step="0.5" min="0.5" max="24" required>
+                                           value="{{ func_lote.horas_trabalhadas }}" step="0.5" min="{% if func_lote.funcionario.funcao == 'fiscal' %}0{% else %}0.5{% endif %}" max="24" {% if func_lote.funcionario.funcao == 'fiscal' %}readonly{% endif %} required>
                                 </td>
                                 <td class="text-center">
                                     <button type="button" class="btn btn-sm btn-outline-danger btn-remover-funcionario">
@@ -203,7 +203,7 @@ function getFuncionariosOptions(excluirIds) {
     excluirIds = excluirIds || [];
     return funcionariosDisponiveis
         .filter(function(f) { return excluirIds.indexOf(f.id) === -1; })
-        .map(function(f) { return '<option value="' + f.id + '" data-funcao="' + f.funcao_display + '">' + f.nome + '</option>'; })
+        .map(function(f) { return '<option value="' + f.id + '" data-funcao="' + f.funcao + '">' + f.nome + ' (' + f.funcao_display + ')</option>'; })
         .join('');
 }
 
@@ -244,11 +244,25 @@ document.getElementById('btn-adicionar-funcionario').addEventListener('click', f
     row.querySelector('.funcionario-select').addEventListener('change', function() {
         var opt = this.options[this.selectedIndex];
         var badge = row.querySelector('.funcao-badge');
+        var horasInput = row.querySelector('input[name="horas_trabalhadas"]');
         if (opt && opt.dataset.funcao) {
-            badge.textContent = opt.dataset.funcao;
-            badge.className = opt.dataset.funcao.toLowerCase().indexOf('pedreiro') >= 0
-                ? 'badge badge-pedreiro funcao-badge'
-                : 'badge badge-servente funcao-badge';
+            var funcao = (opt.dataset.funcao || '').toLowerCase();
+            if (funcao === 'pedreiro') {
+                badge.textContent = 'Pedreiro';
+                badge.className = 'badge badge-pedreiro funcao-badge';
+                if (horasInput) { if (!horasInput.value || Number(horasInput.value) <= 0) horasInput.value = '8.0'; horasInput.readOnly = false; horasInput.min = '0.5'; horasInput.step = '0.5'; }
+            } else if (funcao === 'servente') {
+                badge.textContent = 'Servente';
+                badge.className = 'badge badge-servente funcao-badge';
+                if (horasInput) { if (!horasInput.value || Number(horasInput.value) <= 0) horasInput.value = '8.0'; horasInput.readOnly = false; horasInput.min = '0.5'; horasInput.step = '0.5'; }
+            } else if (funcao === 'fiscal') {
+                badge.textContent = 'Fiscalizacao (sem custo)';
+                badge.className = 'badge bg-info text-dark funcao-badge';
+                if (horasInput) { horasInput.value = '0.0'; horasInput.readOnly = true; horasInput.min = '0'; horasInput.step = '0.1'; }
+            } else {
+                badge.textContent = '-';
+                badge.className = 'badge bg-secondary funcao-badge';
+            }
         } else {
             badge.textContent = '-';
             badge.className = 'badge bg-secondary funcao-badge';
@@ -354,14 +368,51 @@ if (etapaSelect) {
 
 // Atualizar badges existentes
 document.querySelectorAll('.funcionario-select').forEach(function(select) {
+    // aplicar regra inicial ao carregar a tela
+    (function() {
+        var opt = select.options[select.selectedIndex];
+        var badge = select.closest('tr').querySelector('.funcao-badge');
+        var horasInput = select.closest('tr').querySelector('input[name="horas_trabalhadas"]');
+        if (opt && opt.dataset.funcao) {
+            var funcao = (opt.dataset.funcao || '').toLowerCase();
+            if (funcao === 'pedreiro') {
+                badge.textContent = 'Pedreiro';
+                badge.className = 'badge badge-pedreiro funcao-badge';
+                if (horasInput) { if (!horasInput.value || Number(horasInput.value) <= 0) horasInput.value = '8.0'; horasInput.readOnly = false; horasInput.min = '0.5'; horasInput.step = '0.5'; }
+            } else if (funcao === 'servente') {
+                badge.textContent = 'Servente';
+                badge.className = 'badge badge-servente funcao-badge';
+                if (horasInput) { if (!horasInput.value || Number(horasInput.value) <= 0) horasInput.value = '8.0'; horasInput.readOnly = false; horasInput.min = '0.5'; horasInput.step = '0.5'; }
+            } else if (funcao === 'fiscal') {
+                badge.textContent = 'Fiscalizacao (sem custo)';
+                badge.className = 'badge bg-info text-dark funcao-badge';
+                if (horasInput) { horasInput.value = '0.0'; horasInput.readOnly = true; horasInput.min = '0'; horasInput.step = '0.1'; }
+            }
+        }
+    })();
+
     select.addEventListener('change', function() {
         var opt = select.options[select.selectedIndex];
         var badge = select.closest('tr').querySelector('.funcao-badge');
         if (opt && opt.dataset.funcao) {
-            badge.textContent = opt.dataset.funcao;
-            badge.className = opt.dataset.funcao.toLowerCase().indexOf('pedreiro') >= 0
-                ? 'badge badge-pedreiro funcao-badge'
-                : 'badge badge-servente funcao-badge';
+            var funcao = (opt.dataset.funcao || '').toLowerCase();
+            var horasInput = select.closest('tr').querySelector('input[name="horas_trabalhadas"]');
+            if (funcao === 'pedreiro') {
+                badge.textContent = 'Pedreiro';
+                badge.className = 'badge badge-pedreiro funcao-badge';
+                if (horasInput) { if (!horasInput.value || Number(horasInput.value) <= 0) horasInput.value = '8.0'; horasInput.readOnly = false; horasInput.min = '0.5'; horasInput.step = '0.5'; }
+            } else if (funcao === 'servente') {
+                badge.textContent = 'Servente';
+                badge.className = 'badge badge-servente funcao-badge';
+                if (horasInput) { if (!horasInput.value || Number(horasInput.value) <= 0) horasInput.value = '8.0'; horasInput.readOnly = false; horasInput.min = '0.5'; horasInput.step = '0.5'; }
+            } else if (funcao === 'fiscal') {
+                badge.textContent = 'Fiscalizacao (sem custo)';
+                badge.className = 'badge bg-info text-dark funcao-badge';
+                if (horasInput) { horasInput.value = '0.0'; horasInput.readOnly = true; horasInput.min = '0'; horasInput.step = '0.1'; }
+            } else {
+                badge.textContent = '-';
+                badge.className = 'badge bg-secondary funcao-badge';
+            }
         }
     });
 });

@@ -40,9 +40,13 @@ ETAPA_FIELDS_META = {
         'fields': [
             ('limpeza_terreno', 'boolean', 'Limpeza do Terreno'),
             ('instalacao_energia_agua', 'boolean', 'Instalação de Energia e Água'),
+            ('marcacao_escavacao_inicio', 'date', 'Marcação e Escavação (início)'),
             ('marcacao_escavacao_conclusao', 'date', 'Marcação e Escavação (conclusão)'),
+            ('locacao_ferragem_inicio', 'date', 'Locação de Ferragem (início)'),
             ('locacao_ferragem_conclusao', 'date', 'Locação de Ferragem (conclusão)'),
+            ('aterro_contrapiso_inicio', 'date', 'Aterro e Contrapiso (início)'),
             ('aterro_contrapiso_conclusao', 'date', 'Aterro e Contrapiso (conclusão)'),
+            ('fiadas_respaldo_inicio', 'date', '8 Fiadas até Respaldo (início)'),
             ('fiadas_respaldo_conclusao', 'date', '8 Fiadas até Respaldo (conclusão)'),
             ('levantar_alicerce_percentual', 'decimal', 'Levantar Alicerce, Reboco e Impermeabilizar (%)'),
         ]
@@ -51,7 +55,9 @@ ETAPA_FIELDS_META = {
         'related_name': 'estrutura',
         'model_class': Etapa2Estrutura,
         'fields': [
+            ('montagem_laje_inicio', 'date', 'Montagem da Laje (início)'),
             ('montagem_laje_conclusao', 'date', 'Montagem da Laje (conclusão)'),
+            ('cobertura_inicio', 'date', 'Cobertura Completa (início)'),
             ('cobertura_conclusao', 'date', 'Cobertura Completa (conclusão)'),
             ('platibanda_blocos', 'integer', 'Platibanda (Unidades de Blocos)'),
         ]
@@ -73,8 +79,11 @@ ETAPA_FIELDS_META = {
         'model_class': Etapa4Acabamentos,
         'fields': [
             ('portas_janelas', 'boolean', 'Portas e Janelas'),
+            ('pintura_externa_1demao_inicio', 'date', 'Pintura Externa 1ª Demão (início)'),
             ('pintura_externa_1demao_conclusao', 'date', 'Pintura Externa 1ª Demão (conclusão)'),
+            ('pintura_interna_1demao_inicio', 'date', 'Pintura Interna 1ª Demão (início)'),
             ('pintura_interna_1demao_conclusao', 'date', 'Pintura Interna 1ª Demão (conclusão)'),
+            ('assentamento_piso_inicio', 'date', 'Assentamento de Piso (início)'),
             ('assentamento_piso_conclusao', 'date', 'Assentamento de Piso (conclusão)'),
         ]
     },
@@ -82,7 +91,9 @@ ETAPA_FIELDS_META = {
         'related_name': 'finalizacao',
         'model_class': Etapa5Finalizacao,
         'fields': [
+            ('pintura_externa_2demao_inicio', 'date', 'Pintura Externa 2ª Demão (início)'),
             ('pintura_externa_2demao_conclusao', 'date', 'Pintura Externa 2ª Demão (conclusão)'),
+            ('pintura_interna_2demao_inicio', 'date', 'Pintura Interna 2ª Demão (início)'),
             ('pintura_interna_2demao_conclusao', 'date', 'Pintura Interna 2ª Demão (conclusão)'),
             ('loucas_metais', 'boolean', 'Louças e Metais'),
             ('eletrica', 'boolean', 'Elétrica'),
@@ -442,6 +453,10 @@ def _criar_lote_por_payload(base_data, etapa, request, funcionarios_ids, horas_t
         try:
             funcionario = Funcionario.objects.get(pk=func_id, ativo=True)
             horas = Decimal(horas_trabalhadas_list[i]) if i < len(horas_trabalhadas_list) else Decimal('8.0')
+            if funcionario.funcao == 'fiscal':
+                horas = Decimal('0.0')
+            elif horas <= Decimal('0.0'):
+                horas = Decimal('8.0')
             FuncionarioLote.objects.create(
                 lote=lote,
                 funcionario=funcionario,
@@ -963,6 +978,8 @@ def _apontamento_diario_legado(request):
                         horas_dec = Decimal('8.0')
                 except (InvalidOperation, ValueError):
                     horas_dec = Decimal('8.0')
+                if func.funcao == 'fiscal':
+                    horas_dec = Decimal('0.0')
 
                 etapa_obj = None
                 if etapa_id:
@@ -1485,7 +1502,7 @@ def fechamento_auto(request):
             )
             return redirect('funcionarios:fechamento_list')
 
-        funcionarios = Funcionario.objects.filter(ativo=True)
+        funcionarios = Funcionario.objects.filter(ativo=True).exclude(funcao='fiscal')
         criados = 0
         existentes = 0
 
@@ -1543,7 +1560,7 @@ def obra_mao_de_obra(request, pk):
     # Custos por etapa
     custo_por_etapa = []
     for etapa in etapas:
-        aps = ApontamentoFuncionario.objects.filter(obra=obra, etapa=etapa)
+        aps = ApontamentoFuncionario.objects.filter(obra=obra, etapa=etapa).exclude(funcionario__funcao='fiscal')
         total = aps.aggregate(
             total_valor=Sum('valor_diaria'),
             total_horas=Sum('horas_trabalhadas'),
@@ -1566,7 +1583,7 @@ def obra_mao_de_obra(request, pk):
         })
 
     # Custo total
-    custo_total = ApontamentoFuncionario.objects.filter(obra=obra).aggregate(
+    custo_total = ApontamentoFuncionario.objects.filter(obra=obra).exclude(funcionario__funcao='fiscal').aggregate(
         total=Sum('valor_diaria')
     )['total'] or Decimal('0.00')
 
@@ -1861,11 +1878,9 @@ def apontamentos_api(request):
             'valor_diaria': str(a.valor_diaria),
             'created_at': a.created_at.isoformat(),
         })
-        # Only count valor/horas once per unique date (one diária per day)
-        if a.data not in seen_dates:
-            total_valor += a.valor_diaria
-            total_horas += a.horas_trabalhadas
-            seen_dates.add(a.data)
+        total_valor += a.valor_diaria or Decimal('0.00')
+        total_horas += a.horas_trabalhadas or Decimal('0.0')
+        seen_dates.add(a.data)
 
     result = {
         'apontamentos': apontamentos,
@@ -2088,6 +2103,10 @@ def apontamento_lote_create(request):
                 try:
                     funcionario = Funcionario.objects.get(pk=func_id, ativo=True)
                     horas = Decimal(horas_trabalhadas_list[i]) if i < len(horas_trabalhadas_list) else Decimal('8.0')
+                    if funcionario.funcao == 'fiscal':
+                        horas = Decimal('0.0')
+                    elif horas <= Decimal('0.0'):
+                        horas = Decimal('8.0')
                     
                     FuncionarioLote.objects.create(
                         lote=lote,
@@ -2478,11 +2497,25 @@ def api_campos_etapa(request):
                 'valor_atual': valores_atuais.get('instalacao_energia_agua', False)
             },
             {
+                'nome': 'marcacao_escavacao_inicio',
+                'label': 'Marcação e Escavação',
+                'tipo': 'date',
+                'help_text': 'Data de início',
+                'valor_atual': valores_atuais.get('marcacao_escavacao_inicio', '')
+            },
+            {
                 'nome': 'marcacao_escavacao_conclusao',
                 'label': 'Marcação e Escavação',
                 'tipo': 'date',
                 'help_text': 'Data de conclusão',
                 'valor_atual': valores_atuais.get('marcacao_escavacao_conclusao', '')
+            },
+            {
+                'nome': 'locacao_ferragem_inicio',
+                'label': 'Locação de Ferragem e Concretagem',
+                'tipo': 'date',
+                'help_text': 'Data de início',
+                'valor_atual': valores_atuais.get('locacao_ferragem_inicio', '')
             },
             {
                 'nome': 'locacao_ferragem_conclusao',
@@ -2506,6 +2539,13 @@ def api_campos_etapa(request):
                 'aviso': '✅ 100% concluído!' if Decimal(str(valores_atuais.get('levantar_alicerce_percentual', '0.00'))) >= Decimal('100.00') else None
             },
             {
+                'nome': 'aterro_contrapiso_inicio',
+                'label': 'Aterrar e Fazer Contra Piso',
+                'tipo': 'date',
+                'help_text': 'Data de início',
+                'valor_atual': valores_atuais.get('aterro_contrapiso_inicio', '')
+            },
+            {
                 'nome': 'aterro_contrapiso_conclusao',
                 'label': 'Aterrar e Fazer Contra Piso',
                 'tipo': 'date',
@@ -2524,6 +2564,13 @@ def api_campos_etapa(request):
                 'valor_atual_display': str(valores_atuais.get('parede_7fiadas_blocos', '0'))
             },
             {
+                'nome': 'fiadas_respaldo_inicio',
+                'label': '8 Fiadas até Respaldo',
+                'tipo': 'date',
+                'help_text': 'Data de início',
+                'valor_atual': valores_atuais.get('fiadas_respaldo_inicio', '')
+            },
+            {
                 'nome': 'fiadas_respaldo_conclusao',
                 'label': '8 Fiadas até Respaldo',
                 'tipo': 'date',
@@ -2535,6 +2582,13 @@ def api_campos_etapa(request):
     elif numero_etapa == 2:
         # Etapa 2 - Estrutura
         campos = [
+            {
+                'nome': 'montagem_laje_inicio',
+                'label': 'Montagem da Laje e Concretagem',
+                'tipo': 'date',
+                'help_text': 'Data de início',
+                'valor_atual': valores_atuais.get('montagem_laje_inicio', '')
+            },
             {
                 'nome': 'montagem_laje_conclusao',
                 'label': 'Montagem da Laje e Concretagem',
@@ -2552,6 +2606,13 @@ def api_campos_etapa(request):
                 'help_text': 'Quantidade de blocos assentados HOJE (será somado ao total)',
                 'valor_atual': '0',  # Campo inicia em zero para evitar soma acidental
                 'valor_atual_display': str(valores_atuais.get('platibanda_blocos', '0'))
+            },
+            {
+                'nome': 'cobertura_inicio',
+                'label': 'Cobertura Completa',
+                'tipo': 'date',
+                'help_text': 'Data de início',
+                'valor_atual': valores_atuais.get('cobertura_inicio', '')
             },
             {
                 'nome': 'cobertura_conclusao',
@@ -2628,6 +2689,13 @@ def api_campos_etapa(request):
                 'valor_atual': valores_atuais.get('portas_janelas', False)
             },
             {
+                'nome': 'pintura_externa_1demao_inicio',
+                'label': 'Pintura Externa 1ª Demão',
+                'tipo': 'date',
+                'help_text': 'Data de início',
+                'valor_atual': valores_atuais.get('pintura_externa_1demao_inicio', '')
+            },
+            {
                 'nome': 'pintura_externa_1demao_conclusao',
                 'label': 'Pintura Externa 1ª Demão',
                 'tipo': 'date',
@@ -2635,11 +2703,25 @@ def api_campos_etapa(request):
                 'valor_atual': valores_atuais.get('pintura_externa_1demao_conclusao', '')
             },
             {
+                'nome': 'pintura_interna_1demao_inicio',
+                'label': 'Pintura Interna 1ª Demão',
+                'tipo': 'date',
+                'help_text': 'Data de início',
+                'valor_atual': valores_atuais.get('pintura_interna_1demao_inicio', '')
+            },
+            {
                 'nome': 'pintura_interna_1demao_conclusao',
                 'label': 'Pintura Interna 1ª Demão',
                 'tipo': 'date',
                 'help_text': 'Data de conclusão',
                 'valor_atual': valores_atuais.get('pintura_interna_1demao_conclusao', '')
+            },
+            {
+                'nome': 'assentamento_piso_inicio',
+                'label': 'Assentamento de Piso',
+                'tipo': 'date',
+                'help_text': 'Data de início',
+                'valor_atual': valores_atuais.get('assentamento_piso_inicio', '')
             },
             {
                 'nome': 'assentamento_piso_conclusao',
@@ -2654,11 +2736,25 @@ def api_campos_etapa(request):
         # Etapa 5 - Finalização
         campos = [
             {
+                'nome': 'pintura_externa_2demao_inicio',
+                'label': 'Pintura Externa 2ª Demão',
+                'tipo': 'date',
+                'help_text': 'Data de início',
+                'valor_atual': valores_atuais.get('pintura_externa_2demao_inicio', '')
+            },
+            {
                 'nome': 'pintura_externa_2demao_conclusao',
                 'label': 'Pintura Externa 2ª Demão',
                 'tipo': 'date',
                 'help_text': 'Data de conclusão',
                 'valor_atual': valores_atuais.get('pintura_externa_2demao_conclusao', '')
+            },
+            {
+                'nome': 'pintura_interna_2demao_inicio',
+                'label': 'Pintura Interna 2ª Demão',
+                'tipo': 'date',
+                'help_text': 'Data de início',
+                'valor_atual': valores_atuais.get('pintura_interna_2demao_inicio', '')
             },
             {
                 'nome': 'pintura_interna_2demao_conclusao',
@@ -2861,6 +2957,71 @@ def reverter_producao_etapa(lote):
     detalhes.save()
 
 
+def recalcular_producao_etapa(etapa):
+    """
+    Reconstroi os campos numericos da etapa a partir dos RegistroProducao remanescentes.
+    Isso evita residuos quando um lote e excluido/editado.
+    """
+    if not etapa:
+        return
+
+    detalhes = _obter_detalhes_etapa(etapa)
+    if not detalhes:
+        return
+
+    # indicador -> campo no model de detalhes da etapa
+    campo_map = {
+        'parede_7fiadas': 'parede_7fiadas_blocos',
+        'alicerce_percentual': 'levantar_alicerce_percentual',
+        'platibanda': 'platibanda_blocos',
+        'reboco_externo': 'reboco_externo_m2',
+        'reboco_interno': 'reboco_interno_m2',
+        'respaldo_conclusao': 'respaldo_conclusao',
+        'laje_conclusao': 'laje_conclusao',
+        'cobertura_conclusao': 'cobertura_conclusao',
+    }
+
+    totais = {
+        row['indicador']: row['total'] or Decimal('0')
+        for row in (
+            RegistroProducao.objects
+            .filter(etapa=etapa)
+            .values('indicador')
+            .annotate(total=Sum('quantidade'))
+        )
+    }
+
+    update_fields = []
+    for indicador, campo in campo_map.items():
+        if not hasattr(detalhes, campo):
+            continue
+
+        field = detalhes._meta.get_field(campo)
+        total = totais.get(indicador, Decimal('0'))
+
+        if field.get_internal_type() in ['IntegerField', 'PositiveIntegerField']:
+            novo_valor = int(total)
+        elif field.get_internal_type() == 'DecimalField':
+            scale = Decimal('1').scaleb(-field.decimal_places)
+            novo_valor = Decimal(total).quantize(scale)
+        else:
+            continue
+
+        valor_atual = getattr(detalhes, campo)
+        if valor_atual != novo_valor:
+            setattr(detalhes, campo, novo_valor)
+            update_fields.append(campo)
+
+    if update_fields:
+        detalhes.save(update_fields=update_fields)
+
+    # Mantem percentual da obra consistente apos recalculo.
+    try:
+        etapa.obra.calcular_percentual()
+    except Exception:
+        pass
+
+
 @login_required
 @require_http_methods(["POST"])
 @transaction.atomic
@@ -2879,7 +3040,7 @@ def apontamento_lote_delete(request, pk):
         f.funcionario.nome_completo for f in lote.funcionarios.select_related('funcionario').all()
     ]
 
-    # PASSO 1: Reverter produção nas etapas
+    # PASSO 1: Reverter produção nas etapas (legado)
     reverter_producao_etapa(lote)
 
     # PASSO 2: Excluir registros de produção
@@ -2934,6 +3095,9 @@ def apontamento_lote_delete(request, pk):
 
     # PASSO 6: Excluir o lote
     lote.delete()
+
+    # PASSO 7: Recalcular etapa a partir dos registros remanescentes
+    recalcular_producao_etapa(etapa)
 
     messages.success(
         request,
@@ -3006,6 +3170,10 @@ def apontamento_lote_edit(request, pk):
                 try:
                     funcionario = Funcionario.objects.get(pk=func_id, ativo=True)
                     horas = Decimal(horas_trabalhadas_list[i]) if i < len(horas_trabalhadas_list) else Decimal('8.0')
+                    if funcionario.funcao == 'fiscal':
+                        horas = Decimal('0.0')
+                    elif horas <= Decimal('0.0'):
+                        horas = Decimal('8.0')
                     FuncionarioLote.objects.create(
                         lote=lote,
                         funcionario=funcionario,
@@ -3092,6 +3260,9 @@ def apontamento_lote_edit(request, pk):
             # PASSO 8: Gerar nova producao
             lote._valores_dia = valores_producao_dia
             lote.gerar_apontamentos_individuais()
+
+            # PASSO 8.1: Recalcular etapa com base no estado final do banco
+            recalcular_producao_etapa(lote.etapa)
 
             # PASSO 9: Registrar no historico
             detalhes_unidades = []

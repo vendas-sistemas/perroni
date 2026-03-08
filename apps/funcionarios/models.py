@@ -1,4 +1,5 @@
 from django.db import models, transaction
+from django.db.models import Sum
 from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
 from apps.obras.models import Obra, Etapa
@@ -28,6 +29,7 @@ class Funcionario(models.Model):
     FUNCAO_CHOICES = [
         ('pedreiro', 'Pedreiro'),
         ('servente', 'Servente'),
+        ('fiscal', 'Fiscal'),
     ]
     funcao = models.CharField(
         max_length=10,
@@ -39,7 +41,7 @@ class Funcionario(models.Model):
     valor_diaria = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        validators=[MinValueValidator(Decimal('0.01'))],
+        validators=[MinValueValidator(Decimal('0.00'))],
         verbose_name="Valor da Diária (R$)"
     )
     
@@ -76,6 +78,11 @@ class Funcionario(models.Model):
     
     def __str__(self):
         return f"{self.nome_completo} - {self.get_funcao_display()}"
+
+    def save(self, *args, **kwargs):
+        if self.funcao == 'fiscal':
+            self.valor_diaria = Decimal('0.00')
+        super().save(*args, **kwargs)
     
     def inativar(self, motivo):
         """Inativa o funcionário"""
@@ -119,7 +126,7 @@ class ApontamentoFuncionario(models.Model):
         max_digits=4,
         decimal_places=1,
         default=Decimal('8.0'),
-        validators=[MinValueValidator(Decimal('0.5')), MaxValueValidator(Decimal('24.0'))],
+        validators=[MinValueValidator(Decimal('0.0')), MaxValueValidator(Decimal('24.0'))],
         verbose_name="Horas Trabalhadas"
     )
     
@@ -204,10 +211,15 @@ class ApontamentoFuncionario(models.Model):
     def __str__(self):
         return f"{self.funcionario.nome_completo} - {self.obra.nome} - {self.data.strftime('%d/%m/%Y')}"
     
+    BASE_HORAS_DIA = Decimal('8.0')
+
     def save(self, *args, **kwargs):
         diaria_base = self.funcionario.valor_diaria or Decimal('0.00')
+        if self.funcionario and self.funcionario.funcao == 'fiscal':
+            diaria_base = Decimal('0.00')
+            self.horas_trabalhadas = Decimal('0.0')
 
-        # Auto-preenche valor da diária se não foi informado
+        # Auto-preenche valor da diaria se nao foi informado
         if self.valor_diaria is None:
             self.valor_diaria = diaria_base
 
@@ -216,27 +228,149 @@ class ApontamentoFuncionario(models.Model):
             self._normalizar_valor_diaria_dia(diaria_base)
 
     def _normalizar_valor_diaria_dia(self, diaria_base):
-        """Garante 1 diária por funcionário/dia (independente da quantidade de obras)."""
-        qs_dia = type(self).objects.filter(
-            funcionario=self.funcionario,
-            data=self.data,
-        ).order_by('created_at', 'pk')
+        """
+        Normaliza horas e valor por obra no dia.
 
-        apontamento_principal_id = qs_dia.values_list('pk', flat=True).first()
-        if not apontamento_principal_id:
+        Regra:
+        - Funcionario em N obras no mesmo dia => cada obra recebe 1/N de horas e valor.
+        - Se houver multiplos apontamentos na mesma obra/dia (ex.: etapas
+          diferentes), somente um apontamento daquela obra recebe horas/valor
+          da obra no dia. Os demais ficam zerados.
+        """
+        type(self).normalizar_apontamentos_dia(
+            funcionario_id=self.funcionario_id,
+            data=self.data,
+            diaria_base=diaria_base,
+        )
+
+    @classmethod
+    def _valor_para_centavos(cls, valor):
+        return int((valor * Decimal('100')).to_integral_value())
+
+    @classmethod
+    def _centavos_para_valor(cls, centavos):
+        return (Decimal(centavos) / Decimal('100')).quantize(Decimal('0.01'))
+
+    @classmethod
+    def _decihoras_para_valor(cls, decihoras):
+        return (Decimal(decihoras) / Decimal('10')).quantize(Decimal('0.1'))
+
+    @classmethod
+    def normalizar_apontamentos_dia(cls, funcionario_id, data, diaria_base=None):
+        """
+        Recalcula horas_trabalhadas e valor_diaria de todos os apontamentos
+        do funcionario na data.
+
+        Regras:
+        - A carga diaria base e no maximo 8h (BASE_HORAS_DIA).
+        - Se houver mais de uma obra no dia, divide horas/valor entre obras.
+        - Se houver mais de um apontamento da mesma obra no dia, concentra
+          horas/valor no primeiro e zera os demais (etapas nao duplicam custo).
+        """
+        funcionario_data = (
+            Funcionario.objects.filter(pk=funcionario_id)
+            .values('valor_diaria', 'funcao')
+            .first()
+        ) or {}
+        is_fiscal = funcionario_data.get('funcao') == 'fiscal'
+
+        if diaria_base is None:
+            if is_fiscal:
+                diaria_base = Decimal('0.00')
+            else:
+                diaria_base = funcionario_data.get('valor_diaria') or Decimal('0.00')
+        elif is_fiscal:
+            diaria_base = Decimal('0.00')
+
+        rows = list(
+            cls.objects.filter(
+                funcionario_id=funcionario_id,
+                data=data,
+            )
+            .values('pk', 'obra_id', 'horas_trabalhadas')
+            .order_by('created_at', 'pk')
+        )
+
+        if not rows:
             return
 
-        type(self).objects.filter(pk=apontamento_principal_id).exclude(
-            valor_diaria=diaria_base
-        ).update(valor_diaria=diaria_base)
+        obras_ordem = []
+        obra_para_rows = {}
+        for row in rows:
+            obra_id = row['obra_id']
+            if obra_id not in obra_para_rows:
+                obra_para_rows[obra_id] = []
+                obras_ordem.append(obra_id)
+            obra_para_rows[obra_id].append(row)
 
-        type(self).objects.filter(
-            funcionario=self.funcionario,
-            data=self.data,
-        ).exclude(pk=apontamento_principal_id).exclude(
-            valor_diaria=Decimal('0.00')
-        ).update(valor_diaria=Decimal('0.00'))
-    
+        # Fiscal nao gera horas nem valor no sistema.
+        if is_fiscal:
+            horas_base_dia = Decimal('0.0')
+        else:
+            # Usa a soma do MAIOR horario por obra no dia (capada em 8h).
+            # Isso evita duplicidade por etapa na mesma obra e e idempotente.
+            horas_base_dia = sum(
+                max((r['horas_trabalhadas'] or Decimal('0.0')) for r in rows_obra)
+                for rows_obra in obra_para_rows.values()
+            )
+        if horas_base_dia > cls.BASE_HORAS_DIA:
+            horas_base_dia = cls.BASE_HORAS_DIA
+        if horas_base_dia < Decimal('0.0'):
+            horas_base_dia = Decimal('0.0')
+
+        total_decihoras = int((horas_base_dia * Decimal('10')).to_integral_value())
+        valor_total_dia = (
+            (diaria_base * horas_base_dia / cls.BASE_HORAS_DIA).quantize(Decimal('0.01'))
+            if cls.BASE_HORAS_DIA > 0 else Decimal('0.00')
+        )
+
+        total_centavos = cls._valor_para_centavos(valor_total_dia)
+        total_obras = len(obras_ordem)
+        if total_obras == 0:
+            return
+
+        centavos_por_obra_base = total_centavos // total_obras
+        resto_obras = total_centavos % total_obras
+        decihoras_por_obra_base = total_decihoras // total_obras
+        resto_decihoras = total_decihoras % total_obras
+
+        updates = []
+        for idx_obra, obra_id in enumerate(obras_ordem):
+            centavos_obra = centavos_por_obra_base + (1 if idx_obra < resto_obras else 0)
+            decihoras_obra = decihoras_por_obra_base + (1 if idx_obra < resto_decihoras else 0)
+            rows_obra = obra_para_rows[obra_id]
+            if not rows_obra:
+                continue
+
+            # Regra por obra: concentra no primeiro registro da obra/dia.
+            primeiro_pk = rows_obra[0]['pk']
+            updates.append((
+                primeiro_pk,
+                cls._decihoras_para_valor(decihoras_obra),
+                cls._centavos_para_valor(centavos_obra),
+            ))
+            for row in rows_obra[1:]:
+                updates.append((row['pk'], Decimal('0.0'), Decimal('0.00')))
+
+        with transaction.atomic():
+            for pk, horas, valor in updates:
+                cls.objects.filter(pk=pk).exclude(
+                    horas_trabalhadas=horas,
+                    valor_diaria=valor,
+                ).update(
+                    horas_trabalhadas=horas,
+                    valor_diaria=valor,
+                )
+
+    @classmethod
+    def ratear_diaria_por_obra(cls, funcionario_id, data, diaria_base=None):
+        """Compatibilidade com pontos antigos do sistema/comandos."""
+        cls.normalizar_apontamentos_dia(
+            funcionario_id=funcionario_id,
+            data=data,
+            diaria_base=diaria_base,
+        )
+
     @property
     def valor_proporcional(self):
         """Calcula valor proporcional baseado nas horas trabalhadas (base 8h)"""
@@ -320,18 +454,17 @@ class FechamentoSemanal(models.Model):
             funcionario=self.funcionario,
             data__gte=self.data_inicio,
             data__lte=self.data_fim
-        )
+        ).exclude(funcionario__funcao='fiscal')
         # Count distinct days (one diária per date)
         dates_qs = apontamentos.values_list('data', flat=True).distinct()
         self.total_dias = dates_qs.count()
 
-        # Total hours is sum of all apontamento rows
-        self.total_horas = sum(a.horas_trabalhadas for a in apontamentos) or Decimal('0.0')
-
-        # Calculate total_valor as one full diária per distinct date (employee
-        # is paid per day regardless of hours or number of obras)
-        diaria_base = self.funcionario.valor_diaria or Decimal('0.00')
-        self.total_valor = (diaria_base * Decimal(self.total_dias)).quantize(Decimal('0.01'))
+        totais = apontamentos.aggregate(
+            total_horas=Sum('horas_trabalhadas'),
+            total_valor=Sum('valor_diaria'),
+        )
+        self.total_horas = totais.get('total_horas') or Decimal('0.0')
+        self.total_valor = totais.get('total_valor') or Decimal('0.00')
 
         # Count distinct dates where there was ociosidade / retrabalho
         self.dias_ociosidade = apontamentos.filter(houve_ociosidade=True).values('data').distinct().count()
@@ -688,6 +821,10 @@ class ApontamentoDiarioLote(models.Model):
 
     def _criar_apontamento_individual(self, func_lote, valor_produzido):
         """Cria um apontamento individual para um funcionário"""
+        valor_diaria = func_lote.funcionario.valor_diaria or Decimal('0.00')
+        if func_lote.funcionario.funcao == 'fiscal':
+            valor_diaria = Decimal('0.00')
+
         ApontamentoFuncionario.objects.create(
             funcionario=func_lote.funcionario,
             obra=self.obra,
@@ -701,7 +838,7 @@ class ApontamentoDiarioLote(models.Model):
             houve_retrabalho=self.houve_retrabalho,
             motivo_retrabalho=self.motivo_retrabalho or '',
             observacoes=self.observacoes or '',
-            valor_diaria=func_lote.funcionario.valor_diaria or Decimal('0.00'),
+            valor_diaria=valor_diaria,
             possui_placa=self.possui_placa,
         )
         
@@ -874,7 +1011,7 @@ class FuncionarioLote(models.Model):
         max_digits=4,
         decimal_places=1,
         default=Decimal('8.0'),
-        validators=[MinValueValidator(Decimal('0.5')), MaxValueValidator(Decimal('24.0'))],
+        validators=[MinValueValidator(Decimal('0.0')), MaxValueValidator(Decimal('24.0'))],
         verbose_name="Horas Trabalhadas"
     )
     
@@ -889,7 +1026,7 @@ class FuncionarioLote(models.Model):
 
 # ----------------- User profile for preferences -----------------
 from django.conf import settings
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
 
@@ -925,6 +1062,21 @@ class UserProfile(models.Model):
 def ensure_user_profile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance)
+
+
+@receiver(post_delete, sender=ApontamentoFuncionario)
+def recalcular_diaria_apos_exclusao(sender, instance, **kwargs):
+    """
+    Recalcula rateio de diaria quando um apontamento e excluido.
+    Necessario para manter os custos por obra corretos no mesmo dia.
+    """
+    if not instance.funcionario_id or not instance.data:
+        return
+
+    ApontamentoFuncionario.ratear_diaria_por_obra(
+        funcionario_id=instance.funcionario_id,
+        data=instance.data,
+    )
 
 
 class HistoricoAlteracaoEtapa(models.Model):
@@ -1161,3 +1313,4 @@ class FotoApontamento(models.Model):
         etapa_str = f" | Etapa {self.etapa.numero_etapa}" if self.etapa_id else ""
         data_str = self.data_foto.strftime('%d/%m/%Y') if self.data_foto else self.data_upload.strftime('%d/%m/%Y')
         return f"Foto - {self.obra.nome}{etapa_str} - {data_str}"
+

@@ -24,6 +24,7 @@
               <div class="col-12 col-md-6">
                 <label class="form-label">Funcionário *</label>
                 {{ form.funcionario }}
+                <div class="mt-1"><span id="badge-funcao-individual" class="badge bg-secondary">-</span></div>
                 {% for error in form.funcionario.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
               </div>
               <div class="col-12 col-md-6">
@@ -161,6 +162,35 @@ document.addEventListener('DOMContentLoaded', function() {
   const etapaItemsContainer = document.getElementById('etapa-items-container');
   const etapaItemsTitle = document.getElementById('etapa-items-title');
   const itemsEtapaIdInput = document.getElementById('items_etapa_id');
+  const funcionarioSelect = document.getElementById('id_funcionario');
+  const horasInput = document.getElementById('id_horas_trabalhadas');
+  const badgeFuncao = document.getElementById('badge-funcao-individual');
+
+  function syncFuncionarioFiscal() {
+    if (!funcionarioSelect || !horasInput || !badgeFuncao) return;
+    const opt = funcionarioSelect.options[funcionarioSelect.selectedIndex];
+    const txt = (opt && opt.textContent ? opt.textContent : '').toLowerCase();
+    const isFiscal = txt.indexOf('fiscal') >= 0;
+    if (isFiscal) {
+      badgeFuncao.textContent = 'Fiscalizacao (sem custo)';
+      badgeFuncao.className = 'badge bg-info text-dark';
+      horasInput.value = '0.0';
+      horasInput.readOnly = true;
+      horasInput.min = '0';
+      horasInput.step = '0.1';
+    } else {
+      badgeFuncao.textContent = 'Equipe de execucao';
+      badgeFuncao.className = 'badge bg-secondary';
+      if (!horasInput.value || Number(horasInput.value) <= 0) horasInput.value = '8.0';
+      horasInput.readOnly = false;
+      horasInput.min = '0.5';
+      horasInput.step = '0.5';
+    }
+  }
+  if (funcionarioSelect) {
+    funcionarioSelect.addEventListener('change', syncFuncionarioFiscal);
+    syncFuncionarioFiscal();
+  }
 
   // Autocomplete textbox and suggestion handling
   const obraText = document.getElementById('id_obra_nome');

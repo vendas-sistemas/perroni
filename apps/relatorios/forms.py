@@ -19,7 +19,7 @@ class FiltroRelatorioForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
     funcionario = forms.ModelChoiceField(
-        queryset=Funcionario.objects.filter(ativo=True),
+        queryset=Funcionario.objects.filter(ativo=True).exclude(funcao='fiscal'),
         required=False,
         empty_label='Todos os Funcionários',
         widget=forms.Select(attrs={'class': 'form-select'}),
@@ -72,3 +72,4 @@ class FiltroRelatorioForm(forms.Form):
         if d.get('clima'):
             filtros['clima'] = d['clima']
         return filtros
+

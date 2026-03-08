@@ -527,19 +527,40 @@ def obra_foto_delete(request, pk, foto_id):
 def etapa_detail(request, pk):
     etapa = get_object_or_404(Etapa, pk=pk)
     detalhe = None
+    datas_execucao = []
     try:
         if etapa.numero_etapa == 1:
             detalhe = etapa.fundacao
+            datas_execucao = [
+                ('Marcação/Escavação', getattr(detalhe, 'marcacao_escavacao_inicio', None)),
+                ('Locação Ferragem', getattr(detalhe, 'locacao_ferragem_inicio', None)),
+                ('Aterro e Contrapiso', getattr(detalhe, 'aterro_contrapiso_inicio', None)),
+                ('8 Fiadas até Respaldo', getattr(detalhe, 'fiadas_respaldo_inicio', None)),
+            ]
         elif etapa.numero_etapa == 2:
             detalhe = etapa.estrutura
+            datas_execucao = [
+                ('Montagem da Laje', getattr(detalhe, 'montagem_laje_inicio', None)),
+                ('Cobertura', getattr(detalhe, 'cobertura_inicio', None)),
+            ]
         elif etapa.numero_etapa == 3:
             detalhe = etapa.instalacoes
         elif etapa.numero_etapa == 4:
             detalhe = etapa.acabamentos
+            datas_execucao = [
+                ('Pintura Externa 1ª Demão', getattr(detalhe, 'pintura_externa_1demao_inicio', None)),
+                ('Pintura Interna 1ª Demão', getattr(detalhe, 'pintura_interna_1demao_inicio', None)),
+                ('Assentamento de Piso', getattr(detalhe, 'assentamento_piso_inicio', None)),
+            ]
         elif etapa.numero_etapa == 5:
             detalhe = etapa.finalizacao
+            datas_execucao = [
+                ('Pintura Externa 2ª Demão', getattr(detalhe, 'pintura_externa_2demao_inicio', None)),
+                ('Pintura Interna 2ª Demão', getattr(detalhe, 'pintura_interna_2demao_inicio', None)),
+            ]
     except Exception:
         detalhe = None
+        datas_execucao = []
 
     historicos = etapa.historicos.select_related('usuario').all()[:100]
     historicos = _preparar_historicos_para_visualizacao(historicos)
@@ -547,6 +568,7 @@ def etapa_detail(request, pk):
     context = {
         'etapa': etapa,
         'detalhe': detalhe,
+        'datas_execucao': datas_execucao,
         'historicos': historicos,
         'title': f'Etapa {etapa.numero_etapa} - {etapa.obra.nome}'
     }

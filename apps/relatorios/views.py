@@ -121,6 +121,8 @@ def relatorio_funcionario_diario(request):
     apontamentos = ApontamentoFuncionario.objects.filter(
         funcionario_id=funcionario_id,
         data=data,
+    ).exclude(
+        funcionario__funcao='fiscal'
     ).order_by('id')
 
     ts = datetime.datetime.now().strftime('%Y%m%d_%H%M')

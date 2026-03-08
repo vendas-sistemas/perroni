@@ -257,11 +257,25 @@ class Etapa1Fundacao(models.Model):
         verbose_name="Instalação de Energia e Água"
     )
     
+    # Marcação e Escavação — data de início
+    marcacao_escavacao_inicio = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Marcação e Escavação (início)"
+    )
+
     # Marcação e Escavação — data de conclusão
     marcacao_escavacao_conclusao = models.DateField(
         null=True,
         blank=True,
         verbose_name="Marcação e Escavação (conclusão)"
+    )
+
+    # Locação de Ferragem — data de início
+    locacao_ferragem_inicio = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Locação de Ferragem (início)"
     )
 
     # Locação de Ferragem — data de conclusão
@@ -271,11 +285,25 @@ class Etapa1Fundacao(models.Model):
         verbose_name="Locação de Ferragem (conclusão)"
     )
 
+    # Aterro e Contrapiso — data de início
+    aterro_contrapiso_inicio = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Aterro e Contrapiso (início)"
+    )
+
     # Aterro e Contrapiso — data de conclusão
     aterro_contrapiso_conclusao = models.DateField(
         null=True,
         blank=True,
         verbose_name="Aterro e Contrapiso (conclusão)"
+    )
+
+    # 8 Fiadas até Respaldo — data de início
+    fiadas_respaldo_inicio = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="8 Fiadas até Respaldo (início)"
     )
 
     # 8 Fiadas até Respaldo — data de conclusão
@@ -338,11 +366,25 @@ class Etapa2Estrutura(models.Model):
         verbose_name="Etapa"
     )
     
+    # Montagem da Laje — data de início
+    montagem_laje_inicio = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Montagem da Laje (início)"
+    )
+
     # Montagem da Laje — data de conclusão
     montagem_laje_conclusao = models.DateField(
         null=True,
         blank=True,
         verbose_name="Montagem da Laje (conclusão)"
+    )
+
+    # Cobertura completa — data de início
+    cobertura_inicio = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Cobertura Completa (início)"
     )
 
     # Cobertura completa — data de conclusão
@@ -533,6 +575,13 @@ class Etapa4Acabamentos(models.Model):
         verbose_name="Portas e Janelas"
     )
 
+    # Pintura Externa 1ª Demão — data de início
+    pintura_externa_1demao_inicio = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Pintura Externa 1ª Demão (início)"
+    )
+
     # Pintura Externa 1ª Demão — data de conclusão
     pintura_externa_1demao_conclusao = models.DateField(
         null=True,
@@ -540,11 +589,25 @@ class Etapa4Acabamentos(models.Model):
         verbose_name="Pintura Externa 1ª Demão (conclusão)"
     )
 
+    # Pintura Interna 1ª Demão — data de início
+    pintura_interna_1demao_inicio = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Pintura Interna 1ª Demão (início)"
+    )
+
     # Pintura Interna 1ª Demão — data de conclusão
     pintura_interna_1demao_conclusao = models.DateField(
         null=True,
         blank=True,
         verbose_name="Pintura Interna 1ª Demão (conclusão)"
+    )
+
+    # Assentamento de piso — data de início
+    assentamento_piso_inicio = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Assentamento de Piso (início)"
     )
 
     # Assentamento de piso — data de conclusão
@@ -574,11 +637,25 @@ class Etapa5Finalizacao(models.Model):
         verbose_name="Etapa"
     )
     
+    # Pintura Externa 2ª Demão — data de início
+    pintura_externa_2demao_inicio = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Pintura Externa 2ª Demão (início)"
+    )
+
     # Pintura Externa 2ª Demão — data de conclusão
     pintura_externa_2demao_conclusao = models.DateField(
         null=True,
         blank=True,
         verbose_name="Pintura Externa 2ª Demão (conclusão)"
+    )
+
+    # Pintura Interna 2ª Demão — data de início
+    pintura_interna_2demao_inicio = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Pintura Interna 2ª Demão (início)"
     )
 
     # Pintura Interna 2ª Demão — data de conclusão
