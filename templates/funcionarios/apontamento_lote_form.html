@@ -389,16 +389,43 @@ function atualizarBadgeFuncao(select) {
     const option = select.options[select.selectedIndex];
     const funcao = option ? option.getAttribute('data-funcao') : null;
     const badge = select.closest('tr').querySelector('.funcao-badge');
+    const horasInput = select.closest('tr').querySelector('input[name="horas_trabalhadas"]');
 
     if (funcao === 'pedreiro') {
         badge.textContent = 'Pedreiro';
-        badge.className = 'badge badge-pedreiro';
+        badge.className = 'badge badge-pedreiro funcao-badge';
+        if (horasInput) {
+            if (!horasInput.value || Number(horasInput.value) <= 0) horasInput.value = '8.0';
+            horasInput.readOnly = false;
+            horasInput.min = '0.5';
+            horasInput.step = '0.5';
+        }
     } else if (funcao === 'servente') {
         badge.textContent = 'Servente';
-        badge.className = 'badge badge-servente';
+        badge.className = 'badge badge-servente funcao-badge';
+        if (horasInput) {
+            if (!horasInput.value || Number(horasInput.value) <= 0) horasInput.value = '8.0';
+            horasInput.readOnly = false;
+            horasInput.min = '0.5';
+            horasInput.step = '0.5';
+        }
+    } else if (funcao === 'fiscal') {
+        badge.textContent = 'Fiscalizacao (sem custo)';
+        badge.className = 'badge bg-info text-dark funcao-badge';
+        if (horasInput) {
+            horasInput.value = '0.0';
+            horasInput.readOnly = true;
+            horasInput.min = '0';
+            horasInput.step = '0.1';
+        }
     } else {
         badge.textContent = '-';
         badge.className = 'badge bg-secondary funcao-badge';
+        if (horasInput) {
+            horasInput.readOnly = false;
+            horasInput.min = '0.5';
+            horasInput.step = '0.5';
+        }
     }
 }
 
