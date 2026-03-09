@@ -77,6 +77,26 @@
     margin-left: .4rem;
     color: #6c757d;
   }
+  .funcionarios-table .funcao-badge {
+    white-space: normal;
+    line-height: 1.15;
+  }
+  .funcionarios-table .col-horas,
+  .funcionarios-table .horas-cell {
+    min-width: 92px;
+  }
+  .funcionarios-table .horas-input {
+    min-width: 84px;
+  }
+  @media (max-width: 768px) {
+    .funcionarios-table {
+      min-width: 620px;
+    }
+    .funcionarios-table .funcao-badge {
+      font-size: .72rem;
+      max-width: 140px;
+    }
+  }
 </style>
 {% endblock %}
 
@@ -123,12 +143,12 @@
                 
                 <div id="funcionarios-container" class="mb-4">
                     <div class="table-responsive">
-                        <table class="table table-hover">
+                        <table class="table table-hover funcionarios-table">
                             <thead class="table-light">
                                 <tr>
                                     <th style="width: 50%">Funcionário</th>
                                     <th style="width: 15%" class="text-center">Função</th>
-                                    <th style="width: 20%">Horas</th>
+                                    <th style="width: 20%" class="col-horas">Horas</th>
                                     <th style="width: 15%" class="text-center">Ação</th>
                                 </tr>
                             </thead>
@@ -705,8 +725,8 @@ function adicionarLinhaFuncionario(funcionarioId = '', horas = '8.0') {
         <td class="text-center">
             <span class="badge bg-secondary funcao-badge">-</span>
         </td>
-        <td>
-            <input type="number" name="horas_trabalhadas" class="form-control" 
+        <td class="horas-cell">
+            <input type="number" name="horas_trabalhadas" class="form-control horas-input" 
                    value="${horas}" step="0.5" min="0.5" max="24" required>
         </td>
         <td class="text-center">

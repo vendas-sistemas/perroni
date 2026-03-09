@@ -13,6 +13,26 @@
     }
     .badge-pedreiro { background-color: #0d6efd; color: #fff; }
     .badge-servente { background-color: #6c757d; color: #fff; }
+    .funcionarios-table .funcao-badge {
+        white-space: normal;
+        line-height: 1.15;
+    }
+    .funcionarios-table .col-horas,
+    .funcionarios-table .horas-cell {
+        min-width: 92px;
+    }
+    .funcionarios-table .horas-input {
+        min-width: 84px;
+    }
+    @media (max-width: 768px) {
+        .funcionarios-table {
+            min-width: 620px;
+        }
+        .funcionarios-table .funcao-badge {
+            font-size: .72rem;
+            max-width: 140px;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -83,12 +103,12 @@
                 <h5 class="mb-3"><i class="bi bi-people"></i> Funcionários</h5>
 
                 <div class="table-responsive mb-3">
-                    <table class="table table-sm" id="tabela-funcionarios">
+                    <table class="table table-sm funcionarios-table" id="tabela-funcionarios">
                         <thead class="table-light">
                             <tr>
                                 <th>Funcionário</th>
                                 <th class="text-center" style="width:100px;">Função</th>
-                                <th style="width:150px;">Horas</th>
+                                <th class="col-horas" style="width:150px;">Horas</th>
                                 <th class="text-center" style="width:80px;">Ações</th>
                             </tr>
                         </thead>
@@ -112,8 +132,8 @@
                                         {% if func_lote.funcionario.funcao == 'fiscal' %}Fiscalizacao (sem custo){% else %}{{ func_lote.funcionario.get_funcao_display }}{% endif %}
                                     </span>
                                 </td>
-                                <td>
-                                    <input type="number" name="horas_trabalhadas" class="form-control"
+                                <td class="horas-cell">
+                                    <input type="number" name="horas_trabalhadas" class="form-control horas-input"
                                            value="{{ func_lote.horas_trabalhadas }}" step="0.5" min="{% if func_lote.funcionario.funcao == 'fiscal' %}0{% else %}0.5{% endif %}" max="24" {% if func_lote.funcionario.funcao == 'fiscal' %}readonly{% endif %} required>
                                 </td>
                                 <td class="text-center">
@@ -230,8 +250,8 @@ document.getElementById('btn-adicionar-funcionario').addEventListener('click', f
         '<td class="text-center">' +
             '<span class="badge bg-secondary funcao-badge">-</span>' +
         '</td>' +
-        '<td>' +
-            '<input type="number" name="horas_trabalhadas" class="form-control" value="8.0" step="0.5" min="0.5" max="24" required>' +
+        '<td class="horas-cell">' +
+            '<input type="number" name="horas_trabalhadas" class="form-control horas-input" value="8.0" step="0.5" min="0.5" max="24" required>' +
         '</td>' +
         '<td class="text-center">' +
             '<button type="button" class="btn btn-sm btn-outline-danger btn-remover-funcionario">' +
