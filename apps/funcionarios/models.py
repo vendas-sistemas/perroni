@@ -30,6 +30,7 @@ class Funcionario(models.Model):
         ('pedreiro', 'Pedreiro'),
         ('servente', 'Servente'),
         ('fiscal', 'Fiscal'),
+        ('pintor', 'Pintor'),
     ]
     funcao = models.CharField(
         max_length=10,
