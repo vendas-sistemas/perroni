@@ -168,13 +168,13 @@ class AnalyticsService:
             funcionario=pedreiro
         ).select_related('obra', 'etapa')
         
-        total_dias_trabalhados = apontamentos.count()
+        total_dias_trabalhados = apontamentos.values('data').distinct().count()
         obras_trabalhadas = apontamentos.values('obra').distinct().count()
         total_horas = apontamentos.aggregate(t=Sum('horas_trabalhadas'))['t'] or Decimal('0.0')
         
-        # Taxa de retrabalho e ociosidade globais
-        dias_retrabalho = apontamentos.filter(houve_retrabalho=True).count()
-        dias_ociosidade = apontamentos.filter(houve_ociosidade=True).count()
+        # Taxas devem considerar dias unicos, nao quantidade de registros.
+        dias_retrabalho = apontamentos.filter(houve_retrabalho=True).values('data').distinct().count()
+        dias_ociosidade = apontamentos.filter(houve_ociosidade=True).values('data').distinct().count()
         taxa_retrabalho = (dias_retrabalho / total_dias_trabalhados * 100) if total_dias_trabalhados > 0 else 0
         taxa_ociosidade = (dias_ociosidade / total_dias_trabalhados * 100) if total_dias_trabalhados > 0 else 0
         
@@ -269,7 +269,7 @@ class AnalyticsService:
                     ).values('funcionario').distinct().count()
                     if total_workers > 0:
                         m2_per_worker = (inst.reboco_externo_m2 + inst.reboco_interno_m2) / total_workers
-                        dias_trabalhados = aps.count()
+                        dias_trabalhados = aps.values('data').distinct().count()
                         total_m2_reboco += m2_per_worker
                         total_dias_reboco += dias_trabalhados
                 except Exception:
@@ -307,7 +307,7 @@ class AnalyticsService:
                     ).values('funcionario').distinct().count()
                     if total_workers > 0:
                         blocos_per_worker = fund.parede_7fiadas_blocos / total_workers
-                        dias_trabalhados = aps.count()
+                        dias_trabalhados = aps.values('data').distinct().count()
                         total_blocos += blocos_per_worker
                         total_dias_blocos += dias_trabalhados
                 except Exception:
@@ -423,10 +423,11 @@ class AnalyticsService:
             total_horas = sum(a['horas'] for a in apontamentos_semana)
             ociosidades = sum(1 for a in apontamentos_semana if a['ociosidade'])
             retrabalhos = sum(1 for a in apontamentos_semana if a['retrabalho'])
+            dias_unicos_semana = len({a['data'] for a in apontamentos_semana})
             
             resultado.append({
                 'semana': chave,
-                'dias_trabalhados': len(apontamentos_semana),
+                'dias_trabalhados': dias_unicos_semana,
                 'total_horas': total_horas,
                 'total_valor': total_semana,
                 'ociosidades': ociosidades,
