@@ -12,6 +12,11 @@
   .func-row td { vertical-align: middle; }
   .badge-pedreiro { background-color: #0d6efd; }
   .badge-servente { background-color: #6f42c1; }
+  .badge-fiscal { background-color: #0dcaf0; color: #212529; }
+  .badge-pintor { background-color: #198754; }
+  .badge-soldador { background-color: #fd7e14; color: #212529; }
+  .badge-eletricista { background-color: #ffc107; color: #212529; }
+  .badge-encanador { background-color: #20c997; color: #212529; }
   .avatar-circle {
     width: 40px; height: 40px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
@@ -19,6 +24,11 @@
   }
   .avatar-pedreiro { background-color: #0d6efd; }
   .avatar-servente { background-color: #6f42c1; }
+  .avatar-fiscal { background-color: #0dcaf0; }
+  .avatar-pintor { background-color: #198754; }
+  .avatar-soldador { background-color: #fd7e14; }
+  .avatar-eletricista { background-color: #ffc107; color: #212529; }
+  .avatar-encanador { background-color: #20c997; color: #212529; }
   .summary-card { border: none; border-radius: .75rem; }
   .summary-card .card-body { padding: 1rem 1.25rem; }
   .summary-icon { font-size: 1.5rem; opacity: .7; }
@@ -100,7 +110,7 @@
         <div class="input-group input-group-sm">
           <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
              <input type="text" name="q" value="{{ busca }}" class="form-control border-start-0"
-               placeholder="Buscar por nome ou CPF...">
+               placeholder="Buscar por nome, CPF ou função...">
           {% if busca %}
           <a href="?{% if funcao_filter %}funcao={{ funcao_filter }}{% endif %}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-x-lg"></i>
@@ -115,14 +125,12 @@
            class="badge text-decoration-none px-3 py-2 {% if not funcao_filter %}bg-dark{% else %}bg-light text-dark border{% endif %}">
           Todos
         </a>
-        <a href="?funcao=pedreiro{% if busca %}&q={{ busca }}{% endif %}"
-           class="badge text-decoration-none px-3 py-2 {% if funcao_filter == 'pedreiro' %}badge-pedreiro{% else %}bg-light text-dark border{% endif %}">
-          <i class="bi bi-hammer"></i> Pedreiros
+        {% for item in funcoes_filtro %}
+        <a href="?funcao={{ item.key }}{% if busca %}&q={{ busca }}{% endif %}"
+           class="badge text-decoration-none px-3 py-2 {% if funcao_filter == item.key %}badge-{{ item.key }}{% else %}bg-light text-dark border{% endif %}">
+          {{ item.label }}{% if item.count %} ({{ item.count }}){% endif %}
         </a>
-        <a href="?funcao=servente{% if busca %}&q={{ busca }}{% endif %}"
-           class="badge text-decoration-none px-3 py-2 {% if funcao_filter == 'servente' %}badge-servente{% else %}bg-light text-dark border{% endif %}">
-          <i class="bi bi-person-workspace"></i> Serventes
-        </a>
+        {% endfor %}
       </div>
     </div>
   </div>
@@ -166,7 +174,7 @@
         {% for f in funcionarios %}
         <tr class="func-row border-bottom">
           <td class="ps-3">
-            <div class="avatar-circle avatar-{{ f.funcao }}">
+            <div class="avatar-circle {% if f.funcao == 'pedreiro' %}avatar-pedreiro{% elif f.funcao == 'servente' %}avatar-servente{% elif f.funcao == 'fiscal' %}avatar-fiscal{% elif f.funcao == 'pintor' %}avatar-pintor{% elif f.funcao == 'soldador' %}avatar-soldador{% elif f.funcao == 'eletricista' %}avatar-eletricista{% elif f.funcao == 'encanador' %}avatar-encanador{% else %}bg-secondary{% endif %}">
               {{ f.nome_completo|make_list|first }}
             </div>
           </td>
@@ -177,13 +185,7 @@
             <div class="text-muted small">CPF: {{ f.cpf }}</div>
           </td>
           <td class="text-center">
-            {% if f.funcao == 'pedreiro' %}
-              <span class="badge badge-pedreiro px-2 py-1"><i class="bi bi-hammer"></i> Pedreiro</span>
-            {% elif f.funcao == 'fiscal' %}
-              <span class="badge bg-info text-dark px-2 py-1"><i class="bi bi-clipboard-check"></i> Fiscal</span>
-            {% else %}
-              <span class="badge badge-servente px-2 py-1"><i class="bi bi-person-workspace"></i> Servente</span>
-            {% endif %}
+            <span class="badge badge-{{ f.funcao }} px-2 py-1">{{ f.get_funcao_display }}</span>
           </td>
           <td class="small">{{ f.telefone }}</td>
           <td class="text-end fw-semibold">{{ f.valor_diaria|brl }}</td>
@@ -214,7 +216,7 @@
   <div class="card border-0 shadow-sm mb-2 mobile-card">
     <div class="card-body py-2 px-3">
       <div class="d-flex align-items-center gap-3">
-        <div class="avatar-circle avatar-{{ f.funcao }}">
+        <div class="avatar-circle {% if f.funcao == 'pedreiro' %}avatar-pedreiro{% elif f.funcao == 'servente' %}avatar-servente{% elif f.funcao == 'fiscal' %}avatar-fiscal{% elif f.funcao == 'pintor' %}avatar-pintor{% elif f.funcao == 'soldador' %}avatar-soldador{% elif f.funcao == 'eletricista' %}avatar-eletricista{% elif f.funcao == 'encanador' %}avatar-encanador{% else %}bg-secondary{% endif %}">
           {{ f.nome_completo|make_list|first }}
         </div>
         <div class="flex-grow-1 min-w-0">
@@ -224,13 +226,7 @@
                 {{ f.nome_completo }}
               </a>
               <div class="d-flex flex-wrap gap-2 mt-1 small text-muted">
-                {% if f.funcao == 'pedreiro' %}
-                  <span class="badge badge-pedreiro"><i class="bi bi-hammer"></i> Pedreiro</span>
-                {% elif f.funcao == 'fiscal' %}
-                  <span class="badge bg-info text-dark"><i class="bi bi-clipboard-check"></i> Fiscal</span>
-                {% else %}
-                  <span class="badge badge-servente"><i class="bi bi-person-workspace"></i> Servente</span>
-                {% endif %}
+                <span class="badge badge-{{ f.funcao }}">{{ f.get_funcao_display }}</span>
                 <span><i class="bi bi-cash-stack"></i> {{ f.valor_diaria|brl }}</span>
               </div>
             </div>

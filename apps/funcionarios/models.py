@@ -31,9 +31,13 @@ class Funcionario(models.Model):
         ('servente', 'Servente'),
         ('fiscal', 'Fiscal'),
         ('pintor', 'Pintor'),
+        ('soldador', 'Soldador'),
+        ('eletricista', 'Eletricista'),
+        ('encanador', 'Encanador'),
+        
     ]
     funcao = models.CharField(
-        max_length=10,
+        max_length=15,
         choices=FUNCAO_CHOICES,
         verbose_name="Função"
     )

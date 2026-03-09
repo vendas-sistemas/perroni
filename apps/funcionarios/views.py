@@ -502,14 +502,21 @@ def funcionario_list(request):
     funcionarios = Funcionario.objects.filter(ativo=True).order_by('nome_completo')
 
     # Filtro por função
+    funcoes_choices = list(Funcionario.FUNCAO_CHOICES)
+    funcoes_validas = {key for key, _ in funcoes_choices}
     funcao_filter = request.GET.get('funcao', '')
-    if funcao_filter in ('pedreiro', 'servente'):
+    if funcao_filter in funcoes_validas:
         funcionarios = funcionarios.filter(funcao=funcao_filter)
 
     # Busca por nome ou CPF (ignora pontos/traços na comparação)
     busca = request.GET.get('q', '').strip()
     if busca:
         import re
+        busca_lower = busca.lower()
+        funcoes_match = [
+            key for key, label in funcoes_choices
+            if busca_lower in key.lower() or busca_lower in str(label).lower()
+        ]
         digits = re.sub(r'\D', '', busca)
         if digits:
             # remove '.' '-' and spaces from cpf field for comparison
@@ -521,15 +528,35 @@ def funcionario_list(request):
                     ),
                     Value(' '), Value('')
                 )
-            ).filter(Q(nome_completo__icontains=busca) | Q(cpf_digits__icontains=digits))
+            ).filter(
+                Q(nome_completo__icontains=busca)
+                | Q(cpf_digits__icontains=digits)
+                | Q(funcao__in=funcoes_match)
+            )
         else:
-            funcionarios = funcionarios.filter(nome_completo__icontains=busca)
+            funcionarios = funcionarios.filter(
+                Q(nome_completo__icontains=busca)
+                | Q(funcao__in=funcoes_match)
+            )
 
     # Contadores
     total_ativos = Funcionario.objects.filter(ativo=True).count()
     total_pedreiros = Funcionario.objects.filter(ativo=True, funcao='pedreiro').count()
     total_serventes = Funcionario.objects.filter(ativo=True, funcao='servente').count()
     total_resultado = funcionarios.count()
+    funcoes_ativas_counts = dict(
+        Funcionario.objects.filter(ativo=True)
+        .values_list('funcao')
+        .annotate(total=Count('id'))
+    )
+    funcoes_filtro = [
+        {
+            'key': key,
+            'label': label,
+            'count': funcoes_ativas_counts.get(key, 0),
+        }
+        for key, label in funcoes_choices
+    ]
 
     # Paginação
     per_page = request.GET.get('per_page', '15')
@@ -556,6 +583,7 @@ def funcionario_list(request):
         'total_serventes': total_serventes,
         'total_resultado': total_resultado,
         'per_page': per_page,
+        'funcoes_filtro': funcoes_filtro,
     }
     return render(request, 'funcionarios/funcionario_list.html', context)
 
