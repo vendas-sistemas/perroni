@@ -367,7 +367,7 @@ function renderizarResumoEtapasSalvasFixas() {
 function getFuncionariosOptions(excluirIds = []) {
     return funcionariosDisponiveis
         .filter(f => !excluirIds.includes(f.id))
-        .map(f => `<option value="${f.id}" data-funcao="${f.funcao}">${f.nome_completo} (${f.funcao_display})</option>`)
+        .map(f => `<option value="${f.id}" data-funcao="${f.funcao}" data-funcao-display="${escapeHtml(f.funcao_display)}">${f.nome_completo} (${f.funcao_display})</option>`)
         .join('');
 }
 
@@ -408,6 +408,7 @@ function atualizarBotaoSalvarEtapa() {
 function atualizarBadgeFuncao(select) {
     const option = select.options[select.selectedIndex];
     const funcao = option ? option.getAttribute('data-funcao') : null;
+    const funcaoDisplay = option ? option.getAttribute('data-funcao-display') : null;
     const badge = select.closest('tr').querySelector('.funcao-badge');
     const horasInput = select.closest('tr').querySelector('input[name="horas_trabalhadas"]');
 
@@ -437,6 +438,15 @@ function atualizarBadgeFuncao(select) {
             horasInput.readOnly = true;
             horasInput.min = '0';
             horasInput.step = '0.1';
+        }
+    } else if (funcao) {
+        badge.textContent = funcaoDisplay || funcao;
+        badge.className = 'badge bg-secondary funcao-badge';
+        if (horasInput) {
+            if (!horasInput.value || Number(horasInput.value) <= 0) horasInput.value = '8.0';
+            horasInput.readOnly = false;
+            horasInput.min = '0.5';
+            horasInput.step = '0.5';
         }
     } else {
         badge.textContent = '-';
@@ -1177,4 +1187,3 @@ formApontamentoLote.addEventListener('submit', function() {
 });
 </script>
 {% endblock %}
-
