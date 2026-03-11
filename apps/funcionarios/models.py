@@ -896,6 +896,7 @@ class ApontamentoDiarioLote(models.Model):
 
         for func_lote in self.funcionarios.all():
             func = func_lote.funcionario
+            funcao_display = func.get_funcao_display()
             if func.funcao == 'pedreiro':
                 if producao_por_unidade and quantidade_pedreiros > 0:
                     partes = []
@@ -903,11 +904,11 @@ class ApontamentoDiarioLote(models.Model):
                         unidade_label = {'blocos': 'blocos', 'm2': 'm2', 'percentual': '%', 'unidades': 'unidades'}.get(unidade, unidade)
                         valor = (total / Decimal(quantidade_pedreiros)).quantize(Decimal('0.01'))
                         partes.append(f"{valor} {unidade_label}")
-                    linhas.append(f"  - {func.nome_completo} (Pedreiro) - " + " + ".join(partes))
+                    linhas.append(f"  - {func.nome_completo} ({funcao_display}) - " + " + ".join(partes))
                 else:
-                    linhas.append(f"  - {func.nome_completo} (Pedreiro) - 0")
+                    linhas.append(f"  - {func.nome_completo} ({funcao_display}) - 0")
             else:
-                linhas.append(f"  - {func.nome_completo} (Servente) - 0")
+                linhas.append(f"  - {func.nome_completo} ({funcao_display}) - 0")
 
         if producao_por_unidade and quantidade_pedreiros > 0:
             linhas.append("")
