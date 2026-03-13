@@ -8,6 +8,12 @@
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
     <h3 class="mb-0">Diárias</h3>
     <div class="d-flex gap-2">
+      <a href="{% url 'funcionarios:apontamento_list' %}?{% if querystring %}{{ querystring }}&{% endif %}export=pdf" class="btn btn-sm btn-outline-danger">
+        <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
+      </a>
+      <a href="{% url 'funcionarios:apontamento_list' %}?{% if querystring %}{{ querystring }}&{% endif %}export=excel" class="btn btn-sm btn-outline-success">
+        <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+      </a>
       <!-- Botões antigos removidos em 21/02/2026: Registro Diário e Novo Individual -->
       <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-sm btn-primary">
         <i class="bi bi-plus-circle"></i> Novo Apontamento em Lote
@@ -97,9 +103,10 @@
           </select>
         </div>
         <div class="col-6 col-md-2">
-          <select name="ociosidade" class="form-select form-select-sm">
-            <option value="">Ociosidade?</option>
-            <option value="1" {% if request.GET.ociosidade == "1" %}selected{% endif %}>Apenas com Ociosidade</option>
+          <select name="ocorrencia" class="form-select form-select-sm">
+            <option value="">Ociosidade e Retrabalho</option>
+            <option value="ociosidade" {% if request.GET.ocorrencia == "ociosidade" %}selected{% endif %}>Ociosidade</option>
+            <option value="retrabalho" {% if request.GET.ocorrencia == "retrabalho" %}selected{% endif %}>Retrabalho</option>
           </select>
         </div>
         <div class="col-6 col-md-2">

@@ -9,7 +9,7 @@ from .forms import (
 )
 from django.contrib import messages
 from django.utils import timezone
-from django.http import JsonResponse, HttpResponseForbidden
+from django.http import JsonResponse, HttpResponseForbidden, HttpResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from urllib.parse import urlencode
 from apps.obras.models import (
@@ -28,6 +28,15 @@ from apps.obras.templatetags.obras_extras import brl
 from django.db import transaction
 from django.views.decorators.http import require_GET, require_http_methods
 import json
+from io import BytesIO
+
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import cm
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 
 # ==================== ETAPA ITEMS HELPERS ====================
@@ -763,14 +772,11 @@ def funcionario_inativar(request, pk):
 
 # ==================== APONTAMENTOS ====================
 
-@login_required
-def apontamento_list(request):
-    """Lista apontamentos com filtros avançados"""
-    qs = ApontamentoFuncionario.objects.all().select_related(
+def _aplicar_filtros_apontamentos(request, queryset=None):
+    qs = (queryset or ApontamentoFuncionario.objects.all()).select_related(
         'funcionario', 'obra', 'etapa'
     ).order_by('-data', '-created_at')
 
-    # Filters from GET
     data = request.GET.get('data')
     data_inicio_str = request.GET.get('data_inicio')
     data_fim_str = request.GET.get('data_fim')
@@ -778,10 +784,8 @@ def apontamento_list(request):
     obra_id = request.GET.get('obra')
     etapa_id = request.GET.get('etapa')
     clima = request.GET.get('clima')
-    ociosidade = request.GET.get('ociosidade')
-    retrabalho = request.GET.get('retrabalho')
+    ocorrencia = request.GET.get('ocorrencia')
 
-    # Period filter: try data_inicio/data_fim first, then fallback to single data
     if data_inicio_str or data_fim_str:
         try:
             data_inicio = datetime.date.fromisoformat(data_inicio_str) if data_inicio_str else None
@@ -797,6 +801,7 @@ def apontamento_list(request):
             qs = qs.filter(data__lte=data_fim)
     elif data:
         qs = qs.filter(data=data)
+
     if funcionario_id:
         qs = qs.filter(funcionario_id=funcionario_id)
     if obra_id:
@@ -805,12 +810,202 @@ def apontamento_list(request):
         qs = qs.filter(etapa_id=etapa_id)
     if clima:
         qs = qs.filter(clima=clima)
-    if ociosidade == '1':
+    if ocorrencia == 'ociosidade':
         qs = qs.filter(houve_ociosidade=True)
-    if retrabalho == '1':
+    elif ocorrencia == 'retrabalho':
         qs = qs.filter(houve_retrabalho=True)
 
-    # Totals for current filter (one diária per unique funcionario+date)
+    return qs
+
+
+def _texto_status_apontamento(apontamento):
+    if apontamento.houve_retrabalho:
+        return 'Retrabalho'
+    if apontamento.houve_ociosidade:
+        return 'Ociosidade'
+    return 'OK'
+
+
+def _resumo_exportacao_apontamentos(request, apontamentos):
+    total_valor = apontamentos.aggregate(total_valor=Sum('valor_diaria'))['total_valor'] or Decimal('0')
+    data = request.GET.get('data')
+    data_inicio = request.GET.get('data_inicio')
+    data_fim = request.GET.get('data_fim')
+
+    if data_inicio and data_fim:
+        periodo = f'{datetime.date.fromisoformat(data_inicio):%d/%m/%Y} a {datetime.date.fromisoformat(data_fim):%d/%m/%Y}'
+    elif data_inicio:
+        periodo = f'A partir de {datetime.date.fromisoformat(data_inicio):%d/%m/%Y}'
+    elif data_fim:
+        periodo = f'Ate {datetime.date.fromisoformat(data_fim):%d/%m/%Y}'
+    elif data:
+        periodo = f'{datetime.date.fromisoformat(data):%d/%m/%Y}'
+    else:
+        periodo = 'Todos'
+
+    return {
+        'periodo': periodo,
+        'valor_total': total_valor,
+    }
+
+
+def _exportar_apontamentos_excel(request, apontamentos):
+    resumo = _resumo_exportacao_apontamentos(request, apontamentos)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Apontamentos'
+    moeda_fmt = 'R$ #,##0.00'
+    header_fill = PatternFill(fill_type='solid', fgColor='0D6EFD')
+    total_fill = PatternFill(fill_type='solid', fgColor='E2F0D9')
+
+    ws.append(['Relatorio de Diarias'])
+    ws.append([f"Periodo: {resumo['periodo']}"])
+    ws.append(['Valor Total', float(resumo['valor_total'])])
+    ws.append([f"Gerado em: {timezone.localtime():%d/%m/%Y %H:%M}"])
+    ws.append([])
+    ws.append([
+        'Funcionario', 'Funcao', 'Obra', 'Etapa', 'Data',
+        'Horas', 'Clima', 'Valor', 'Status',
+    ])
+
+    ws['A1'].font = Font(bold=True, size=14)
+    ws['A2'].font = Font(bold=True)
+    ws['A3'].font = Font(bold=True)
+    ws['B3'].number_format = moeda_fmt
+    ws['A1'].alignment = Alignment(horizontal='left')
+    ws['A2'].alignment = Alignment(horizontal='left')
+    ws['A3'].alignment = Alignment(horizontal='left')
+    ws['B3'].alignment = Alignment(horizontal='left')
+
+    for cell in ws[6]:
+        cell.font = Font(bold=True)
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center')
+        cell.font = Font(bold=True, color='FFFFFF')
+
+    for ap in apontamentos:
+        ws.append([
+            ap.funcionario.nome_completo,
+            ap.funcionario.get_funcao_display(),
+            ap.obra.nome if ap.obra else '-',
+            str(ap.etapa) if ap.etapa else '-',
+            ap.data.strftime('%d/%m/%Y'),
+            float(ap.horas_trabalhadas or 0),
+            ap.get_clima_display(),
+            float(ap.valor_diaria or 0),
+            _texto_status_apontamento(ap),
+        ])
+
+    ws.append([])
+    ws.append(['Valor Total', '', '', '', '', '', '', float(resumo['valor_total']), ''])
+    for cell in ws[ws.max_row]:
+        cell.font = Font(bold=True)
+        cell.fill = total_fill
+
+    for row in ws.iter_rows(min_row=7, max_row=ws.max_row - 2):
+        row[5].alignment = Alignment(horizontal='center')
+        row[7].number_format = moeda_fmt
+        row[7].alignment = Alignment(horizontal='right')
+        row[8].alignment = Alignment(horizontal='center')
+
+    ws.cell(row=ws.max_row, column=8).number_format = moeda_fmt
+    ws.freeze_panes = 'A7'
+
+    for column_cells in ws.columns:
+        max_length = max(len(str(cell.value or '')) for cell in column_cells)
+        ws.column_dimensions[column_cells[0].column_letter].width = min(max_length + 2, 40)
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = (
+        f'attachment; filename="apontamentos_{timezone.now():%Y%m%d_%H%M%S}.xlsx"'
+    )
+    wb.save(response)
+    return response
+
+
+def _exportar_apontamentos_pdf(request, apontamentos):
+    resumo = _resumo_exportacao_apontamentos(request, apontamentos)
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        leftMargin=1 * cm,
+        rightMargin=1 * cm,
+        topMargin=1 * cm,
+        bottomMargin=1 * cm,
+    )
+    styles = getSampleStyleSheet()
+    cell_style = styles['BodyText']
+    cell_style.fontName = 'Helvetica'
+    cell_style.fontSize = 8
+    cell_style.leading = 9
+
+    linhas = [[
+        'Funcionario', 'Obra', 'Etapa', 'Data', 'Horas', 'Clima', 'Valor', 'Status',
+    ]]
+    for ap in apontamentos:
+        linhas.append([
+            Paragraph(ap.funcionario.nome_completo, cell_style),
+            Paragraph(ap.obra.nome if ap.obra else '-', cell_style),
+            Paragraph(str(ap.etapa) if ap.etapa else '-', cell_style),
+            Paragraph(ap.data.strftime('%d/%m/%Y'), cell_style),
+            Paragraph(f'{ap.horas_trabalhadas}h', cell_style),
+            Paragraph(ap.get_clima_display(), cell_style),
+            Paragraph(brl(ap.valor_diaria or 0), cell_style),
+            Paragraph(_texto_status_apontamento(ap), cell_style),
+        ])
+
+    tabela = Table(
+        linhas,
+        repeatRows=1,
+        colWidths=[3.5 * cm, 3.4 * cm, 6.0 * cm, 2.0 * cm, 1.8 * cm, 2.0 * cm, 2.6 * cm, 2.2 * cm],
+    )
+    tabela.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0d6efd')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.3, colors.grey),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+
+    story = [
+        Paragraph('Relatorio de Diarias', styles['Title']),
+        Paragraph(f"Periodo: {resumo['periodo']}", styles['Normal']),
+        Paragraph(f"Valor Total: {brl(resumo['valor_total'])}", styles['Normal']),
+        Paragraph(f'Gerado em {timezone.localtime():%d/%m/%Y %H:%M}', styles['Normal']),
+        Spacer(1, 12),
+        tabela,
+    ]
+    doc.build(story)
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = (
+        f'attachment; filename="apontamentos_{timezone.now():%Y%m%d_%H%M%S}.pdf"'
+    )
+    response.write(buffer.getvalue())
+    buffer.close()
+    return response
+
+
+@login_required
+def apontamento_list(request):
+    """Lista apontamentos com filtros avancados"""
+    qs = _aplicar_filtros_apontamentos(request)
+
+    exportar = request.GET.get('export')
+    if exportar == 'excel':
+        return _exportar_apontamentos_excel(request, qs)
+    if exportar == 'pdf':
+        return _exportar_apontamentos_pdf(request, qs)
+
     totais = qs.aggregate(
         total_horas=Sum('horas_trabalhadas'),
         total_valor=Sum('valor_diaria'),
@@ -820,7 +1015,6 @@ def apontamento_list(request):
         total_retrabalho=Count('data', filter=Q(houve_retrabalho=True), distinct=True),
     )
 
-    # Pagination
     paginator = Paginator(qs, 20)
     page = request.GET.get('page')
     try:
@@ -833,6 +1027,8 @@ def apontamento_list(request):
     params = request.GET.copy()
     if 'page' in params:
         params.pop('page')
+    if 'export' in params:
+        params.pop('export')
     querystring = params.urlencode()
 
     context = {
