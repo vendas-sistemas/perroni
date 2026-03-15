@@ -4,207 +4,222 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-  <!-- Header -->
-  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
-    <div>
-      <a href="{% url 'funcionarios:fechamento_list' %}" class="text-decoration-none text-muted">
-        <i class="bi bi-arrow-left"></i> Fechamentos Semanais
-      </a>
-      <h3 class="mb-0 mt-1">
-        <i class="bi bi-calendar-week"></i>
-        Semana {{ data_inicio|date:'d/m/Y' }} — {{ data_fim|date:'d/m/Y' }}
-      </h3>
-    </div>
-    <div class="d-flex align-items-center gap-2">
-      <form method="post" action="{% url 'funcionarios:fechamento_semana_pagar' data_inicio|date:'Y-m-d' %}">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Marcar TODOS os fechamentos desta semana como PAGO?');">Pagar Colaboradores</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Cards de resumo -->
-  <div class="row g-3 mb-4">
-    <div class="col-6 col-md-2">
-      <div class="card text-center border-0 shadow-sm">
-        <div class="card-body py-3">
-          <div class="text-muted small"><i class="bi bi-people"></i> Funcionários</div>
-          <div class="h4 mb-0 fw-bold">{{ totais.total_funcionarios }}</div>
+<div class="container-fluid py-4 fechamento-semana-page">
+  <section class="semana-hero mb-4">
+    <div class="row g-4 align-items-center">
+      <div class="col-12 col-xl-8">
+        <div class="semana-hero__content">
+          <a href="{% url 'funcionarios:fechamento_list' %}" class="semana-back-link">
+            <i class="bi bi-arrow-left"></i> Voltar para fechamentos semanais
+          </a>
+          <span class="semana-eyebrow">
+            <i class="bi bi-calendar-week"></i>
+            Semana de fechamento
+          </span>
+          <h1 class="semana-hero__title">{{ data_inicio|date:'d/m/Y' }} - {{ data_fim|date:'d/m/Y' }}</h1>
+          <p class="semana-hero__text mb-0">
+            Consulte equipe, valores, status e apontamentos da semana em um painel organizado para desktop e dispositivos moveis.
+          </p>
         </div>
       </div>
-    </div>
-    <div class="col-6 col-md-2">
-      <div class="card text-center border-0 shadow-sm">
-        <div class="card-body py-3">
-          <div class="text-muted small"><i class="bi bi-calendar-check"></i> Diárias</div>
-          <div class="h4 mb-0 fw-bold">{{ totais.total_dias }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-md-2">
-      <div class="card text-center border-0 shadow-sm bg-success bg-opacity-10">
-        <div class="card-body py-3">
-          <div class="text-muted small"><i class="bi bi-cash-stack"></i> Valor Total</div>
-          <div class="h4 mb-0 fw-bold text-success">{{ totais.total_valor|brl }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-md-2">
-      <div class="card text-center border-0 shadow-sm">
-        <div class="card-body py-3">
-          <div class="text-muted small"><i class="bi bi-pause-circle"></i> Ociosidade</div>
-          <div class="h4 mb-0 fw-bold text-warning">{{ totais.total_ociosidade|default:"0" }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-md-2">
-      <div class="card text-center border-0 shadow-sm">
-        <div class="card-body py-3">
-          <div class="text-muted small"><i class="bi bi-arrow-repeat"></i> Retrabalho</div>
-          <div class="h4 mb-0 fw-bold text-danger">{{ totais.total_retrabalho|default:"0" }}</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Filtros -->
-  <div class="card shadow-sm mb-4">
-    <div class="card-body py-3">
-      <div class="row g-2 align-items-end">
-        <!-- Filtro por dia rápido -->
-        <div class="col-12 col-lg-5">
-          <label class="form-label small text-muted mb-1"><i class="bi bi-calendar-day"></i> Filtrar por dia</label>
-          <div class="d-flex flex-wrap gap-1">
-            <a href="?{% if status_filter %}status={{ status_filter }}&{% endif %}{% if busca %}q={{ busca }}&{% endif %}"
-               class="btn btn-sm {% if not dia_filter and not dia_inicio_filter %}btn-dark{% else %}btn-outline-secondary{% endif %}">
-              Todos
-            </a>
-            {% for d in dias_semana %}
-            <a href="?dia={{ d.iso }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if busca %}&q={{ busca }}{% endif %}"
-               class="btn btn-sm {% if dia_filter == d.iso %}btn-primary{% else %}btn-outline-secondary{% endif %}">
-              {{ d.nome }} {{ d.data|date:'d' }}
-            </a>
-            {% endfor %}
+      <div class="col-12 col-xl-4">
+        <div class="semana-hero__panel">
+          <div class="hero-mini-stats">
+            <article class="hero-mini-stat">
+              <span class="hero-mini-stat__label">Funcionarios</span>
+              <strong class="hero-mini-stat__value">{{ totais.total_funcionarios }}</strong>
+            </article>
+            <article class="hero-mini-stat">
+              <span class="hero-mini-stat__label">Valor total</span>
+              <strong class="hero-mini-stat__value">{{ totais.total_valor|brl }}</strong>
+            </article>
           </div>
-        </div>
-
-        <!-- Filtro por intervalo de datas -->
-        <div class="col-6 col-lg-2">
-          <label class="form-label small text-muted mb-1"><i class="bi bi-calendar-range"></i> De</label>
-          <input type="date" id="filtro_dia_inicio" class="form-control form-control-sm"
-                 value="{{ dia_inicio_filter }}"
-                 min="{{ data_inicio|date:'Y-m-d' }}" max="{{ data_fim|date:'Y-m-d' }}">
-        </div>
-        <div class="col-6 col-lg-2">
-          <label class="form-label small text-muted mb-1">Até</label>
-          <input type="date" id="filtro_dia_fim" class="form-control form-control-sm"
-                 value="{{ dia_fim_filter }}"
-                 min="{{ data_inicio|date:'Y-m-d' }}" max="{{ data_fim|date:'Y-m-d' }}">
-        </div>
-
-        <!-- Busca por nome -->
-        <div class="col-12 col-lg-3">
-          <label class="form-label small text-muted mb-1"><i class="bi bi-search"></i> Funcionário</label>
-          <div class="d-flex gap-1">
-            <input type="text" id="filtro_nome" class="form-control form-control-sm"
-                   value="{{ busca }}" placeholder="Buscar por nome...">
-            <button type="button" id="btn_filtrar" class="btn btn-sm btn-primary">
-              <i class="bi bi-funnel"></i>
+          <form method="post" action="{% url 'funcionarios:fechamento_semana_pagar' data_inicio|date:'Y-m-d' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success btn-lg w-100 semana-action-btn" onclick="return confirm('Marcar TODOS os fechamentos desta semana como PAGO?');">
+              <i class="bi bi-cash-coin"></i> Pagar Colaboradores
             </button>
-            {% if busca or dia_filter or dia_inicio_filter or dia_fim_filter or status_filter %}
-            <a href="." class="btn btn-sm btn-outline-danger" title="Limpar filtros">
-              <i class="bi bi-x-lg"></i>
-            </a>
-            {% endif %}
-          </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="summary-grid mb-4">
+    <article class="summary-card">
+      <span class="summary-card__icon"><i class="bi bi-people-fill"></i></span>
+      <span class="summary-card__label">Funcionarios</span>
+      <strong class="summary-card__value">{{ totais.total_funcionarios }}</strong>
+    </article>
+    <article class="summary-card">
+      <span class="summary-card__icon"><i class="bi bi-calendar-check"></i></span>
+      <span class="summary-card__label">Diarias</span>
+      <strong class="summary-card__value">{{ totais.total_dias }}</strong>
+    </article>
+    <article class="summary-card summary-card--success">
+      <span class="summary-card__icon"><i class="bi bi-cash-stack"></i></span>
+      <span class="summary-card__label">Valor total</span>
+      <strong class="summary-card__value">{{ totais.total_valor|brl }}</strong>
+    </article>
+    <article class="summary-card summary-card--warning">
+      <span class="summary-card__icon"><i class="bi bi-pause-circle"></i></span>
+      <span class="summary-card__label">Ociosidade</span>
+      <strong class="summary-card__value">{{ totais.total_ociosidade|default:"0" }}</strong>
+    </article>
+    <article class="summary-card summary-card--danger">
+      <span class="summary-card__icon"><i class="bi bi-arrow-repeat"></i></span>
+      <span class="summary-card__label">Retrabalho</span>
+      <strong class="summary-card__value">{{ totais.total_retrabalho|default:"0" }}</strong>
+    </article>
+  </section>
+
+  <section class="filter-panel mb-4">
+    <div class="filter-panel__header">
+      <div>
+        <span class="filter-panel__eyebrow">Filtros</span>
+        <h2 class="filter-panel__title">Refine a visualizacao da semana</h2>
+      </div>
+      {% if busca or dia_filter or dia_inicio_filter or dia_fim_filter or status_filter %}
+      <a href="." class="btn btn-outline-danger btn-sm">
+        <i class="bi bi-x-lg"></i> Limpar filtros
+      </a>
+      {% endif %}
+    </div>
+
+    <div class="row g-3">
+      <div class="col-12 col-xl-5">
+        <label class="filter-label"><i class="bi bi-calendar-day"></i> Filtrar por dia</label>
+        <div class="chip-group">
+          <a href="?{% if status_filter %}status={{ status_filter }}&{% endif %}{% if busca %}q={{ busca }}&{% endif %}"
+             class="filter-chip {% if not dia_filter and not dia_inicio_filter %}filter-chip--active{% endif %}">
+            Todos
+          </a>
+          {% for d in dias_semana %}
+          <a href="?dia={{ d.iso }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if busca %}&q={{ busca }}{% endif %}"
+             class="filter-chip {% if dia_filter == d.iso %}filter-chip--active{% endif %}">
+            {{ d.nome }} {{ d.data|date:'d' }}
+          </a>
+          {% endfor %}
         </div>
       </div>
 
-      <!-- Status -->
-      <div class="d-flex flex-wrap gap-2 mt-3 align-items-center">
-        <span class="text-muted small me-1">Status:</span>
-        <a href="?{% if busca %}q={{ busca }}&{% endif %}{% if dia_filter %}dia={{ dia_filter }}&{% endif %}{% if dia_inicio_filter %}dia_inicio={{ dia_inicio_filter }}&{% endif %}{% if dia_fim_filter %}dia_fim={{ dia_fim_filter }}&{% endif %}"
-           class="badge text-decoration-none {% if not status_filter %}bg-dark{% else %}bg-light text-dark border{% endif %} px-3 py-2">
-          Todos ({{ totais.total_funcionarios }})
-        </a>
-        <a href="?status=fechado{% if busca %}&q={{ busca }}{% endif %}{% if dia_filter %}&dia={{ dia_filter }}{% endif %}{% if dia_inicio_filter %}&dia_inicio={{ dia_inicio_filter }}{% endif %}{% if dia_fim_filter %}&dia_fim={{ dia_fim_filter }}{% endif %}"
-           class="badge text-decoration-none {% if status_filter == 'fechado' %}bg-primary{% else %}bg-light text-dark border{% endif %} px-3 py-2">
-          <i class="bi bi-lock"></i> Fechados ({{ totais.qtd_fechados }})
-        </a>
-        <a href="?status=pago{% if busca %}&q={{ busca }}{% endif %}{% if dia_filter %}&dia={{ dia_filter }}{% endif %}{% if dia_inicio_filter %}&dia_inicio={{ dia_inicio_filter }}{% endif %}{% if dia_fim_filter %}&dia_fim={{ dia_fim_filter }}{% endif %}"
-           class="badge text-decoration-none {% if status_filter == 'pago' %}bg-success{% else %}bg-light text-dark border{% endif %} px-3 py-2">
-          <i class="bi bi-check-circle"></i> Pagos ({{ totais.qtd_pagos }})
-        </a>
+      <div class="col-6 col-md-3 col-xl-2">
+        <label for="filtro_dia_inicio" class="filter-label"><i class="bi bi-calendar-range"></i> De</label>
+        <input type="date" id="filtro_dia_inicio" class="form-control"
+               value="{{ dia_inicio_filter }}"
+               min="{{ data_inicio|date:'Y-m-d' }}" max="{{ data_fim|date:'Y-m-d' }}">
+      </div>
+      <div class="col-6 col-md-3 col-xl-2">
+        <label for="filtro_dia_fim" class="filter-label">Ate</label>
+        <input type="date" id="filtro_dia_fim" class="form-control"
+               value="{{ dia_fim_filter }}"
+               min="{{ data_inicio|date:'Y-m-d' }}" max="{{ data_fim|date:'Y-m-d' }}">
+      </div>
+      <div class="col-12 col-xl-3">
+        <label for="filtro_nome" class="filter-label"><i class="bi bi-search"></i> Funcionario</label>
+        <div class="search-group">
+          <input type="text" id="filtro_nome" class="form-control"
+                 value="{{ busca }}" placeholder="Buscar por nome...">
+          <button type="button" id="btn_filtrar" class="btn btn-primary">
+            <i class="bi bi-funnel"></i>
+          </button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Tabela de funcionários -->
-  <div class="card shadow-sm">
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead class="table-light">
+    <div class="status-row">
+      <span class="status-row__label">Status</span>
+      <a href="?{% if busca %}q={{ busca }}&{% endif %}{% if dia_filter %}dia={{ dia_filter }}&{% endif %}{% if dia_inicio_filter %}dia_inicio={{ dia_inicio_filter }}&{% endif %}{% if dia_fim_filter %}dia_fim={{ dia_fim_filter }}&{% endif %}"
+         class="status-chip {% if not status_filter %}status-chip--dark{% endif %}">
+        Todos ({{ totais.total_funcionarios }})
+      </a>
+      <a href="?status=fechado{% if busca %}&q={{ busca }}{% endif %}{% if dia_filter %}&dia={{ dia_filter }}{% endif %}{% if dia_inicio_filter %}&dia_inicio={{ dia_inicio_filter }}{% endif %}{% if dia_fim_filter %}&dia_fim={{ dia_fim_filter }}{% endif %}"
+         class="status-chip {% if status_filter == 'fechado' %}status-chip--primary{% endif %}">
+        <i class="bi bi-lock-fill"></i> Fechados ({{ totais.qtd_fechados }})
+      </a>
+      <a href="?status=pago{% if busca %}&q={{ busca }}{% endif %}{% if dia_filter %}&dia={{ dia_filter }}{% endif %}{% if dia_inicio_filter %}&dia_inicio={{ dia_inicio_filter }}{% endif %}{% if dia_fim_filter %}&dia_fim={{ dia_fim_filter }}{% endif %}"
+         class="status-chip {% if status_filter == 'pago' %}status-chip--success{% endif %}">
+        <i class="bi bi-check-circle-fill"></i> Pagos ({{ totais.qtd_pagos }})
+      </a>
+    </div>
+  </section>
+
+  <section class="results-panel">
+    <div class="results-panel__header">
+      <div>
+        <span class="filter-panel__eyebrow">Resultados</span>
+        <h2 class="filter-panel__title mb-0">Fechamentos da semana</h2>
+      </div>
+      <div class="results-panel__count">
+        {{ fechamentos|length }} registro{{ fechamentos|length|pluralize:"s" }}
+      </div>
+    </div>
+
+    <div class="table-responsive d-none d-lg-block">
+      <table class="table align-middle mb-0 fechamento-table">
+        <thead>
           <tr>
-            <th style="width: 28%;">Funcionário</th>
-            <th class="text-center" style="width: 6%;">Dias</th>
-            <th style="width: 30%;">Dia / Obra</th>
-            <th class="text-end" style="width: 12%;">Valor</th>
-            <th class="text-center" style="width: 6%;">Ocios.</th>
-            <th class="text-center" style="width: 6%;">Retrab.</th>
-            <th class="text-center" style="width: 8%;">Status</th>
-            <th class="text-center" style="width: 4%;"></th>
+            <th>Funcionario</th>
+            <th class="text-center">Dias</th>
+            <th>Dia / Obra</th>
+            <th class="text-end">Valor</th>
+            <th class="text-center">Ocios.</th>
+            <th class="text-center">Retrab.</th>
+            <th class="text-center">Status</th>
+            <th class="text-center">Acoes</th>
           </tr>
         </thead>
         <tbody>
           {% for f in fechamentos %}
           <tr>
             <td>
-              <div class="d-flex align-items-center gap-2">
-                <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; min-width: 36px;">
+              <div class="person-cell">
+                <div class="person-cell__avatar">
                   <i class="bi bi-person-fill"></i>
                 </div>
                 <div>
-                  <div class="fw-semibold">{{ f.funcionario.nome_completo }}</div>
-                  <small class="text-muted">{{ f.funcionario.get_funcao_display }} · {{ f.funcionario.valor_diaria|brl }}/dia</small>
+                  <div class="person-cell__name">{{ f.funcionario.nome_completo }}</div>
+                  <small class="person-cell__meta">{{ f.funcionario.get_funcao_display }} · {{ f.funcionario.valor_diaria|brl }}/dia</small>
                 </div>
               </div>
             </td>
             <td class="text-center fw-semibold">{{ f.total_dias }}</td>
             <td>
-              {% for apt in f.apontamentos_semana %}
-              <div class="d-flex align-items-center gap-1 {% if not forloop.last %}mb-1{% endif %}" style="font-size: 0.82rem;">
-                <span class="badge bg-light text-dark border" style="min-width: 55px;">{{ apt.data|date:'D d' }}</span>
-                <span class="text-muted">{{ apt.obra }}</span>
+              <div class="work-list">
+                {% for apt in f.apontamentos_semana %}
+                <div class="work-list__item {% if not forloop.last %}mb-1{% endif %}">
+                  <span class="work-list__date">{{ apt.data|date:'D d' }}</span>
+                  <span class="work-list__obra">{{ apt.obra }}</span>
+                </div>
+                {% empty %}
+                <span class="text-muted">-</span>
+                {% endfor %}
               </div>
-              {% empty %}
-              <span class="text-muted">—</span>
-              {% endfor %}
             </td>
             <td class="text-end fw-semibold text-success">{{ f.total_valor|brl }}</td>
             <td class="text-center">
               {% if f.dias_ociosidade %}
-                <span class="badge bg-warning text-dark">{{ f.dias_ociosidade }}</span>
+              <span class="metric-badge metric-badge--warning">{{ f.dias_ociosidade }}</span>
               {% else %}
-                <span class="text-muted">—</span>
+              <span class="text-muted">-</span>
               {% endif %}
             </td>
             <td class="text-center">
               {% if f.dias_retrabalho %}
-                <span class="badge bg-danger">{{ f.dias_retrabalho }}</span>
+              <span class="metric-badge metric-badge--danger">{{ f.dias_retrabalho }}</span>
               {% else %}
-                <span class="text-muted">—</span>
+              <span class="text-muted">-</span>
               {% endif %}
             </td>
             <td class="text-center">
               {% if f.status == 'pago' %}
-                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Pago</span>
+              <span class="status-pill status-pill--success"><i class="bi bi-check-circle-fill"></i> Pago</span>
               {% else %}
-                <span class="badge bg-primary"><i class="bi bi-lock"></i> Fechado</span>
+              <span class="status-pill status-pill--primary"><i class="bi bi-lock-fill"></i> Fechado</span>
               {% endif %}
             </td>
             <td class="text-center">
-              <div class="d-flex justify-content-center gap-1">
+              <div class="action-buttons">
                 <a href="{% url 'funcionarios:fechamento_detail' f.pk %}" class="btn btn-sm btn-outline-secondary" title="Ver detalhes">
                   <i class="bi bi-eye"></i>
                 </a>
@@ -218,16 +233,626 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="8" class="text-center py-4 text-muted">
-              Nenhum funcionário encontrado{% if busca %} para "<strong>{{ busca }}</strong>"{% endif %}{% if status_filter %} com status "<strong>{{ status_filter }}</strong>"{% endif %}.
+            <td colspan="8" class="text-center py-5 text-muted">
+              Nenhum funcionario encontrado{% if busca %} para "{{ busca }}"{% endif %}{% if status_filter %} com status "{{ status_filter }}"{% endif %}.
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-  </div>
+
+    <div class="d-lg-none">
+      {% for f in fechamentos %}
+      <article class="mobile-card">
+        <div class="mobile-card__top">
+          <div class="person-cell">
+            <div class="person-cell__avatar">
+              <i class="bi bi-person-fill"></i>
+            </div>
+            <div>
+              <div class="person-cell__name">{{ f.funcionario.nome_completo }}</div>
+              <small class="person-cell__meta">{{ f.funcionario.get_funcao_display }} · {{ f.funcionario.valor_diaria|brl }}/dia</small>
+            </div>
+          </div>
+          {% if f.status == 'pago' %}
+          <span class="status-pill status-pill--success"><i class="bi bi-check-circle-fill"></i> Pago</span>
+          {% else %}
+          <span class="status-pill status-pill--primary"><i class="bi bi-lock-fill"></i> Fechado</span>
+          {% endif %}
+        </div>
+
+        <div class="mobile-card__metrics">
+          <div class="mobile-card__metric">
+            <span>Dias</span>
+            <strong>{{ f.total_dias }}</strong>
+          </div>
+          <div class="mobile-card__metric">
+            <span>Valor</span>
+            <strong class="text-success">{{ f.total_valor|brl }}</strong>
+          </div>
+          <div class="mobile-card__metric">
+            <span>Ocios.</span>
+            <strong>{% if f.dias_ociosidade %}{{ f.dias_ociosidade }}{% else %}-{% endif %}</strong>
+          </div>
+          <div class="mobile-card__metric">
+            <span>Retrab.</span>
+            <strong>{% if f.dias_retrabalho %}{{ f.dias_retrabalho }}{% else %}-{% endif %}</strong>
+          </div>
+        </div>
+
+        <div class="mobile-card__work">
+          {% for apt in f.apontamentos_semana %}
+          <div class="work-list__item {% if not forloop.last %}mb-2{% endif %}">
+            <span class="work-list__date">{{ apt.data|date:'D d' }}</span>
+            <span class="work-list__obra">{{ apt.obra }}</span>
+          </div>
+          {% empty %}
+          <span class="text-muted">Nenhum apontamento na semana.</span>
+          {% endfor %}
+        </div>
+
+        <div class="mobile-card__actions">
+          <a href="{% url 'funcionarios:fechamento_detail' f.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-eye"></i> Ver detalhes
+          </a>
+          {% if f.status != 'pago' %}
+          <a href="{% url 'funcionarios:fechamento_delete' f.pk %}" class="btn btn-outline-danger">
+            <i class="bi bi-trash"></i> Excluir
+          </a>
+          {% endif %}
+        </div>
+      </article>
+      {% empty %}
+      <div class="text-center py-5 text-muted">
+        Nenhum funcionario encontrado{% if busca %} para "{{ busca }}"{% endif %}{% if status_filter %} com status "{{ status_filter }}"{% endif %}.
+      </div>
+      {% endfor %}
+    </div>
+  </section>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .fechamento-semana-page {
+    --semana-surface: #ffffff;
+    --semana-surface-soft: #edf5ee;
+    --semana-text: #18332b;
+    --semana-muted: #60756d;
+    --semana-primary: #1f6f5f;
+    --semana-primary-deep: #12473d;
+    --semana-border: rgba(24, 51, 43, 0.1);
+    --semana-shadow: 0 18px 40px rgba(20, 58, 49, 0.12);
+    color: var(--semana-text);
+  }
+
+  .semana-hero {
+    background:
+      radial-gradient(circle at top right, rgba(240, 180, 76, 0.25), transparent 30%),
+      linear-gradient(135deg, #143c35 0%, #1f6f5f 55%, #2b8b77 100%);
+    border-radius: 28px;
+    padding: clamp(1.4rem, 2vw, 2.2rem);
+    color: #fff;
+    box-shadow: var(--semana-shadow);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .semana-hero::after {
+    content: "";
+    position: absolute;
+    right: -72px;
+    bottom: -90px;
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .semana-hero__content,
+  .semana-hero__panel {
+    position: relative;
+    z-index: 1;
+  }
+
+  .semana-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: rgba(255, 255, 255, 0.84);
+    text-decoration: none;
+    margin-bottom: 1rem;
+    font-weight: 600;
+  }
+
+  .semana-back-link:hover {
+    color: #fff;
+  }
+
+  .semana-eyebrow,
+  .filter-panel__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .semana-eyebrow {
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    margin-bottom: 0.95rem;
+  }
+
+  .semana-hero__title {
+    font-size: clamp(1.9rem, 3vw, 3rem);
+    font-weight: 800;
+    line-height: 1.05;
+    margin-bottom: 0.75rem;
+  }
+
+  .semana-hero__text {
+    max-width: 60ch;
+    color: rgba(255, 255, 255, 0.84);
+  }
+
+  .semana-hero__panel {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 24px;
+    backdrop-filter: blur(10px);
+    padding: 1rem;
+  }
+
+  .hero-mini-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .hero-mini-stat {
+    background: rgba(8, 29, 25, 0.18);
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 0.95rem;
+  }
+
+  .hero-mini-stat__label,
+  .hero-mini-stat__value {
+    display: block;
+  }
+
+  .hero-mini-stat__label {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .hero-mini-stat__value {
+    font-size: 1.2rem;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .semana-action-btn {
+    border-radius: 16px;
+    font-weight: 700;
+    padding: 0.85rem 1rem;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .summary-card,
+  .filter-panel,
+  .results-panel,
+  .mobile-card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 243, 0.98));
+    border: 1px solid var(--semana-border);
+    box-shadow: 0 12px 26px rgba(20, 58, 49, 0.08);
+  }
+
+  .summary-card {
+    border-radius: 22px;
+    padding: 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .summary-card__icon {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    background: var(--semana-surface-soft);
+    color: var(--semana-primary);
+    font-size: 1.1rem;
+  }
+
+  .summary-card__label {
+    font-size: 0.84rem;
+    color: var(--semana-muted);
+  }
+
+  .summary-card__value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+
+  .summary-card--success .summary-card__icon,
+  .summary-card--success .summary-card__value { color: #218552; }
+  .summary-card--warning .summary-card__icon,
+  .summary-card--warning .summary-card__value { color: #9b6700; }
+  .summary-card--danger .summary-card__icon,
+  .summary-card--danger .summary-card__value { color: #b33a3a; }
+
+  .filter-panel,
+  .results-panel {
+    border-radius: 26px;
+    padding: 1.35rem;
+  }
+
+  .filter-panel__header,
+  .results-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.15rem;
+  }
+
+  .filter-panel__eyebrow {
+    color: var(--semana-primary);
+    margin-bottom: 0.45rem;
+  }
+
+  .filter-panel__title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    margin: 0;
+  }
+
+  .filter-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: var(--semana-muted);
+    margin-bottom: 0.55rem;
+  }
+
+  .chip-group,
+  .status-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+  }
+
+  .filter-chip,
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    text-decoration: none;
+    border-radius: 999px;
+    padding: 0.6rem 0.9rem;
+    font-weight: 700;
+    transition: all 0.18s ease;
+  }
+
+  .filter-chip {
+    background: #fff;
+    color: var(--semana-muted);
+    border: 1px solid var(--semana-border);
+  }
+
+  .filter-chip:hover,
+  .filter-chip--active {
+    color: #fff;
+    background: var(--semana-primary);
+    border-color: var(--semana-primary);
+  }
+
+  .search-group {
+    display: flex;
+    gap: 0.55rem;
+  }
+
+  .search-group .btn {
+    min-width: 48px;
+  }
+
+  .status-row {
+    margin-top: 1rem;
+    align-items: center;
+  }
+
+  .status-row__label {
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: var(--semana-muted);
+    margin-right: 0.2rem;
+  }
+
+  .status-chip {
+    background: rgba(31, 111, 95, 0.08);
+    color: var(--semana-primary-deep);
+  }
+
+  .status-chip:hover {
+    color: var(--semana-primary-deep);
+  }
+
+  .status-chip--dark {
+    background: #172a25;
+    color: #fff;
+  }
+
+  .status-chip--primary {
+    background: rgba(43, 109, 224, 0.14);
+    color: #2358b0;
+  }
+
+  .status-chip--success {
+    background: rgba(47, 158, 98, 0.16);
+    color: #1f7c4a;
+  }
+
+  .results-panel__count {
+    font-size: 0.86rem;
+    color: var(--semana-muted);
+    font-weight: 700;
+  }
+
+  .fechamento-table thead th {
+    background: transparent;
+    color: var(--semana-muted);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom-color: var(--semana-border);
+    padding-bottom: 0.9rem;
+  }
+
+  .fechamento-table tbody td {
+    border-color: var(--semana-border);
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .person-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .person-cell__avatar {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: var(--semana-surface-soft);
+    color: var(--semana-primary);
+  }
+
+  .person-cell__name {
+    font-weight: 700;
+    color: var(--semana-text);
+  }
+
+  .person-cell__meta {
+    color: var(--semana-muted);
+  }
+
+  .work-list__item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .work-list__date {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 58px;
+    padding: 0.28rem 0.55rem;
+    border-radius: 999px;
+    background: var(--semana-surface-soft);
+    color: var(--semana-primary-deep);
+    font-size: 0.76rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .work-list__obra {
+    color: var(--semana-muted);
+    font-size: 0.88rem;
+  }
+
+  .metric-badge,
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 999px;
+    font-weight: 700;
+  }
+
+  .metric-badge {
+    padding: 0.38rem 0.65rem;
+    font-size: 0.8rem;
+  }
+
+  .metric-badge--warning {
+    background: rgba(231, 167, 60, 0.18);
+    color: #8a5a02;
+  }
+
+  .metric-badge--danger {
+    background: rgba(208, 74, 74, 0.12);
+    color: #a32828;
+  }
+
+  .status-pill {
+    padding: 0.48rem 0.8rem;
+    font-size: 0.82rem;
+  }
+
+  .status-pill--success {
+    background: rgba(47, 158, 98, 0.16);
+    color: #1f7c4a;
+  }
+
+  .status-pill--primary {
+    background: rgba(43, 109, 224, 0.14);
+    color: #2358b0;
+  }
+
+  .action-buttons,
+  .mobile-card__actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .mobile-card {
+    border-radius: 22px;
+    padding: 1rem;
+  }
+
+  .mobile-card + .mobile-card {
+    margin-top: 1rem;
+  }
+
+  .mobile-card__top {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .mobile-card__metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .mobile-card__metric {
+    background: #fff;
+    border: 1px solid var(--semana-border);
+    border-radius: 16px;
+    padding: 0.8rem;
+  }
+
+  .mobile-card__metric span,
+  .mobile-card__metric strong {
+    display: block;
+  }
+
+  .mobile-card__metric span {
+    font-size: 0.78rem;
+    color: var(--semana-muted);
+    margin-bottom: 0.2rem;
+  }
+
+  .mobile-card__metric strong {
+    font-size: 1rem;
+  }
+
+  .mobile-card__work {
+    border-top: 1px solid var(--semana-border);
+    border-bottom: 1px solid var(--semana-border);
+    padding: 0.95rem 0;
+    margin-bottom: 1rem;
+  }
+
+  body.theme-dark .fechamento-semana-page {
+    --semana-surface: rgba(17, 42, 58, 0.88);
+    --semana-surface-soft: rgba(111, 193, 165, 0.12);
+    --semana-text: #eaf7f2;
+    --semana-muted: #9fb8b0;
+    --semana-primary: #7dcdb4;
+    --semana-primary-deep: #d5f3e8;
+    --semana-border: rgba(207, 241, 229, 0.09);
+    --semana-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  }
+
+  body.theme-dark .summary-card,
+  body.theme-dark .filter-panel,
+  body.theme-dark .results-panel,
+  body.theme-dark .mobile-card,
+  body.theme-dark .mobile-card__metric {
+    background: rgba(17, 42, 58, 0.88);
+    backdrop-filter: blur(10px);
+  }
+
+  @media (max-width: 1199.98px) {
+    .summary-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 991.98px) {
+    .summary-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .filter-panel__header,
+    .results-panel__header,
+    .mobile-card__top {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .container-fluid.fechamento-semana-page {
+      padding-left: 0.85rem;
+      padding-right: 0.85rem;
+    }
+
+    .semana-hero,
+    .filter-panel,
+    .results-panel,
+    .summary-card,
+    .mobile-card {
+      border-radius: 20px;
+    }
+
+    .hero-mini-stats,
+    .summary-grid,
+    .mobile-card__metrics {
+      grid-template-columns: 1fr;
+    }
+
+    .search-group,
+    .mobile-card__actions {
+      flex-direction: column;
+    }
+
+    .search-group .btn,
+    .mobile-card__actions .btn {
+      width: 100%;
+    }
+  }
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -250,14 +875,15 @@
 
   document.getElementById('btn_filtrar').addEventListener('click', aplicarFiltros);
 
-  // Enter nos campos de filtro
   ['filtro_nome', 'filtro_dia_inicio', 'filtro_dia_fim'].forEach(function(id) {
     document.getElementById(id).addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') { e.preventDefault(); aplicarFiltros(); }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        aplicarFiltros();
+      }
     });
   });
 
-  // Auto-filtrar ao mudar as datas
   ['filtro_dia_inicio', 'filtro_dia_fim'].forEach(function(id) {
     document.getElementById(id).addEventListener('change', aplicarFiltros);
   });

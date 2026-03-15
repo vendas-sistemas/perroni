@@ -3,6 +3,81 @@
 
 {% block extra_css %}
 <style>
+  :root {
+    --lote-form-bg: linear-gradient(180deg, #f6f2eb 0%, #eef4fb 100%);
+    --lote-form-ink: #16324f;
+    --lote-form-soft: #64748b;
+    --lote-form-border: #d9e4ee;
+    --lote-form-shadow: 0 20px 40px rgba(15, 23, 42, .08);
+  }
+  body {
+    background: var(--lote-form-bg);
+  }
+  .lote-form-shell {
+    max-width: 1380px;
+  }
+  .lote-form-hero {
+    background:
+      radial-gradient(circle at top right, rgba(255,255,255,.24), transparent 30%),
+      linear-gradient(135deg, #12344d 0%, #2a628f 55%, #7ca36d 100%);
+    color: #fff;
+    border: none;
+    border-radius: 1.3rem;
+    box-shadow: 0 24px 48px rgba(18, 52, 77, .2);
+  }
+  .lote-form-hero .text-muted {
+    color: rgba(255,255,255,.76) !important;
+  }
+  .lote-form-hero .btn {
+    border-radius: .9rem;
+    font-weight: 700;
+  }
+  .lote-form-panel {
+    border: 1px solid var(--lote-form-border);
+    border-radius: 1.2rem;
+    box-shadow: var(--lote-form-shadow);
+    overflow: hidden;
+  }
+  .lote-form-panel .card-body {
+    padding: 1.4rem;
+  }
+  .secao-form {
+    background: linear-gradient(180deg, rgba(249,251,253,.95) 0%, rgba(241,246,251,.9) 100%);
+    border: 1px solid #e1eaf3;
+    border-radius: 1rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  .secao-titulo {
+    color: var(--lote-form-ink);
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: .85rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .secao-ajuda {
+    color: var(--lote-form-soft);
+    margin-bottom: .85rem;
+  }
+  #form-apontamento-lote .form-control,
+  #form-apontamento-lote .form-select,
+  #form-apontamento-lote textarea {
+    border-radius: .9rem;
+    border: 1px solid #cedae7;
+    min-height: 46px;
+    box-shadow: inset 0 1px 2px rgba(15,23,42,.03);
+  }
+  #form-apontamento-lote textarea {
+    min-height: 110px;
+  }
+  #form-apontamento-lote .form-control:focus,
+  #form-apontamento-lote .form-select:focus,
+  #form-apontamento-lote textarea:focus {
+    border-color: #5b93c5;
+    box-shadow: 0 0 0 .2rem rgba(42, 98, 143, .12);
+  }
   .info-divisao {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -88,7 +163,91 @@
   .funcionarios-table .horas-input {
     min-width: 84px;
   }
+  .funcionarios-wrap {
+    border: 1px solid #e1e9f2;
+    border-radius: 1rem;
+    overflow: hidden;
+    background: #fff;
+  }
+  .funcionarios-table {
+    margin-bottom: 0;
+  }
+  .funcionarios-table thead th {
+    background: linear-gradient(180deg, #16324f 0%, #234c73 100%);
+    color: #fff;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    border: none;
+    white-space: nowrap;
+    padding: .95rem .75rem;
+  }
+  .funcionarios-table tbody td {
+    padding: .85rem .75rem;
+    border-color: #e7eef6;
+    vertical-align: middle;
+  }
+  .funcionarios-table tbody tr:nth-child(even) {
+    background: #f8fbff;
+  }
+  .acoes-formulario {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    align-items: center;
+  }
+  .acoes-formulario .btn {
+    border-radius: .9rem;
+    min-height: 44px;
+    font-weight: 700;
+  }
+  #form-apontamento-lote > h5 {
+    color: var(--lote-form-ink);
+    background: linear-gradient(180deg, rgba(249,251,253,.95) 0%, rgba(241,246,251,.9) 100%);
+    border: 1px solid #e1eaf3;
+    border-radius: 1rem;
+    padding: .9rem 1rem;
+    margin-bottom: .9rem;
+  }
+  #form-apontamento-lote > p.text-muted,
+  #form-apontamento-lote .form-text.text-muted,
+  #form-apontamento-lote small.text-muted {
+    color: var(--lote-form-soft) !important;
+  }
+  #form-apontamento-lote > .row,
+  #funcionarios-container,
+  #campos-etapa-container,
+  #div-ociosidade,
+  #div-retrabalho,
+  #preview-fotos,
+  #form-apontamento-lote > .mb-4,
+  #form-apontamento-lote > .row.mb-4,
+  #form-apontamento-lote > .row.mb-3 {
+    background: linear-gradient(180deg, rgba(249,251,253,.95) 0%, rgba(241,246,251,.9) 100%);
+    border: 1px solid #e1eaf3;
+    border-radius: 1rem;
+    padding: 1rem;
+    margin-bottom: 1rem !important;
+  }
+  #form-apontamento-lote > hr {
+    display: none;
+  }
+  #funcionarios-container .btn-outline-primary,
+  #form-apontamento-lote label[for="input-fotos-camera"] {
+    border-radius: .85rem;
+    font-weight: 700;
+  }
   @media (max-width: 768px) {
+    .lote-form-shell {
+      padding-left: .35rem;
+      padding-right: .35rem;
+    }
+    .lote-form-panel .card-body {
+      padding: 1rem;
+    }
+    .secao-form {
+      padding: .85rem;
+    }
     .funcionarios-table {
       min-width: 620px;
     }
@@ -96,23 +255,37 @@
       font-size: .72rem;
       max-width: 140px;
     }
+    .acoes-formulario .btn {
+      width: 100%;
+    }
+    #form-apontamento-lote > .row,
+    #funcionarios-container,
+    #campos-etapa-container,
+    #div-ociosidade,
+    #div-retrabalho,
+    #preview-fotos,
+    #form-apontamento-lote > .mb-4,
+    #form-apontamento-lote > .row.mb-4,
+    #form-apontamento-lote > .row.mb-3 {
+      padding: .85rem;
+    }
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container mt-4 lote-form-shell">
+    <div class="lote-form-hero p-4 mb-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
         <div>
             <h2><i class="bi bi-people-fill text-primary"></i> {{ title }}</h2>
-            <small class="text-muted">Registre vários funcionários trabalhando juntos</small>
+            <small class="text-muted">Registre vários funcionários trabalhando juntos em um layout responsivo para computador e celular</small>
         </div>
         <a href="{% url 'funcionarios:apontamento_lote_list' %}" class="btn btn-outline-secondary">
             <i class="bi bi-list-ul"></i> Ver Lotes
         </a>
     </div>
 
-    <div class="card shadow">
+    <div class="card lote-form-panel">
         <div class="card-body">
             <form method="post" enctype="multipart/form-data" id="form-apontamento-lote" autocomplete="off">
                 {% csrf_token %}
@@ -171,7 +344,7 @@
                     <div class="col-md-12">
                         <label class="form-label">Etapa</label>
                         {{ form.etapa }}
-                        <small class="form-text text-muted">Selecione a obra primeiro</small>
+                        <small class="form-text text-muted">Selecione a obra primeiro.</small>
                     </div>
                 </div>
                 
@@ -179,7 +352,7 @@
                 <div id="campos-etapa-container" class="mt-4" style="display: none;">
                     <div class="alert alert-info">
                         <strong><i class="bi bi-info-circle"></i> Campos da Etapa</strong>
-                        <p class="mb-0 mt-2">Preencha os campos que foram executados no dia. Os valores serão atualizados no progresso da etapa.</p>
+                        <p class="mb-0 mt-2">Preencha os campos executados no dia. Os valores serão atualizados no progresso da etapa.</p>
                     </div>
                     
                     <div id="campos-etapa-fields" class="row g-3">
@@ -253,7 +426,7 @@
                                id="input-fotos-camera">
                     </div>
                     <small class="text-muted">
-                        Você pode selecionar múltiplas fotos (Ctrl+clique)
+                        Você pode selecionar múltiplas fotos
                     </small>
                     
                     <!-- Preview das fotos -->

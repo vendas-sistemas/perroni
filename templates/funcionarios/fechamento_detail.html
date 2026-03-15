@@ -4,143 +4,55 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-  <div class="row justify-content-center">
-    <div class="col-md-10">
-      <div class="card">
-        <div class="card-body">
-          <a href="{% url 'funcionarios:fechamento_semana_detail' fechamento.data_inicio|date:'Y-m-d' %}" class="text-decoration-none text-muted">
-            <i class="bi bi-arrow-left"></i> Voltar para semana
+<div class="container-fluid py-4 fechamento-detail-page">
+  <section class="detail-hero mb-4">
+    <div class="row g-4 align-items-center">
+      <div class="col-12 col-xl-8">
+        <div class="detail-hero__content">
+          <a href="{% url 'funcionarios:fechamento_semana_detail' fechamento.data_inicio|date:'Y-m-d' %}" class="detail-back-link">
+            <i class="bi bi-arrow-left"></i> Voltar para a semana
           </a>
-          <h4 class="card-title mb-3 mt-1">
-            Fechamento Semanal — {{ fechamento.data_inicio|date:"d/m/Y" }} a {{ fechamento.data_fim|date:"d/m/Y" }}
-          </h4>
-
-          <!-- Info -->
-          <div class="row g-2 mb-3">
-            <div class="col-6 col-md-3">
-              <strong>Funcionário:</strong><br>
-              <a href="{% url 'funcionarios:funcionario_historico' fechamento.funcionario.pk %}">{{ fechamento.funcionario.nome_completo }}</a>
-              <br><small class="text-muted">{{ fechamento.funcionario.get_funcao_display }}</small>
-            </div>
-            <div class="col-6 col-md-2">
-              <strong>Status:</strong><br>
-              <span class="badge {% if fechamento.status == 'pago' %}bg-success{% elif fechamento.status == 'fechado' %}bg-primary{% else %}bg-secondary{% endif %}">
-                {{ fechamento.get_status_display }}
-              </span>
-            </div>
-            <div class="col-4 col-md-2">
-              <strong>Dias:</strong><br>
-              <span class="h5">{{ fechamento.total_dias }}</span>
-            </div>
-            <div class="col-4 col-md-3">
-              <strong>Total a Pagar:</strong><br>
-              <span class="h4 text-success">{{ fechamento.total_valor|brl }}</span>
-            </div>
-          </div>
-
-          <!-- Indicators -->
-          {% if fechamento.dias_ociosidade or fechamento.dias_retrabalho %}
-          <div class="row g-2 mb-3">
-            {% if fechamento.dias_ociosidade %}
-            <div class="col-6">
-              <div class="alert alert-warning py-2 mb-0">
-                ⚠️ <strong>{{ fechamento.dias_ociosidade }}</strong> dia(s) com ociosidade
-              </div>
-            </div>
+          <span class="detail-eyebrow">
+            <i class="bi bi-person-badge"></i>
+            Fechamento individual
+          </span>
+          <h1 class="detail-hero__title">{{ fechamento.funcionario.nome_completo }}</h1>
+          <p class="detail-hero__text mb-2">
+            {{ fechamento.funcionario.get_funcao_display }} · {{ fechamento.data_inicio|date:"d/m/Y" }} - {{ fechamento.data_fim|date:"d/m/Y" }}
+          </p>
+          <div class="detail-hero__status-row">
+            {% if fechamento.status == 'pago' %}
+            <span class="status-pill status-pill--success"><i class="bi bi-check-circle-fill"></i> {{ fechamento.get_status_display }}</span>
+            {% else %}
+            <span class="status-pill status-pill--primary"><i class="bi bi-lock-fill"></i> {{ fechamento.get_status_display }}</span>
             {% endif %}
-            {% if fechamento.dias_retrabalho %}
-            <div class="col-6">
-              <div class="alert alert-danger py-2 mb-0">
-                ⚠️ <strong>{{ fechamento.dias_retrabalho }}</strong> dia(s) com retrabalho
-              </div>
-            </div>
-            {% endif %}
+            <span class="hero-info-pill"><i class="bi bi-calendar-check"></i> {{ fechamento.total_dias }} diaria{{ fechamento.total_dias|pluralize:"s" }}</span>
+            <span class="hero-info-pill"><i class="bi bi-cash-stack"></i> {{ fechamento.total_valor|brl }}</span>
           </div>
-          {% endif %}
-
-          <!-- Obras/Etapas -->
-          {% if obras_etapas %}
-          <h5>Obras e Etapas</h5>
-          <div class="table-responsive mb-3">
-            <table class="table table-sm table-bordered">
-              <thead class="table-light">
-                <tr><th>Obra</th><th>Dias</th><th>Etapas</th></tr>
-              </thead>
-              <tbody>
-                {% for obra_nome, info in obras_etapas.items %}
-                <tr>
-                  <td>{{ obra_nome }}</td>
-                  <td>{{ info.dias }}</td>
-                  <td>
-                    {% for etapa_name in info.etapas %}
-                      <span class="badge bg-info">{{ etapa_name }}</span>
-                    {% endfor %}
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+        </div>
+      </div>
+      <div class="col-12 col-xl-4">
+        <div class="detail-hero__panel">
+          <div class="hero-mini-stats">
+            <article class="hero-mini-stat">
+              <span class="hero-mini-stat__label">Valor a pagar</span>
+              <strong class="hero-mini-stat__value">{{ fechamento.total_valor|brl }}</strong>
+            </article>
+            <article class="hero-mini-stat">
+              <span class="hero-mini-stat__label">Diarias</span>
+              <strong class="hero-mini-stat__value">{{ fechamento.total_dias }}</strong>
+            </article>
           </div>
-          {% endif %}
-
-          <!-- Apontamentos detalhados -->
-          <h5>Apontamentos Detalhados</h5>
-          <div class="table-responsive">
-            <table class="table table-sm table-striped">
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Obra</th>
-                  <th>Etapa</th>
-                  <th>Clima</th>
-                  <th>Valor</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for a in apontamentos %}
-                <tr class="{% if a.houve_retrabalho %}table-danger{% elif a.houve_ociosidade %}table-warning{% endif %}">
-                  <td>{{ a.data|date:"d/m/Y" }}</td>
-                  <td>{{ a.obra.nome }}</td>
-                  <td>{{ a.etapa|default:"-" }}</td>
-                  <td>{% if a.clima == 'sol' %}☀️{% elif a.clima == 'chuva' %}🌧️{% else %}☁️{% endif %}</td>
-                  <td>{{ a.valor_diaria|brl }}</td>
-                  <td>
-                    {% if a.houve_retrabalho %}<span class="badge bg-danger">Retrabalho</span>{% endif %}
-                    {% if a.houve_ociosidade %}<span class="badge bg-warning text-dark">Ocioso</span>{% endif %}
-                    {% if not a.houve_retrabalho and not a.houve_ociosidade %}<span class="badge bg-success">OK</span>{% endif %}
-                  </td>
-                </tr>
-                {% if a.houve_retrabalho %}
-                <tr class="table-danger"><td colspan="6"><small>🔴 Retrabalho: {{ a.motivo_retrabalho }}</small></td></tr>
-                {% endif %}
-                {% if a.houve_ociosidade %}
-                <tr class="table-warning"><td colspan="6"><small>🟡 Ociosidade: {{ a.observacao_ociosidade }}</small></td></tr>
-                {% endif %}
-                {% empty %}
-                <tr><td colspan="6">Nenhum apontamento nesta semana.</td></tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-
-          {% if fechamento.observacoes %}
-          <div class="mt-2">
-            <strong>Observações:</strong>
-            <p>{{ fechamento.observacoes }}</p>
-          </div>
-          {% endif %}
-
-          <div class="d-flex gap-2 mt-3">
-            <a href="{% url 'funcionarios:fechamento_semana_detail' fechamento.data_inicio|date:'Y-m-d' %}" class="btn btn-secondary">Voltar para Semana</a>
-            <a href="{% url 'funcionarios:funcionario_historico' fechamento.funcionario.pk %}?mes={{ fechamento.data_inicio|date:'Y-m' }}" class="btn btn-outline-primary">Ver Calendário</a>
+          <div class="detail-hero__actions">
+            <a href="{% url 'funcionarios:funcionario_historico' fechamento.funcionario.pk %}?mes={{ fechamento.data_inicio|date:'Y-m' }}" class="btn btn-light btn-lg detail-action-btn">
+              <i class="bi bi-calendar3"></i> Ver Calendario
+            </a>
             {% if fechamento.status != 'pago' %}
-            <a href="{% url 'funcionarios:fechamento_delete' fechamento.pk %}" class="btn btn-outline-danger">
+            <a href="{% url 'funcionarios:fechamento_delete' fechamento.pk %}" class="btn btn-outline-light btn-lg detail-action-btn">
               <i class="bi bi-trash"></i> Excluir
             </a>
             {% else %}
-            <button class="btn btn-outline-danger" disabled title="Não é possível excluir fechamentos pagos">
+            <button class="btn btn-outline-light btn-lg detail-action-btn" disabled title="Nao e possivel excluir fechamentos pagos">
               <i class="bi bi-trash"></i> Excluir
             </button>
             {% endif %}
@@ -148,6 +60,758 @@
         </div>
       </div>
     </div>
-  </div>
+  </section>
+
+  <section class="summary-grid mb-4">
+    <article class="summary-card">
+      <span class="summary-card__icon"><i class="bi bi-person-fill"></i></span>
+      <span class="summary-card__label">Funcionario</span>
+      <strong class="summary-card__value summary-card__value--sm">{{ fechamento.funcionario.nome_completo }}</strong>
+    </article>
+    <article class="summary-card">
+      <span class="summary-card__icon"><i class="bi bi-briefcase-fill"></i></span>
+      <span class="summary-card__label">Funcao</span>
+      <strong class="summary-card__value summary-card__value--sm">{{ fechamento.funcionario.get_funcao_display }}</strong>
+    </article>
+    <article class="summary-card">
+      <span class="summary-card__icon"><i class="bi bi-calendar-check"></i></span>
+      <span class="summary-card__label">Diarias</span>
+      <strong class="summary-card__value">{{ fechamento.total_dias }}</strong>
+    </article>
+    <article class="summary-card summary-card--success">
+      <span class="summary-card__icon"><i class="bi bi-cash-stack"></i></span>
+      <span class="summary-card__label">Total a pagar</span>
+      <strong class="summary-card__value">{{ fechamento.total_valor|brl }}</strong>
+    </article>
+  </section>
+
+  {% if fechamento.dias_ociosidade or fechamento.dias_retrabalho %}
+  <section class="alerts-grid mb-4">
+    {% if fechamento.dias_ociosidade %}
+    <article class="alert-card alert-card--warning">
+      <div class="alert-card__icon"><i class="bi bi-pause-circle-fill"></i></div>
+      <div>
+        <h2 class="alert-card__title">Ociosidade registrada</h2>
+        <p class="alert-card__text mb-0"><strong>{{ fechamento.dias_ociosidade }}</strong> dia(s) com ociosidade neste fechamento.</p>
+      </div>
+    </article>
+    {% endif %}
+    {% if fechamento.dias_retrabalho %}
+    <article class="alert-card alert-card--danger">
+      <div class="alert-card__icon"><i class="bi bi-arrow-repeat"></i></div>
+      <div>
+        <h2 class="alert-card__title">Retrabalho registrado</h2>
+        <p class="alert-card__text mb-0"><strong>{{ fechamento.dias_retrabalho }}</strong> dia(s) com retrabalho neste fechamento.</p>
+      </div>
+    </article>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <section class="content-grid">
+    <div class="content-grid__main">
+      {% if obras_etapas %}
+      <section class="panel-card mb-4">
+        <div class="panel-card__header">
+          <div>
+            <span class="panel-card__eyebrow">Resumo</span>
+            <h2 class="panel-card__title">Obras e etapas</h2>
+          </div>
+        </div>
+        <div class="table-responsive d-none d-md-block">
+          <table class="table align-middle mb-0 detail-table">
+            <thead>
+              <tr>
+                <th>Obra</th>
+                <th class="text-center">Dias</th>
+                <th>Etapas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for obra_nome, info in obras_etapas.items %}
+              <tr>
+                <td class="fw-semibold">{{ obra_nome }}</td>
+                <td class="text-center">{{ info.dias }}</td>
+                <td>
+                  <div class="tag-list">
+                    {% for etapa_name in info.etapas %}
+                    <span class="tag-chip">{{ etapa_name }}</span>
+                    {% endfor %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="d-md-none">
+          {% for obra_nome, info in obras_etapas.items %}
+          <article class="stack-card">
+            <div class="stack-card__title">{{ obra_nome }}</div>
+            <div class="stack-card__meta">{{ info.dias }} dia{{ info.dias|pluralize:"s" }}</div>
+            <div class="tag-list mt-2">
+              {% for etapa_name in info.etapas %}
+              <span class="tag-chip">{{ etapa_name }}</span>
+              {% endfor %}
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      <section class="panel-card">
+        <div class="panel-card__header">
+          <div>
+            <span class="panel-card__eyebrow">Detalhamento</span>
+            <h2 class="panel-card__title">Apontamentos da semana</h2>
+          </div>
+        </div>
+
+        <div class="table-responsive d-none d-lg-block">
+          <table class="table align-middle mb-0 detail-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Obra</th>
+                <th>Etapa</th>
+                <th class="text-center">Clima</th>
+                <th class="text-end">Valor</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in apontamentos %}
+              <tr class="{% if a.houve_retrabalho %}row-state-danger{% elif a.houve_ociosidade %}row-state-warning{% endif %}">
+                <td>{{ a.data|date:"d/m/Y" }}</td>
+                <td class="fw-semibold">{{ a.obra.nome }}</td>
+                <td>{{ a.etapa|default:"-" }}</td>
+                <td class="text-center">
+                  {% if a.clima == 'sol' %}
+                  <span class="weather-pill">Sol</span>
+                  {% elif a.clima == 'chuva' %}
+                  <span class="weather-pill weather-pill--rain">Chuva</span>
+                  {% else %}
+                  <span class="weather-pill weather-pill--cloud">Nublado</span>
+                  {% endif %}
+                </td>
+                <td class="text-end fw-semibold text-success">{{ a.valor_diaria|brl }}</td>
+                <td>
+                  <div class="tag-list">
+                    {% if a.houve_retrabalho %}<span class="status-note status-note--danger">Retrabalho</span>{% endif %}
+                    {% if a.houve_ociosidade %}<span class="status-note status-note--warning">Ocioso</span>{% endif %}
+                    {% if not a.houve_retrabalho and not a.houve_ociosidade %}<span class="status-note status-note--success">OK</span>{% endif %}
+                  </div>
+                  {% if a.houve_retrabalho %}
+                  <div class="detail-note detail-note--danger mt-2">Retrabalho: {{ a.motivo_retrabalho }}</div>
+                  {% endif %}
+                  {% if a.houve_ociosidade %}
+                  <div class="detail-note detail-note--warning mt-2">Ociosidade: {{ a.observacao_ociosidade }}</div>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="6" class="text-center py-5 text-muted">Nenhum apontamento nesta semana.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="d-lg-none">
+          {% for a in apontamentos %}
+          <article class="apontamento-card {% if a.houve_retrabalho %}apontamento-card--danger{% elif a.houve_ociosidade %}apontamento-card--warning{% endif %}">
+            <div class="apontamento-card__top">
+              <div>
+                <div class="apontamento-card__date">{{ a.data|date:"d/m/Y" }}</div>
+                <div class="apontamento-card__obra">{{ a.obra.nome }}</div>
+              </div>
+              <strong class="text-success">{{ a.valor_diaria|brl }}</strong>
+            </div>
+            <div class="apontamento-card__meta">
+              <span>Etapa: {{ a.etapa|default:"-" }}</span>
+              {% if a.clima == 'sol' %}
+              <span class="weather-pill">Sol</span>
+              {% elif a.clima == 'chuva' %}
+              <span class="weather-pill weather-pill--rain">Chuva</span>
+              {% else %}
+              <span class="weather-pill weather-pill--cloud">Nublado</span>
+              {% endif %}
+            </div>
+            <div class="tag-list mt-3">
+              {% if a.houve_retrabalho %}<span class="status-note status-note--danger">Retrabalho</span>{% endif %}
+              {% if a.houve_ociosidade %}<span class="status-note status-note--warning">Ocioso</span>{% endif %}
+              {% if not a.houve_retrabalho and not a.houve_ociosidade %}<span class="status-note status-note--success">OK</span>{% endif %}
+            </div>
+            {% if a.houve_retrabalho %}
+            <div class="detail-note detail-note--danger mt-3">Retrabalho: {{ a.motivo_retrabalho }}</div>
+            {% endif %}
+            {% if a.houve_ociosidade %}
+            <div class="detail-note detail-note--warning mt-3">Ociosidade: {{ a.observacao_ociosidade }}</div>
+            {% endif %}
+          </article>
+          {% empty %}
+          <div class="text-center py-5 text-muted">Nenhum apontamento nesta semana.</div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+
+    <aside class="content-grid__side">
+      {% if fechamento.observacoes %}
+      <section class="panel-card mb-4">
+        <div class="panel-card__header">
+          <div>
+            <span class="panel-card__eyebrow">Notas</span>
+            <h2 class="panel-card__title">Observacoes</h2>
+          </div>
+        </div>
+        <p class="mb-0 side-text">{{ fechamento.observacoes }}</p>
+      </section>
+      {% endif %}
+
+      <section class="panel-card">
+        <div class="panel-card__header">
+          <div>
+            <span class="panel-card__eyebrow">Acoes</span>
+            <h2 class="panel-card__title">Navegacao rapida</h2>
+          </div>
+        </div>
+        <div class="side-actions">
+          <a href="{% url 'funcionarios:fechamento_semana_detail' fechamento.data_inicio|date:'Y-m-d' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar para Semana
+          </a>
+          <a href="{% url 'funcionarios:funcionario_historico' fechamento.funcionario.pk %}?mes={{ fechamento.data_inicio|date:'Y-m' }}" class="btn btn-outline-primary">
+            <i class="bi bi-calendar3"></i> Ver Calendario
+          </a>
+          {% if fechamento.status != 'pago' %}
+          <a href="{% url 'funcionarios:fechamento_delete' fechamento.pk %}" class="btn btn-outline-danger">
+            <i class="bi bi-trash"></i> Excluir
+          </a>
+          {% else %}
+          <button class="btn btn-outline-danger" disabled title="Nao e possivel excluir fechamentos pagos">
+            <i class="bi bi-trash"></i> Excluir
+          </button>
+          {% endif %}
+        </div>
+      </section>
+    </aside>
+  </section>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .fechamento-detail-page {
+    --detail-surface: #ffffff;
+    --detail-surface-soft: #edf5ee;
+    --detail-text: #18332b;
+    --detail-muted: #60756d;
+    --detail-primary: #1f6f5f;
+    --detail-primary-deep: #12473d;
+    --detail-border: rgba(24, 51, 43, 0.1);
+    --detail-shadow: 0 18px 40px rgba(20, 58, 49, 0.12);
+    color: var(--detail-text);
+  }
+
+  .detail-hero {
+    background:
+      radial-gradient(circle at top right, rgba(240, 180, 76, 0.25), transparent 30%),
+      linear-gradient(135deg, #143c35 0%, #1f6f5f 55%, #2b8b77 100%);
+    border-radius: 28px;
+    padding: clamp(1.4rem, 2vw, 2.2rem);
+    color: #fff;
+    box-shadow: var(--detail-shadow);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .detail-hero::after {
+    content: "";
+    position: absolute;
+    right: -72px;
+    bottom: -90px;
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .detail-hero__content,
+  .detail-hero__panel {
+    position: relative;
+    z-index: 1;
+  }
+
+  .detail-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: rgba(255, 255, 255, 0.84);
+    text-decoration: none;
+    margin-bottom: 1rem;
+    font-weight: 600;
+  }
+
+  .detail-back-link:hover {
+    color: #fff;
+  }
+
+  .detail-eyebrow,
+  .panel-card__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .detail-eyebrow {
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    margin-bottom: 0.95rem;
+  }
+
+  .detail-hero__title {
+    font-size: clamp(1.9rem, 3vw, 3rem);
+    font-weight: 800;
+    line-height: 1.05;
+    margin-bottom: 0.55rem;
+  }
+
+  .detail-hero__text {
+    max-width: 60ch;
+    color: rgba(255, 255, 255, 0.84);
+  }
+
+  .detail-hero__status-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+  }
+
+  .detail-hero__panel {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 24px;
+    backdrop-filter: blur(10px);
+    padding: 1rem;
+  }
+
+  .hero-mini-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .hero-mini-stat {
+    background: rgba(8, 29, 25, 0.18);
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 0.95rem;
+  }
+
+  .hero-mini-stat__label,
+  .hero-mini-stat__value {
+    display: block;
+  }
+
+  .hero-mini-stat__label {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .hero-mini-stat__value {
+    font-size: 1.2rem;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .detail-hero__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .detail-action-btn {
+    border-radius: 16px;
+    font-weight: 700;
+    padding: 0.85rem 1rem;
+  }
+
+  .status-pill,
+  .hero-info-pill,
+  .status-note,
+  .weather-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 999px;
+    font-weight: 700;
+  }
+
+  .status-pill,
+  .hero-info-pill {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.84rem;
+  }
+
+  .status-pill--success {
+    background: rgba(47, 158, 98, 0.16);
+    color: #1f7c4a;
+  }
+
+  .status-pill--primary {
+    background: rgba(43, 109, 224, 0.14);
+    color: #2358b0;
+  }
+
+  .hero-info-pill {
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .summary-card,
+  .alert-card,
+  .panel-card,
+  .stack-card,
+  .apontamento-card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 243, 0.98));
+    border: 1px solid var(--detail-border);
+    box-shadow: 0 12px 26px rgba(20, 58, 49, 0.08);
+  }
+
+  .summary-card {
+    border-radius: 22px;
+    padding: 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .summary-card__icon {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    background: var(--detail-surface-soft);
+    color: var(--detail-primary);
+    font-size: 1.1rem;
+  }
+
+  .summary-card__label {
+    font-size: 0.84rem;
+    color: var(--detail-muted);
+  }
+
+  .summary-card__value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+
+  .summary-card__value--sm {
+    font-size: 1.1rem;
+  }
+
+  .summary-card--success .summary-card__icon,
+  .summary-card--success .summary-card__value { color: #218552; }
+
+  .alerts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .alert-card {
+    border-radius: 22px;
+    padding: 1rem 1.1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+  }
+
+  .alert-card__icon {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+  }
+
+  .alert-card__title {
+    font-size: 1rem;
+    font-weight: 800;
+    margin: 0 0 0.2rem;
+  }
+
+  .alert-card__text {
+    color: var(--detail-muted);
+  }
+
+  .alert-card--warning .alert-card__icon {
+    background: rgba(231, 167, 60, 0.18);
+    color: #8a5a02;
+  }
+
+  .alert-card--danger .alert-card__icon {
+    background: rgba(208, 74, 74, 0.12);
+    color: #a32828;
+  }
+
+  .content-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 0.9fr);
+    gap: 1rem;
+  }
+
+  .panel-card {
+    border-radius: 26px;
+    padding: 1.35rem;
+  }
+
+  .panel-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.1rem;
+  }
+
+  .panel-card__eyebrow {
+    color: var(--detail-primary);
+    margin-bottom: 0.45rem;
+  }
+
+  .panel-card__title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    margin: 0;
+  }
+
+  .detail-table thead th {
+    background: transparent;
+    color: var(--detail-muted);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom-color: var(--detail-border);
+    padding-bottom: 0.9rem;
+  }
+
+  .detail-table tbody td {
+    border-color: var(--detail-border);
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  .tag-chip,
+  .status-note {
+    padding: 0.38rem 0.7rem;
+    font-size: 0.78rem;
+  }
+
+  .tag-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    background: var(--detail-surface-soft);
+    color: var(--detail-primary-deep);
+    font-weight: 700;
+  }
+
+  .status-note--success {
+    background: rgba(47, 158, 98, 0.16);
+    color: #1f7c4a;
+  }
+
+  .status-note--warning {
+    background: rgba(231, 167, 60, 0.18);
+    color: #8a5a02;
+  }
+
+  .status-note--danger {
+    background: rgba(208, 74, 74, 0.12);
+    color: #a32828;
+  }
+
+  .weather-pill {
+    padding: 0.35rem 0.68rem;
+    font-size: 0.76rem;
+    background: rgba(240, 180, 76, 0.18);
+    color: #8a5a02;
+  }
+
+  .weather-pill--rain {
+    background: rgba(43, 109, 224, 0.14);
+    color: #2358b0;
+  }
+
+  .weather-pill--cloud {
+    background: rgba(96, 117, 109, 0.14);
+    color: #4c5f58;
+  }
+
+  .detail-note {
+    border-radius: 14px;
+    padding: 0.8rem 0.9rem;
+    font-size: 0.86rem;
+    font-weight: 600;
+  }
+
+  .detail-note--warning {
+    background: rgba(231, 167, 60, 0.14);
+    color: #8a5a02;
+  }
+
+  .detail-note--danger {
+    background: rgba(208, 74, 74, 0.1);
+    color: #a32828;
+  }
+
+  .row-state-warning {
+    background: rgba(231, 167, 60, 0.04);
+  }
+
+  .row-state-danger {
+    background: rgba(208, 74, 74, 0.04);
+  }
+
+  .stack-card,
+  .apontamento-card {
+    border-radius: 20px;
+    padding: 1rem;
+  }
+
+  .stack-card + .stack-card,
+  .apontamento-card + .apontamento-card {
+    margin-top: 0.9rem;
+  }
+
+  .stack-card__title,
+  .apontamento-card__date {
+    font-weight: 800;
+  }
+
+  .stack-card__meta,
+  .apontamento-card__obra,
+  .apontamento-card__meta,
+  .side-text {
+    color: var(--detail-muted);
+  }
+
+  .apontamento-card__top {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .apontamento-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    align-items: center;
+  }
+
+  .apontamento-card--warning {
+    border-color: rgba(231, 167, 60, 0.25);
+  }
+
+  .apontamento-card--danger {
+    border-color: rgba(208, 74, 74, 0.22);
+  }
+
+  .side-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  body.theme-dark .fechamento-detail-page {
+    --detail-surface: rgba(17, 42, 58, 0.88);
+    --detail-surface-soft: rgba(111, 193, 165, 0.12);
+    --detail-text: #eaf7f2;
+    --detail-muted: #9fb8b0;
+    --detail-primary: #7dcdb4;
+    --detail-primary-deep: #d5f3e8;
+    --detail-border: rgba(207, 241, 229, 0.09);
+    --detail-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  }
+
+  body.theme-dark .summary-card,
+  body.theme-dark .alert-card,
+  body.theme-dark .panel-card,
+  body.theme-dark .stack-card,
+  body.theme-dark .apontamento-card {
+    background: rgba(17, 42, 58, 0.88);
+    backdrop-filter: blur(10px);
+  }
+
+  @media (max-width: 1199.98px) {
+    .summary-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .content-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .alerts-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .apontamento-card__top {
+      flex-direction: column;
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .container-fluid.fechamento-detail-page {
+      padding-left: 0.85rem;
+      padding-right: 0.85rem;
+    }
+
+    .detail-hero,
+    .summary-card,
+    .alert-card,
+    .panel-card,
+    .stack-card,
+    .apontamento-card {
+      border-radius: 20px;
+    }
+
+    .hero-mini-stats,
+    .summary-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .detail-hero__actions .btn,
+    .side-actions .btn {
+      width: 100%;
+    }
+  }
+</style>
 {% endblock %}

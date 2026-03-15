@@ -3,200 +3,95 @@
 {% block title %}Detalhes da Ferramenta{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-  <div class="row">
-    <div class="col-md-8 offset-md-2">
-      <div class="card">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="card-title">{{ ferramenta.nome }}</h4>
-            <div>
-              <a href="{% url 'ferramentas:ferramenta_list' %}" class="btn btn-sm btn-outline-secondary">Voltar</a>
-              <a href="{% url 'ferramentas:ferramenta_update' ferramenta.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>
-            </div>
-          </div>
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div>
+        <h1 class="h3 mb-1">{{ ferramenta.nome }}</h1>
+        <div class="text-muted">{{ ferramenta.codigo }}</div>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'ferramentas:ferramenta_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+        <a href="{% url 'ferramentas:ferramenta_update' ferramenta.pk %}" class="btn btn-outline-primary btn-sm">Editar</a>
+      </div>
+    </div>
 
-          {% if ferramenta.foto %}
-            <div class="mb-3 text-center">
-              <img src="{{ ferramenta.foto.url }}" class="img-fluid rounded" style="max-height:300px;" alt="Foto">
-            </div>
-          {% endif %}
-
-          <table class="table table-borderless">
-            <tbody>
-              <tr>
-                <th scope="row" style="width: 200px;">Código</th>
-                <td><span class="badge bg-light text-dark border font-monospace">{{ ferramenta.codigo }}</span></td>
-              </tr>
-              <tr>
-                <th scope="row">Nome</th>
-                <td>{{ ferramenta.nome }}</td>
-              </tr>
-              <tr>
-                <th scope="row">Descrição</th>
-                <td>{{ ferramenta.descricao|default:'-' }}</td>
-              </tr>
-              <tr>
-                <th scope="row">Categoria</th>
-                <td><span class="badge bg-secondary">{{ ferramenta.get_categoria_display }}</span></td>
-              </tr>
-              <tr class="table-primary">
-                <th scope="row">Quantidade Total</th>
-                <td><span class="badge bg-primary fs-6">{{ ferramenta.quantidade_total }} unidade{{ ferramenta.quantidade_total|pluralize:"s" }}</span></td>
-              </tr>
-              <tr>
-                <th scope="row">Valor Unitário</th>
-                <td>{% if ferramenta.valor_unitario %}R$ {{ ferramenta.valor_unitario }}{% else %}-{% endif %}</td>
-              </tr>
-              <tr>
-                <th scope="row">Valor Total Estoque</th>
-                <td>{% if ferramenta.valor_total_estoque %}R$ {{ ferramenta.valor_total_estoque }}{% else %}-{% endif %}</td>
-              </tr>
-              <tr>
-                <th scope="row">Data Aquisição</th>
-                <td>{{ ferramenta.data_aquisicao|date:'d/m/Y'|default:'-' }}</td>
-              </tr>
-              <tr>
-                <th scope="row">Ativo</th>
-                <td>{% if ferramenta.ativo %}<span class="badge bg-success">Sim</span>{% else %}<span class="badge bg-danger">Não</span>{% endif %}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <hr>
-          
-          <!-- Distribuição de Quantidades -->
-          <h5 class="mb-3"><i class="bi bi-pie-chart"></i> Distribuição de Quantidades</h5>
-          <div class="row g-2 mb-3">
-            <div class="col-md-3">
-              <div class="card border-success">
-                <div class="card-body text-center py-3">
-                  <div class="text-success mb-1"><i class="bi bi-box-seam fs-4"></i></div>
-                  <div class="fw-bold fs-5">{{ ferramenta.quantidade_deposito }}</div>
-                  <div class="small text-muted">No Depósito</div>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="card border-primary">
-                <div class="card-body text-center py-3">
-                  <div class="text-primary mb-1"><i class="bi bi-building fs-4"></i></div>
-                  <div class="fw-bold fs-5">{{ ferramenta.quantidade_em_obras }}</div>
-                  <div class="small text-muted">Em Obras</div>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="card border-warning">
-                <div class="card-body text-center py-3">
-                  <div class="text-warning mb-1"><i class="bi bi-wrench-adjustable fs-4"></i></div>
-                  <div class="fw-bold fs-5">{{ ferramenta.quantidade_manutencao }}</div>
-                  <div class="small text-muted">Manutenção</div>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="card border-danger">
-                <div class="card-body text-center py-3">
-                  <div class="text-danger mb-1"><i class="bi bi-exclamation-triangle fs-4"></i></div>
-                  <div class="fw-bold fs-5">{{ ferramenta.quantidade_perdida }}</div>
-                  <div class="small text-muted">Perdida</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Detalhes por Obra -->
-          {% if ferramenta.quantidade_em_obras > 0 %}
-          <div class="alert alert-info">
-            <h6 class="mb-2"><i class="bi bi-building"></i> Distribuição em Obras:</h6>
-            <ul class="mb-0">
-              {% for loc in ferramenta.localizacoes.all %}
-                {% if loc.local_tipo == 'obra' and loc.obra %}
-                <li><strong>{{ loc.obra.nome }}</strong>: {{ loc.quantidade }} unidade{{ loc.quantidade|pluralize:"s" }}</li>
-                {% endif %}
-              {% endfor %}
-            </ul>
-          </div>
-          {% endif %}
-
-          <hr>
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="mb-0">Histórico de Movimentações</h5>
-            <a href="{% url 'ferramentas:movimentacao_create' %}?f={{ ferramenta.pk }}" class="btn btn-sm btn-outline-primary">Nova movimentação</a>
-          </div>
-
-          {% if movimentacoes %}
-          <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle">
-              <thead class="table-light">
-                <tr>
-                  <th>Data</th>
-                  <th>Tipo</th>
-                  <th class="text-center">Qtd</th>
-                  <th>Origem</th>
-                  <th>Destino</th>
-                  <th>Responsável</th>
-                  <th>Observações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for mov in movimentacoes %}
-                <tr>
-                  <td class="small">{{ mov.data_movimentacao|date:'d/m/Y H:i' }}</td>
-                  <td class="small">{{ mov.get_tipo_display }}</td>
-                  <td class="text-center"><span class="badge bg-primary">{{ mov.quantidade }}</span></td>
-                  <td class="small">
-                    {% if mov.origem_tipo %}
-                      <span class="badge bg-secondary">{{ mov.get_origem_tipo_display }}</span>
-                      {% if mov.obra_origem %}<br><small class="text-muted">{{ mov.obra_origem.nome }}</small>{% endif %}
-                    {% else %}-{% endif %}
-                  </td>
-                  <td class="small">
-                    {% if mov.destino_tipo %}
-                      <span class="badge bg-secondary">{{ mov.get_destino_tipo_display }}</span>
-                      {% if mov.obra_destino %}<br><small class="text-muted">{{ mov.obra_destino.nome }}</small>{% endif %}
-                    {% else %}-{% endif %}
-                  </td>
-                  <td class="small">{{ mov.responsavel.get_full_name|default:mov.responsavel.username }}</td>
-                  <td class="small">{{ mov.observacoes|truncatewords:10|default:'-' }}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-
-          {% if movimentacoes.paginator.num_pages > 1 %}
-          <nav aria-label="Paginação do histórico">
-            <ul class="pagination pagination-sm mb-0">
-              {% if movimentacoes.has_previous %}
-              <li class="page-item">
-                <a class="page-link" href="?page={{ movimentacoes.previous_page_number }}">Anterior</a>
-              </li>
-              {% else %}
-              <li class="page-item disabled"><span class="page-link">Anterior</span></li>
-              {% endif %}
-
-              <li class="page-item disabled">
-                <span class="page-link">Página {{ movimentacoes.number }} de {{ movimentacoes.paginator.num_pages }}</span>
-              </li>
-
-              {% if movimentacoes.has_next %}
-              <li class="page-item">
-                <a class="page-link" href="?page={{ movimentacoes.next_page_number }}">Próxima</a>
-              </li>
-              {% else %}
-              <li class="page-item disabled"><span class="page-link">Próxima</span></li>
-              {% endif %}
-            </ul>
-          </nav>
-          {% endif %}
-          {% else %}
-          <div class="alert alert-light border mb-0">Nenhuma movimentação registrada para esta ferramenta.</div>
-          {% endif %}
-
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-lg-4">
+        <div class="p-3 rounded-4 h-100" style="background: linear-gradient(135deg, rgba(13,110,253,.10), rgba(13,110,253,.03));">
+          <div class="small text-muted">Categoria</div>
+          <div class="fw-semibold">{{ ferramenta.get_categoria_display }}</div>
         </div>
       </div>
+      <div class="col-12 col-lg-4">
+        <div class="p-3 rounded-4 h-100" style="background: linear-gradient(135deg, rgba(25,135,84,.15), rgba(25,135,84,.04));">
+          <div class="small text-muted">Classificação</div>
+          <div class="fw-semibold">{{ ferramenta.get_classificacao_display }}</div>
+          <div class="small text-muted mt-1">{{ ferramenta.fornecedor.nome|default:'Sem fornecedor' }}</div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-4">
+        <div class="p-3 rounded-4 h-100" style="background: linear-gradient(135deg, rgba(255,193,7,.20), rgba(255,193,7,.05));">
+          <div class="small text-muted">Estoque Total</div>
+          <div class="fw-semibold">{{ ferramenta.quantidade_total }} unidade{{ ferramenta.quantidade_total|pluralize:"s" }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-lg-3"><div class="card border-success"><div class="card-body text-center"><div class="small text-muted">Depósito</div><div class="fs-4 fw-bold">{{ ferramenta.quantidade_deposito }}</div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="card border-primary"><div class="card-body text-center"><div class="small text-muted">Em Obras</div><div class="fs-4 fw-bold">{{ ferramenta.quantidade_em_obras }}</div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="card border-warning"><div class="card-body text-center"><div class="small text-muted">Manutenção</div><div class="fs-4 fw-bold">{{ ferramenta.quantidade_manutencao }}</div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="card border-danger"><div class="card-body text-center"><div class="small text-muted">Perdida</div><div class="fs-4 fw-bold">{{ ferramenta.quantidade_perdida }}</div></div></div></div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <tbody>
+          <tr><th style="width:220px;">Descrição</th><td>{{ ferramenta.descricao|default:'-' }}</td></tr>
+          <tr><th>Valor Unitário</th><td>{% if ferramenta.valor_unitario %}R$ {{ ferramenta.valor_unitario }}{% else %}-{% endif %}</td></tr>
+          <tr><th>Valor Total Estoque</th><td>{% if ferramenta.valor_total_estoque %}R$ {{ ferramenta.valor_total_estoque }}{% else %}-{% endif %}</td></tr>
+          <tr><th>Data Aquisição</th><td>{{ ferramenta.data_aquisicao|date:'d/m/Y'|default:'-' }}</td></tr>
+          <tr><th>Status</th><td>{% if ferramenta.ativo %}Ativa{% else %}Inativa{% endif %}</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <hr>
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="mb-0">Histórico de Movimentações</h5>
+      <a href="{% url 'ferramentas:movimentacao_create' %}?f={{ ferramenta.pk }}" class="btn btn-sm btn-outline-primary">Nova movimentação</a>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Data</th>
+            <th>Tipo</th>
+            <th class="text-center">Qtd</th>
+            <th>Origem</th>
+            <th>Destino</th>
+            <th>Responsável</th>
+            <th>Observações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for mov in movimentacoes %}
+          <tr>
+            <td>{{ mov.data_movimentacao|date:'d/m/Y H:i' }}</td>
+            <td>{{ mov.get_tipo_display }}</td>
+            <td class="text-center"><span class="badge bg-primary">{{ mov.quantidade }}</span></td>
+            <td>{{ mov.get_origem_label }}</td>
+            <td>{{ mov.get_destino_label }}</td>
+            <td>{{ mov.responsavel.get_full_name|default:mov.responsavel.username }}</td>
+            <td>{{ mov.observacoes|default:'-' }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="text-center text-muted py-4">Nenhuma movimentação registrada para esta ferramenta.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
 </div>

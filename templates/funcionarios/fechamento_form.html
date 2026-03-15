@@ -1,86 +1,606 @@
 {% extends 'base.html' %}
 
-{% block title %}Fechamento Semanal{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-  <div class="row justify-content-center">
-    <div class="col-md-8">
-      <div class="card">
-        <div class="card-body">
-          <h4 class="card-title mb-3">{{ title }}</h4>
-          <div id="alerta-fechamento" class="alert alert-warning d-none" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            <strong>Atenção!</strong> <span id="alerta-msg"></span>
-          </div>
-          <form method="post" id="form-fechamento">
-            {% csrf_token %}
-            {% for field in form %}
-              <div class="mb-3">
-                {{ field.label_tag }}
-                {{ field }}
-                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-                {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-              </div>
-            {% endfor %}
-            <div class="row g-2 mb-3">
-              <div class="col-auto">
-                <label class="form-label">Total Dias</label>
-                <input type="number" readonly name="total_dias_display" id="id_total_dias_display" class="form-control form-control-sm" value="0">
-                <input type="hidden" name="total_dias" id="id_total_dias" value="0">
-              </div>
-              <div class="col-auto">
-                <label class="form-label">Total Valor (R$)</label>
-                <input type="text" readonly name="total_valor_display" id="id_total_valor_display" class="form-control form-control-sm" value="0.00">
-                <input type="hidden" name="total_valor" id="id_total_valor" value="0.00">
-              </div>
-            </div>
-            <div id="apontamentos_preview" class="mb-3" style="display:none">
-              <h5>Apontamentos encontrados</h5>
-              <div id="apontamentos_table_container"></div>
-              <div class="mt-2"><strong>Totais:</strong> <span id="totais_info"></span></div>
-            </div>
-            <div class="d-flex gap-2">
-              <button class="btn btn-primary">Salvar</button>
-              <a href="{% url 'funcionarios:fechamento_list' %}" class="btn btn-secondary">Voltar</a>
-            </div>
-          </form>
-        </div>
+<div class="container-fluid py-4 fechamento-form-page">
+  <section class="fechamento-shell">
+    <div class="fechamento-hero-card">
+      <div class="fechamento-hero-copy">
+        <span class="fechamento-kicker">
+          <i class="bi bi-journal-check"></i>
+          Fechamento manual
+        </span>
+        <h1 class="fechamento-hero-title">{{ title }}</h1>
+        <p class="fechamento-hero-text mb-0">
+          Monte um fechamento com período flexível, confira os apontamentos encontrados e valide os totais antes de salvar.
+        </p>
+      </div>
+
+      <div class="fechamento-hero-aside">
+        <article class="hero-mini-card">
+          <span class="hero-mini-card__label">Fluxo</span>
+          <strong class="hero-mini-card__value">3 passos</strong>
+          <small class="hero-mini-card__meta">seleção, conferência e salvamento</small>
+        </article>
+        <article class="hero-mini-card">
+          <span class="hero-mini-card__label">Origem</span>
+          <strong class="hero-mini-card__value">Apontamentos</strong>
+          <small class="hero-mini-card__meta">prévia automática por funcionário</small>
+        </article>
       </div>
     </div>
-  </div>
+
+    <div class="row g-4 mt-1">
+      <div class="col-12 col-xl-8">
+        <section class="surface-card">
+          <div class="section-head">
+            <div>
+              <span class="section-eyebrow">Dados principais</span>
+              <h2 class="section-title">Informações do fechamento</h2>
+            </div>
+            <span class="section-badge">
+              <i class="bi bi-shield-check"></i>
+              Status inicial: fechado
+            </span>
+          </div>
+
+          <div id="alerta-fechamento" class="alert alert-warning d-none fechamento-alert" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <div>
+              <strong>Atenção!</strong>
+              <span id="alerta-msg"></span>
+            </div>
+          </div>
+
+          <form method="post" id="form-fechamento" novalidate>
+            {% csrf_token %}
+
+            <div class="row g-3">
+              <div class="col-12">
+                <label for="{{ form.funcionario.id_for_label }}" class="form-label fw-semibold">{{ form.funcionario.label }}</label>
+                {{ form.funcionario }}
+                {% if form.funcionario.help_text %}<div class="form-text">{{ form.funcionario.help_text }}</div>{% endif %}
+                {% for error in form.funcionario.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label for="{{ form.data_inicio.id_for_label }}" class="form-label fw-semibold">{{ form.data_inicio.label }}</label>
+                {{ form.data_inicio }}
+                {% if form.data_inicio.help_text %}<div class="form-text">{{ form.data_inicio.help_text }}</div>{% endif %}
+                {% for error in form.data_inicio.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label for="{{ form.data_fim.id_for_label }}" class="form-label fw-semibold">{{ form.data_fim.label }}</label>
+                {{ form.data_fim }}
+                {% if form.data_fim.help_text %}<div class="form-text">{{ form.data_fim.help_text }}</div>{% endif %}
+                {% for error in form.data_fim.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              </div>
+
+              <div class="col-12">
+                <label for="{{ form.observacoes.id_for_label }}" class="form-label fw-semibold">{{ form.observacoes.label }}</label>
+                {{ form.observacoes }}
+                {% if form.observacoes.help_text %}<div class="form-text">{{ form.observacoes.help_text }}</div>{% endif %}
+                {% for error in form.observacoes.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              </div>
+            </div>
+
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger mt-3 mb-0">
+              {% for error in form.non_field_errors %}
+                <div>{{ error }}</div>
+              {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="totals-grid">
+              <article class="total-card">
+                <span class="total-card__label">Total de dias</span>
+                <strong class="total-card__value" id="id_total_dias_display_text">0</strong>
+                <small class="total-card__meta">calculado a partir dos apontamentos</small>
+                <input type="number" readonly name="total_dias_display" id="id_total_dias_display" class="form-control d-none" value="0">
+                <input type="hidden" name="total_dias" id="id_total_dias" value="0">
+              </article>
+
+              <article class="total-card total-card--success">
+                <span class="total-card__label">Valor total</span>
+                <strong class="total-card__value" id="id_total_valor_display_text">R$ 0,00</strong>
+                <small class="total-card__meta">soma das diárias encontradas no período</small>
+                <input type="text" readonly name="total_valor_display" id="id_total_valor_display" class="form-control d-none" value="0.00">
+                <input type="hidden" name="total_valor" id="id_total_valor" value="0.00">
+              </article>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn btn-success btn-lg fechamento-primary-btn" type="submit">
+                <i class="bi bi-check2-circle"></i>
+                Salvar fechamento
+              </button>
+              <a href="{% url 'funcionarios:fechamento_list' %}" class="btn btn-light btn-lg fechamento-secondary-btn">
+                <i class="bi bi-arrow-left"></i>
+                Voltar
+              </a>
+            </div>
+          </form>
+        </section>
+      </div>
+
+      <div class="col-12 col-xl-4">
+        <section class="surface-card surface-card--soft h-100">
+          <div class="section-head">
+            <div>
+              <span class="section-eyebrow">Pré-visualização</span>
+              <h2 class="section-title">Apontamentos encontrados</h2>
+            </div>
+          </div>
+
+          <div id="apontamentos_preview" class="preview-empty">
+            <div class="preview-empty__icon">
+              <i class="bi bi-calendar-range"></i>
+            </div>
+            <p class="preview-empty__title">Selecione um funcionário e um período</p>
+            <p class="preview-empty__text mb-0">
+              Assim que os campos forem preenchidos, a lista de apontamentos aparecerá aqui com os totais consolidados.
+            </p>
+          </div>
+
+          <div id="apontamentos_content" class="d-none">
+            <div class="preview-summary">
+              <span class="preview-summary__label">Resumo do período</span>
+              <strong id="totais_info">0 dia(s) • R$ 0,00</strong>
+            </div>
+            <div id="apontamentos_table_container" class="table-responsive preview-table-wrap"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .fechamento-form-page {
+    --page-bg: #f4f7f3;
+    --surface: #ffffff;
+    --surface-soft: #edf5ee;
+    --text: #18332b;
+    --muted: #60756d;
+    --primary: #1f6f5f;
+    --primary-deep: #12473d;
+    --accent: #f0b44c;
+    --border: rgba(24, 51, 43, 0.1);
+    --shadow: 0 18px 40px rgba(20, 58, 49, 0.12);
+    color: var(--text);
+  }
+
+  .fechamento-shell {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(244, 247, 243, 0.94));
+    border: 1px solid rgba(24, 51, 43, 0.06);
+    border-radius: 32px;
+    padding: clamp(1rem, 2vw, 1.6rem);
+    box-shadow: 0 22px 50px rgba(20, 58, 49, 0.08);
+  }
+
+  .fechamento-hero-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+    gap: 1rem;
+    padding: clamp(1.2rem, 2.4vw, 2rem);
+    border-radius: 28px;
+    background:
+      radial-gradient(circle at top right, rgba(240, 180, 76, 0.22), transparent 30%),
+      linear-gradient(135deg, #143c35 0%, #1f6f5f 56%, #2b8b77 100%);
+    color: #fff;
+    box-shadow: var(--shadow);
+  }
+
+  .fechamento-kicker,
+  .section-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .fechamento-kicker {
+    margin-bottom: 1rem;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .fechamento-hero-title {
+    font-size: clamp(1.8rem, 3vw, 3rem);
+    line-height: 1.05;
+    font-weight: 800;
+    margin-bottom: 0.8rem;
+    max-width: 14ch;
+  }
+
+  .fechamento-hero-text {
+    max-width: 56ch;
+    color: rgba(255, 255, 255, 0.84);
+    font-size: 1rem;
+  }
+
+  .fechamento-hero-aside {
+    display: grid;
+    gap: 0.85rem;
+    align-content: stretch;
+  }
+
+  .hero-mini-card {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 22px;
+    padding: 1rem 1.1rem;
+    backdrop-filter: blur(10px);
+  }
+
+  .hero-mini-card__label,
+  .hero-mini-card__meta {
+    display: block;
+  }
+
+  .hero-mini-card__label {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.82rem;
+  }
+
+  .hero-mini-card__value {
+    display: block;
+    font-size: 1.45rem;
+    margin: 0.3rem 0;
+  }
+
+  .hero-mini-card__meta {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.82rem;
+  }
+
+  .surface-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    padding: clamp(1.1rem, 2.2vw, 1.6rem);
+    box-shadow: 0 16px 34px rgba(20, 58, 49, 0.08);
+  }
+
+  .surface-card--soft {
+    background:
+      radial-gradient(circle at top, rgba(31, 111, 95, 0.08), transparent 38%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 243, 0.98));
+  }
+
+  .section-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .section-eyebrow {
+    background: rgba(31, 111, 95, 0.09);
+    color: var(--primary);
+    margin-bottom: 0.7rem;
+  }
+
+  .section-title {
+    margin: 0;
+    font-size: clamp(1.2rem, 2vw, 1.6rem);
+    font-weight: 800;
+    color: var(--primary-deep);
+  }
+
+  .section-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.6rem 0.9rem;
+    border-radius: 999px;
+    background: rgba(47, 158, 98, 0.12);
+    color: #1f7c4a;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .fechamento-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    border-radius: 18px;
+    margin-bottom: 1.2rem;
+  }
+
+  .fechamento-alert i {
+    font-size: 1.15rem;
+    margin-top: 0.1rem;
+  }
+
+  .fechamento-form-page .form-control,
+  .fechamento-form-page .form-select {
+    border-radius: 16px;
+    min-height: 52px;
+    border: 1px solid rgba(24, 51, 43, 0.12);
+    box-shadow: none;
+  }
+
+  .fechamento-form-page textarea.form-control {
+    min-height: 120px;
+    resize: vertical;
+  }
+
+  .fechamento-form-page .form-control:focus,
+  .fechamento-form-page .form-select:focus {
+    border-color: rgba(31, 111, 95, 0.5);
+    box-shadow: 0 0 0 0.25rem rgba(31, 111, 95, 0.12);
+  }
+
+  .totals-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1.25rem;
+  }
+
+  .total-card {
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 1rem 1.1rem;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 243, 0.98));
+  }
+
+  .total-card--success {
+    background: linear-gradient(180deg, rgba(31, 111, 95, 0.08), rgba(255, 255, 255, 0.98));
+  }
+
+  .total-card__label,
+  .total-card__meta {
+    display: block;
+    color: var(--muted);
+  }
+
+  .total-card__label {
+    font-size: 0.84rem;
+  }
+
+  .total-card__value {
+    display: block;
+    margin: 0.25rem 0;
+    font-size: clamp(1.4rem, 2.4vw, 2rem);
+    line-height: 1.05;
+    color: var(--primary-deep);
+  }
+
+  .total-card__meta {
+    font-size: 0.82rem;
+  }
+
+  .form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.4rem;
+  }
+
+  .fechamento-primary-btn,
+  .fechamento-secondary-btn {
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-weight: 700;
+    padding: 0.9rem 1.2rem;
+  }
+
+  .fechamento-secondary-btn {
+    color: var(--primary-deep);
+    border: 1px solid rgba(24, 51, 43, 0.08);
+  }
+
+  .preview-empty {
+    display: grid;
+    place-items: center;
+    text-align: center;
+    min-height: 100%;
+    padding: 1.4rem 0.4rem;
+  }
+
+  .preview-empty__icon {
+    width: 78px;
+    height: 78px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 1rem;
+    border-radius: 24px;
+    background: rgba(31, 111, 95, 0.1);
+    color: var(--primary);
+    font-size: 2rem;
+  }
+
+  .preview-empty__title {
+    margin-bottom: 0.5rem;
+    font-weight: 800;
+    color: var(--primary-deep);
+  }
+
+  .preview-empty__text {
+    max-width: 34ch;
+    color: var(--muted);
+  }
+
+  .preview-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.95rem 1rem;
+    border-radius: 20px;
+    background: rgba(31, 111, 95, 0.07);
+    margin-bottom: 1rem;
+  }
+
+  .preview-summary__label {
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+
+  .preview-table-wrap table {
+    margin-bottom: 0;
+    border-radius: 18px;
+    overflow: hidden;
+  }
+
+  .preview-table-wrap thead th {
+    white-space: nowrap;
+  }
+
+  body.theme-dark .fechamento-form-page {
+    --surface: rgba(17, 42, 58, 0.9);
+    --surface-soft: rgba(111, 193, 165, 0.12);
+    --text: #eaf7f2;
+    --muted: #9fb8b0;
+    --primary: #7dcdb4;
+    --primary-deep: #d5f3e8;
+    --border: rgba(207, 241, 229, 0.09);
+    --shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  }
+
+  body.theme-dark .surface-card,
+  body.theme-dark .hero-mini-card,
+  body.theme-dark .total-card {
+    backdrop-filter: blur(10px);
+  }
+
+  @media (max-width: 1199.98px) {
+    .fechamento-hero-card {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .section-head {
+      flex-direction: column;
+    }
+
+    .totals-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .form-actions .btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .container-fluid.fechamento-form-page {
+      padding-left: 0.85rem;
+      padding-right: 0.85rem;
+    }
+
+    .fechamento-shell {
+      border-radius: 24px;
+      padding: 0.85rem;
+    }
+
+    .fechamento-hero-card,
+    .surface-card {
+      border-radius: 22px;
+    }
+
+    .fechamento-hero-title {
+      max-width: none;
+    }
+  }
+</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  (function(){
+  (function () {
     const funcionarioEl = document.getElementById('id_funcionario');
     const dataInicioEl = document.getElementById('id_data_inicio');
     const dataFimEl = document.getElementById('id_data_fim');
-    const preview = document.getElementById('apontamentos_preview');
+    const previewEmpty = document.getElementById('apontamentos_preview');
+    const previewContent = document.getElementById('apontamentos_content');
     const container = document.getElementById('apontamentos_table_container');
     const totais = document.getElementById('totais_info');
     const apiUrl = "{% url 'funcionarios:apontamentos_api' %}";
     const checkUrl = "{% url 'funcionarios:check_fechamento_api' %}";
     const alerta = document.getElementById('alerta-fechamento');
     const alertaMsg = document.getElementById('alerta-msg');
+    const totalDiasInput = document.getElementById('id_total_dias');
+    const totalDiasDisplay = document.getElementById('id_total_dias_display');
+    const totalDiasDisplayText = document.getElementById('id_total_dias_display_text');
+    const totalValorInput = document.getElementById('id_total_valor');
+    const totalValorDisplay = document.getElementById('id_total_valor_display');
+    const totalValorDisplayText = document.getElementById('id_total_valor_display_text');
 
     let fechamentoExiste = false;
+
+    function formatDate(iso) {
+      if (!iso) return '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+        const [yyyy, mm, dd] = iso.split('-');
+        return `${dd}/${mm}/${yyyy}`;
+      }
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    }
+
+    function formatTime(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return '';
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${hh}:${mm}`;
+    }
+
+    function formatCurrency(value) {
+      const number = Number(String(value).replace(',', '.')) || 0;
+      return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function resetPreview() {
+      previewContent.classList.add('d-none');
+      previewEmpty.classList.remove('d-none');
+      container.innerHTML = '';
+      totais.textContent = '0 dia(s) • R$ 0,00';
+      if (totalDiasInput) totalDiasInput.value = '0';
+      if (totalDiasDisplay) totalDiasDisplay.value = '0';
+      if (totalDiasDisplayText) totalDiasDisplayText.textContent = '0';
+      if (totalValorInput) totalValorInput.value = '0.00';
+      if (totalValorDisplay) totalValorDisplay.value = '0.00';
+      if (totalValorDisplayText) totalValorDisplayText.textContent = 'R$ 0,00';
+    }
 
     async function verificarFechamento() {
       const func = funcionarioEl ? funcionarioEl.value : '';
       const di = dataInicioEl ? dataInicioEl.value : '';
+
       if (!di) {
         alerta.classList.add('d-none');
         fechamentoExiste = false;
         return;
       }
+
       try {
         let url = checkUrl + '?data_inicio=' + di;
         if (func) url += '&funcionario=' + func;
         const resp = await fetch(url);
         if (!resp.ok) return;
+
         const data = await resp.json();
         if (func && data.exists_funcionario) {
           fechamentoExiste = true;
@@ -94,14 +614,80 @@
           fechamentoExiste = false;
           alerta.classList.add('d-none');
         }
-      } catch(e) {
+      } catch (e) {
         console.error(e);
       }
     }
 
+    async function fetchApontamentos() {
+      const func = funcionarioEl ? funcionarioEl.value : '';
+      const di = dataInicioEl ? dataInicioEl.value : '';
+      const df = dataFimEl ? dataFimEl.value : '';
+
+      if (!func || !di) {
+        resetPreview();
+        return;
+      }
+
+      const params = new URLSearchParams({ funcionario: func, data_inicio: di });
+      if (df) params.append('data_fim', df);
+
+      const resp = await fetch(apiUrl + '?' + params.toString());
+      if (!resp.ok) {
+        resetPreview();
+        return;
+      }
+
+      const data = await resp.json();
+      renderApontamentos(data);
+    }
+
+    function renderApontamentos(data) {
+      if (!data || !data.apontamentos || !data.apontamentos.length) {
+        resetPreview();
+        return;
+      }
+
+      const rows = data.apontamentos.map(function (a) {
+        return `
+          <tr>
+            <td>${a.obra || '-'}</td>
+            <td>${formatDate(a.data)}</td>
+            <td>${formatTime(a.created_at) || '-'}</td>
+            <td>R$ ${a.valor_diaria}</td>
+          </tr>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Obra</th>
+              <th>Data</th>
+              <th>Hora</th>
+              <th>Valor</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+
+      totais.textContent = `${data.totais.dias} dia(s) • ${formatCurrency(data.totais.valor)}`;
+      if (totalDiasInput) totalDiasInput.value = data.totais.dias;
+      if (totalDiasDisplay) totalDiasDisplay.value = data.totais.dias;
+      if (totalDiasDisplayText) totalDiasDisplayText.textContent = data.totais.dias;
+      if (totalValorInput) totalValorInput.value = data.totais.valor;
+      if (totalValorDisplay) totalValorDisplay.value = data.totais.valor;
+      if (totalValorDisplayText) totalValorDisplayText.textContent = formatCurrency(data.totais.valor);
+
+      previewEmpty.classList.add('d-none');
+      previewContent.classList.remove('d-none');
+    }
+
     const form = document.getElementById('form-fechamento');
     if (form) {
-      form.addEventListener('submit', function(e) {
+      form.addEventListener('submit', function (e) {
         if (fechamentoExiste) {
           e.preventDefault();
           alert('Não é possível criar fechamento: já existe fechamento para este funcionário na semana selecionada.');
@@ -109,75 +695,15 @@
       });
     }
 
-    function formatDate(iso){
-      if (!iso) return '';
-      if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
-        const [yyyy, mm, dd] = iso.split('-');
-        return `${dd}/${mm}/${yyyy}`;
-      }
-      const d = new Date(iso);
-      if (Number.isNaN(d.getTime())) return iso;
-      const dd = String(d.getDate()).padStart(2,'0');
-      const mm = String(d.getMonth()+1).padStart(2,'0');
-      const yyyy = d.getFullYear();
-      return `${dd}/${mm}/${yyyy}`;
-    }
+    if (funcionarioEl) funcionarioEl.addEventListener('change', function () { fetchApontamentos(); verificarFechamento(); });
+    if (dataInicioEl) dataInicioEl.addEventListener('change', function () { fetchApontamentos(); verificarFechamento(); });
+    if (dataFimEl) dataFimEl.addEventListener('change', function () { fetchApontamentos(); verificarFechamento(); });
 
-    function formatTime(iso){
-      if (!iso) return '';
-      const d = new Date(iso);
-      if (Number.isNaN(d.getTime())) return '';
-      const hh = String(d.getHours()).padStart(2,'0');
-      const mm = String(d.getMinutes()).padStart(2,'0');
-      return `${hh}:${mm}`;
-    }
-
-	    async function fetchApontamentos(){
-	      const func = funcionarioEl ? funcionarioEl.value : '';
-	      const di = dataInicioEl ? dataInicioEl.value : '';
-	      const df = dataFimEl ? dataFimEl.value : '';
-	      if(!func || !di) {
-	        preview.style.display = 'none';
-	        return;
-	      }
-	      const params = new URLSearchParams({funcionario: func, data_inicio: di});
-	      if (df) params.append('data_fim', df);
-	      const resp = await fetch(apiUrl + '?' + params.toString());
-	      if(!resp.ok){
-	        preview.style.display = 'none';
-        return;
-      }
-      const data = await resp.json();
-      renderApontamentos(data);
-    }
-
-    function renderApontamentos(data){
-      if(!data || !data.apontamentos) {
-        preview.style.display = 'none';
-        return;
-      }
-      const rows = data.apontamentos.map(a => {
-        return `<tr><td>${a.obra||''}</td><td>${formatDate(a.data)}</td><td>${formatTime(a.created_at)}</td><td>${a.valor_diaria}</td></tr>`;
-      }).join('');
-      container.innerHTML = `<table class="table table-sm table-striped"><thead><tr><th>Obra</th><th>Data</th><th>Hora</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table>`;
-      totais.textContent = `${data.totais.dias} dia(s) — R$ ${data.totais.valor}`;
-      // update visible and hidden fields
-      const td = document.getElementById('id_total_dias');
-      const td_disp = document.getElementById('id_total_dias_display');
-      const tv = document.getElementById('id_total_valor');
-      const tv_disp = document.getElementById('id_total_valor_display');
-      if(td) td.value = data.totais.dias;
-      if(td_disp) td_disp.value = data.totais.dias;
-      if(tv) tv.value = data.totais.valor;
-      if(tv_disp) tv_disp.value = data.totais.valor;
-      preview.style.display = 'block';
-    }
-
-    if(funcionarioEl) funcionarioEl.addEventListener('change', function(){ fetchApontamentos(); verificarFechamento(); });
-    if(dataInicioEl) dataInicioEl.addEventListener('change', function(){ fetchApontamentos(); verificarFechamento(); });
-    if(dataFimEl) dataFimEl.addEventListener('change', function(){ fetchApontamentos(); verificarFechamento(); });
-    // try initial fetch if both present
-    document.addEventListener('DOMContentLoaded', function(){ fetchApontamentos(); verificarFechamento(); });
+    document.addEventListener('DOMContentLoaded', function () {
+      resetPreview();
+      fetchApontamentos();
+      verificarFechamento();
+    });
   })();
 </script>
 {% endblock %}

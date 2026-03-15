@@ -6,274 +6,712 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <style>
-  .metric-card {
-    border: none;
-    border-radius: .75rem;
+  :root {
+    --an-bg: linear-gradient(180deg, #f4f7fb 0%, #eef4fb 48%, #f9fbfe 100%);
+    --an-hero: linear-gradient(135deg, #14324d 0%, #214d74 54%, #4d7d62 100%);
+    --an-surface: rgba(255, 255, 255, 0.96);
+    --an-border: rgba(20, 50, 77, 0.12);
+    --an-text: #17324d;
+    --an-muted: #65798d;
+    --an-shadow: 0 26px 60px rgba(18, 43, 68, 0.12);
+  }
+
+  body {
+    background: var(--an-bg);
+  }
+
+  .analytics-shell {
+    max-width: 1440px;
+  }
+
+  .analytics-hero {
+    position: relative;
     overflow: hidden;
-    transition: transform .15s, box-shadow .15s;
-  }
-  .metric-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0,0,0,.1) !important;
-  }
-  .metric-card .card-body { padding: 1.1rem 1.25rem; }
-  .metric-icon {
-    width: 48px; height: 48px;
-    border-radius: .75rem;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.3rem;
-  }
-  .metric-value { font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
-  .metric-label { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: #9e9e9e; }
-  .metric-sub { font-size: .78rem; color: #9e9e9e; }
-
-  .chart-card {
-    border: none;
-    border-radius: .75rem;
+    border-radius: 30px;
+    background: var(--an-hero);
+    color: #fff;
+    box-shadow: 0 28px 64px rgba(18, 50, 77, 0.2);
   }
 
-  .obra-progress-row:nth-child(odd)  { background-color: #f8f9fa; }
-  .obra-progress-row:nth-child(even) { background-color: #ffffff; }
-  .obra-progress-row:hover { background-color: #e9ecef; transition: background-color .15s; }
-  .obra-progress-row td { vertical-align: middle; }
+  .analytics-hero::before,
+  .analytics-hero::after {
+    content: "";
+    position: absolute;
+    border-radius: 999px;
+    pointer-events: none;
+  }
 
-  .section-title {
-    font-size: .8rem;
+  .analytics-hero::before {
+    width: 300px;
+    height: 300px;
+    top: -150px;
+    right: -90px;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .analytics-hero::after {
+    width: 190px;
+    height: 190px;
+    bottom: -95px;
+    right: 20%;
+    background: rgba(151, 218, 255, 0.14);
+  }
+
+  .analytics-hero > .row {
+    position: relative;
+    z-index: 1;
+  }
+
+  .analytics-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.42rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.14);
+    font-size: 0.8rem;
     font-weight: 700;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    letter-spacing: .06em;
-    color: #757575;
   }
 
-  @media (max-width: 575.98px) {
-    .metric-value { font-size: 1.25rem; }
-    .metric-icon  { width: 40px; height: 40px; font-size: 1.1rem; }
+  .analytics-title {
+    font-size: clamp(2rem, 3vw, 2.8rem);
+    font-weight: 800;
+    line-height: 1.04;
+    margin: 1rem 0 0.7rem;
+  }
+
+  .analytics-subtitle {
+    max-width: 680px;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 1rem;
+    margin: 0;
+  }
+
+  .analytics-date {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    min-width: 190px;
+    padding: 0.95rem 1.2rem;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #fff;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .analytics-card,
+  .analytics-panel {
+    background: var(--an-surface);
+    border: 1px solid var(--an-border);
+    border-radius: 26px;
+    box-shadow: var(--an-shadow);
+  }
+
+  .analytics-card {
+    height: 100%;
+    padding: 1.2rem 1.25rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .analytics-card::after {
+    content: "";
+    position: absolute;
+    width: 108px;
+    height: 108px;
+    border-radius: 50%;
+    right: -28px;
+    bottom: -42px;
+    background: rgba(255, 255, 255, 0.36);
+  }
+
+  .analytics-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .analytics-card.primary {
+    background: linear-gradient(135deg, rgba(25, 96, 200, 0.15), rgba(97, 173, 255, 0.16)), #fff;
+  }
+
+  .analytics-card.success {
+    background: linear-gradient(135deg, rgba(34, 134, 90, 0.14), rgba(140, 224, 187, 0.16)), #fff;
+  }
+
+  .analytics-card.violet {
+    background: linear-gradient(135deg, rgba(53, 95, 145, 0.12), rgba(107, 164, 214, 0.16)), #fff;
+  }
+
+  .analytics-card.dark {
+    background: linear-gradient(135deg, #15324d 0%, #234d73 100%);
+    color: #fff;
+  }
+
+  .analytics-card.month-green {
+    background: linear-gradient(135deg, rgba(42, 142, 95, 0.14), rgba(175, 231, 203, 0.18)), #fff;
+  }
+
+  .analytics-card.month-blue {
+    background: linear-gradient(135deg, rgba(50, 111, 186, 0.14), rgba(184, 219, 255, 0.2)), #fff;
+  }
+
+  .analytics-card.month-gold {
+    background: linear-gradient(135deg, rgba(214, 154, 28, 0.14), rgba(255, 228, 168, 0.22)), #fff;
+  }
+
+  .analytics-card.month-red {
+    background: linear-gradient(135deg, rgba(204, 73, 88, 0.12), rgba(255, 206, 212, 0.22)), #fff;
+  }
+
+  .analytics-label {
+    color: var(--an-muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.55rem;
+  }
+
+  .analytics-card.dark .analytics-label,
+  .analytics-card.dark .analytics-sub {
+    color: rgba(255, 255, 255, 0.72);
+  }
+
+  .analytics-value {
+    color: var(--an-text);
+    font-size: clamp(1.7rem, 2.8vw, 2.35rem);
+    font-weight: 800;
+    line-height: 1.02;
+  }
+
+  .analytics-card.dark .analytics-value {
+    color: #fff;
+  }
+
+  .analytics-sub {
+    color: var(--an-muted);
+    font-size: 0.9rem;
+    margin-top: 0.35rem;
+  }
+
+  .analytics-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+  }
+
+  .analytics-card.primary .analytics-icon {
+    background: rgba(24, 95, 200, 0.12);
+    color: #185fc8;
+  }
+
+  .analytics-card.success .analytics-icon {
+    background: rgba(34, 134, 90, 0.12);
+    color: #22865a;
+  }
+
+  .analytics-card.violet .analytics-icon {
+    background: rgba(39, 88, 136, 0.12);
+    color: #245b88;
+  }
+
+  .analytics-card.dark .analytics-icon {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+  }
+
+  .analytics-card.month-green .analytics-icon {
+    background: rgba(42, 142, 95, 0.12);
+    color: #2a8e5f;
+  }
+
+  .analytics-card.month-blue .analytics-icon {
+    background: rgba(50, 111, 186, 0.12);
+    color: #326fba;
+  }
+
+  .analytics-card.month-gold .analytics-icon {
+    background: rgba(214, 154, 28, 0.14);
+    color: #cf8b10;
+  }
+
+  .analytics-card.month-red .analytics-icon {
+    background: rgba(204, 73, 88, 0.12);
+    color: #cc4958;
+  }
+
+  .analytics-section {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin: 1.55rem 0 1rem;
+  }
+
+  .analytics-section-title {
+    color: var(--an-text);
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .analytics-section hr {
+    margin: 0;
+    border-color: rgba(20, 50, 77, 0.12);
+    opacity: 1;
+  }
+
+  .analytics-panel {
+    padding: 1.3rem;
+  }
+
+  .analytics-panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .analytics-panel-head h6 {
+    color: var(--an-text);
+    font-size: 1rem;
+    font-weight: 800;
+    margin: 0;
+  }
+
+  .analytics-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.42rem 0.8rem;
+    border-radius: 999px;
+    background: #f4f8fc;
+    border: 1px solid rgba(20, 50, 77, 0.1);
+    color: var(--an-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .analytics-chart-wrap {
+    position: relative;
+    min-height: 310px;
+  }
+
+  .analytics-table {
+    margin: 0;
+  }
+
+  .analytics-table thead th {
+    border: 0;
+    background: linear-gradient(135deg, #17324d 0%, #234d73 100%);
+    color: #fff;
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 0.95rem 1rem;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .analytics-table thead th:first-child {
+    padding-left: 1.2rem;
+  }
+
+  .analytics-table tbody tr:nth-child(odd) {
+    background: rgba(249, 252, 255, 0.98);
+  }
+
+  .analytics-table tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.98);
+  }
+
+  .analytics-table tbody tr:hover {
+    background: #eef5ff;
+  }
+
+  .analytics-table tbody td {
+    padding: 1rem;
+    border-top: 1px solid rgba(20, 50, 77, 0.08);
+    vertical-align: middle;
+  }
+
+  .analytics-table tbody td:first-child {
+    padding-left: 1.2rem;
+  }
+
+  .analytics-obra-link {
+    color: var(--an-text);
+    font-weight: 800;
+    text-decoration: none;
+  }
+
+  .analytics-obra-link:hover {
+    color: #1a64c9;
+  }
+
+  .analytics-cliente {
+    color: var(--an-muted);
+    font-weight: 600;
+  }
+
+  .analytics-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    justify-content: flex-end;
+  }
+
+  .analytics-progress .progress {
+    flex: 1;
+    max-width: 110px;
+    height: 8px;
+    border-radius: 999px;
+    background: #e9f0f7;
+  }
+
+  .analytics-progress-value {
+    min-width: 42px;
+    text-align: right;
+    color: var(--an-text);
+    font-weight: 800;
+    font-size: 0.86rem;
+  }
+
+  .analytics-mobile-list {
+    display: none;
+  }
+
+  .analytics-mobile-card {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border: 1px solid rgba(20, 50, 77, 0.1);
+    border-radius: 22px;
+    padding: 1rem;
+    box-shadow: 0 14px 30px rgba(18, 43, 68, 0.08);
+  }
+
+  .analytics-mobile-card + .analytics-mobile-card {
+    margin-top: 0.9rem;
+  }
+
+  .analytics-mobile-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .analytics-mobile-head a {
+    color: var(--an-text);
+    text-decoration: none;
+    font-weight: 800;
+  }
+
+  .analytics-mobile-head small {
+    display: block;
+    color: var(--an-muted);
+    margin-top: 0.18rem;
+  }
+
+  .analytics-mobile-progress {
+    margin-top: 0.8rem;
+  }
+
+  .analytics-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--an-muted);
+  }
+
+  @media (max-width: 1199.98px) {
+    .analytics-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 991.98px) {
+    .analytics-hero {
+      border-radius: 26px;
+    }
+
+    .analytics-date {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .analytics-shell {
+      padding-left: 0.35rem;
+      padding-right: 0.35rem;
+    }
+
+    .analytics-hero,
+    .analytics-card,
+    .analytics-panel {
+      border-radius: 22px;
+    }
+
+    .analytics-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .analytics-panel {
+      padding: 1rem;
+    }
+
+    .analytics-panel-head {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .analytics-chart-wrap {
+      min-height: 260px;
+    }
+
+    .analytics-table-wrap {
+      display: none;
+    }
+
+    .analytics-mobile-list {
+      display: block;
+    }
   }
 </style>
 {% endblock %}
 
 {% block content %}
-
-<!-- Header -->
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
-  <div>
-    <h1 class="h3 mb-0"><i class="bi bi-speedometer2 text-primary"></i> Dashboard</h1>
-    <small class="text-muted">Visão geral do sistema — métricas e obras em andamento</small>
-  </div>
-  <small class="text-muted"><i class="bi bi-calendar3"></i> {% now "d/m/Y" %}</small>
-</div>
-
-<!-- Row 1: Main Metrics -->
-<div class="row g-3 mb-4">
-  <div class="col-6 col-md-3">
-    <div class="card metric-card shadow-sm">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="metric-label">Total Obras</div>
-            <div class="metric-value text-dark">{{ metrics.total_obras|default:0 }}</div>
-            <div class="metric-sub">Obras cadastradas</div>
-          </div>
-          <div class="metric-icon bg-primary bg-opacity-10 text-primary">
-            <i class="bi bi-buildings"></i>
-          </div>
-        </div>
+<div class="container-fluid py-4 analytics-shell">
+  <div class="analytics-hero p-4 p-lg-5 mb-4">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-8">
+        <span class="analytics-badge"><i class="bi bi-graph-up-arrow"></i> Analytics</span>
+        <h1 class="analytics-title">Visão estratégica das obras, custos e produtividade.</h1>
+        <p class="analytics-subtitle">
+          Acompanhe os indicadores principais do sistema com um painel mais claro, elegante e preparado para uso em computador e celular.
+        </p>
+      </div>
+      <div class="col-lg-4 text-lg-end">
+        <span class="analytics-date"><i class="bi bi-calendar3"></i> {% now "d/m/Y" %}</span>
       </div>
     </div>
   </div>
 
-  <div class="col-6 col-md-3">
-    <div class="card metric-card shadow-sm">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="metric-label">Em Andamento</div>
-            <div class="metric-value text-primary">{{ metrics.obras_em_andamento|default:0 }}</div>
-            <div class="metric-sub">Obras ativas</div>
-          </div>
-          <div class="metric-icon" style="background: rgba(13,110,253,.1); color: #0d6efd;">
-            <i class="bi bi-hammer"></i>
-          </div>
+  <div class="analytics-grid mb-4">
+    <div class="analytics-card primary">
+      <div class="analytics-card-top">
+        <div>
+          <div class="analytics-label">Total de Obras</div>
+          <div class="analytics-value">{{ metrics.total_obras|default:0 }}</div>
+          <div class="analytics-sub">Obras cadastradas no sistema</div>
         </div>
+        <span class="analytics-icon"><i class="bi bi-buildings"></i></span>
+      </div>
+    </div>
+
+    <div class="analytics-card success">
+      <div class="analytics-card-top">
+        <div>
+          <div class="analytics-label">Em Andamento</div>
+          <div class="analytics-value">{{ metrics.obras_em_andamento|default:0 }}</div>
+          <div class="analytics-sub">Obras ativas no momento</div>
+        </div>
+        <span class="analytics-icon"><i class="bi bi-hammer"></i></span>
+      </div>
+    </div>
+
+    <div class="analytics-card violet">
+      <div class="analytics-card-top">
+        <div>
+          <div class="analytics-label">Clientes</div>
+          <div class="analytics-value">{{ metrics.total_clientes|default:0 }}</div>
+          <div class="analytics-sub">Clientes com cadastro ativo</div>
+        </div>
+        <span class="analytics-icon"><i class="bi bi-people"></i></span>
+      </div>
+    </div>
+
+    <div class="analytics-card dark">
+      <div class="analytics-card-top">
+        <div>
+          <div class="analytics-label">Média de Conclusão</div>
+          <div class="analytics-value">{{ metrics.avg_percentual|floatformat:1 }}%</div>
+          <div class="analytics-sub">Progresso médio das obras</div>
+        </div>
+        <span class="analytics-icon"><i class="bi bi-pie-chart"></i></span>
       </div>
     </div>
   </div>
 
-  <div class="col-6 col-md-3">
-    <div class="card metric-card shadow-sm">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="metric-label">Clientes</div>
-            <div class="metric-value text-dark">{{ metrics.total_clientes|default:0 }}</div>
-            <div class="metric-sub">Clientes cadastrados</div>
-          </div>
-          <div class="metric-icon" style="background: rgba(111,66,193,.1); color: #6f42c1;">
-            <i class="bi bi-people"></i>
-          </div>
+  <div class="analytics-section">
+    <span class="analytics-section-title"><i class="bi bi-calendar-month me-1"></i> Mês Atual</span>
+    <hr class="flex-grow-1">
+  </div>
+
+  <div class="analytics-grid mb-4">
+    <div class="analytics-card month-green">
+      <div class="analytics-card-top">
+        <div>
+          <div class="analytics-label">Custo do Mês</div>
+          <div class="analytics-value">{{ metrics.custo_mes|brl }}</div>
+          <div class="analytics-sub">Mão de obra no período</div>
         </div>
+        <span class="analytics-icon"><i class="bi bi-cash-stack"></i></span>
+      </div>
+    </div>
+
+    <div class="analytics-card month-blue">
+      <div class="analytics-card-top">
+        <div>
+          <div class="analytics-label">Horas do Mês</div>
+          <div class="analytics-value">{{ metrics.horas_mes|floatformat:1 }}h</div>
+          <div class="analytics-sub">Horas trabalhadas</div>
+        </div>
+        <span class="analytics-icon"><i class="bi bi-clock-history"></i></span>
+      </div>
+    </div>
+
+    <div class="analytics-card month-gold">
+      <div class="analytics-card-top">
+        <div>
+          <div class="analytics-label">Ociosidades</div>
+          <div class="analytics-value">{{ metrics.ociosidades_mes|default:0 }}</div>
+          <div class="analytics-sub">Ocorrências registradas</div>
+        </div>
+        <span class="analytics-icon"><i class="bi bi-hourglass-split"></i></span>
+      </div>
+    </div>
+
+    <div class="analytics-card month-red">
+      <div class="analytics-card-top">
+        <div>
+          <div class="analytics-label">Retrabalhos</div>
+          <div class="analytics-value">{{ metrics.retrabalhos_mes|default:0 }}</div>
+          <div class="analytics-sub">Registros no mês atual</div>
+        </div>
+        <span class="analytics-icon"><i class="bi bi-arrow-repeat"></i></span>
       </div>
     </div>
   </div>
 
-  <div class="col-6 col-md-3">
-    <div class="card metric-card shadow-sm" style="background: linear-gradient(135deg, #1a237e, #283593);">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="metric-label" style="color: rgba(255,255,255,.6);">Média Conclusão</div>
-            <div class="metric-value text-white">{{ metrics.avg_percentual|floatformat:1 }}%</div>
-            <div class="metric-sub" style="color: rgba(255,255,255,.5);">Progresso médio</div>
-          </div>
-          <div class="metric-icon" style="background: rgba(255,255,255,.15); color: #fff;">
-            <i class="bi bi-pie-chart"></i>
-          </div>
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="analytics-panel h-100">
+        <div class="analytics-panel-head">
+          <h6><i class="bi bi-graph-up-arrow text-primary me-1"></i> Progresso das Obras</h6>
+          <span class="analytics-chip"><i class="bi bi-bar-chart-line"></i> Últimos 12 meses</span>
+        </div>
+        <div class="analytics-chart-wrap">
+          <canvas id="obrasChart"></canvas>
         </div>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- Row 2: Mão de Obra - Mês Atual -->
-<div class="d-flex align-items-center gap-2 mb-2">
-  <span class="section-title"><i class="bi bi-calendar-month"></i> Mês Atual</span>
-  <hr class="flex-grow-1 m-0">
-</div>
-<div class="row g-3 mb-4">
-  <div class="col-6 col-md-3">
-    <div class="card metric-card shadow-sm border-start border-success border-3">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="metric-label">Custo Mês</div>
-            <div class="metric-value text-success" style="font-size:1.35rem;">{{ metrics.custo_mes|brl }}</div>
-            <div class="metric-sub">Mão de obra</div>
-          </div>
-          <div class="metric-icon" style="background: rgba(25,135,84,.1); color: #198754;">
-            <i class="bi bi-cash-stack"></i>
-          </div>
+    <div class="col-lg-5">
+      <div class="analytics-panel h-100">
+        <div class="analytics-panel-head">
+          <h6><i class="bi bi-list-ol text-primary me-1"></i> Obras em Andamento</h6>
+          <span class="analytics-chip">{{ obras_em_andamento|length }} obra{{ obras_em_andamento|length|pluralize:"s" }}</span>
         </div>
-      </div>
-    </div>
-  </div>
 
-  <div class="col-6 col-md-3">
-    <div class="card metric-card shadow-sm border-start border-info border-3">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="metric-label">Horas Mês</div>
-            <div class="metric-value text-info">{{ metrics.horas_mes|floatformat:1 }}h</div>
-            <div class="metric-sub">Horas trabalhadas</div>
-          </div>
-          <div class="metric-icon" style="background: rgba(13,202,240,.1); color: #0dcaf0;">
-            <i class="bi bi-clock-history"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-6 col-md-3">
-    <div class="card metric-card shadow-sm border-start border-warning border-3">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="metric-label">Ociosidades</div>
-            <div class="metric-value text-warning">{{ metrics.ociosidades_mes|default:0 }}</div>
-            <div class="metric-sub">Registros no mês</div>
-          </div>
-          <div class="metric-icon" style="background: rgba(255,193,7,.12); color: #ffc107;">
-            <i class="bi bi-hourglass-split"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-6 col-md-3">
-    <div class="card metric-card shadow-sm border-start border-danger border-3">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="metric-label">Retrabalhos</div>
-            <div class="metric-value text-danger">{{ metrics.retrabalhos_mes|default:0 }}</div>
-            <div class="metric-sub">Registros no mês</div>
-          </div>
-          <div class="metric-icon" style="background: rgba(220,53,69,.1); color: #dc3545;">
-            <i class="bi bi-arrow-repeat"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Row 3: Chart + Table -->
-<div class="row g-3">
-  <div class="col-lg-7">
-    <div class="card chart-card shadow-sm">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h6 class="mb-0 fw-semibold"><i class="bi bi-graph-up text-primary"></i> Progresso das Obras</h6>
-          <span class="badge bg-light text-muted border">Últimos 12 meses</span>
-        </div>
-        <canvas id="obrasChart" height="220"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-lg-5">
-    <div class="card chart-card shadow-sm">
-      <div class="card-body p-0">
-        <div class="px-3 pt-3 pb-2 d-flex justify-content-between align-items-center">
-          <h6 class="mb-0 fw-semibold"><i class="bi bi-list-ol text-primary"></i> Obras em Andamento</h6>
-          <span class="badge bg-primary rounded-pill">{{ obras_em_andamento|length }}</span>
-        </div>
-        <div class="table-responsive">
-          <table class="table table-borderless table-sm mb-0">
-            <thead>
-              <tr style="background-color: #e9ecef;">
-                <th class="ps-3 small fw-semibold">Obra</th>
-                <th class="small fw-semibold">Cliente</th>
-                <th class="text-end pe-3 small fw-semibold" style="width:100px;">Progresso</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for obra in obras_em_andamento %}
-              <tr class="obra-progress-row border-bottom">
-                <td class="ps-3">
-                  <a href="{% url 'obras:obra_detail' obra.pk %}" class="text-decoration-none fw-semibold text-dark small">
-                    {{ obra.nome }}
-                  </a>
-                </td>
-                <td class="text-muted small">{{ obra.cliente|default:"—" }}</td>
-                <td class="pe-3">
-                  <div class="d-flex align-items-center justify-content-end gap-2">
-                    <div class="progress flex-grow-1" style="height: 6px; max-width: 60px;">
-                      <div class="progress-bar {% if obra.percentual_concluido >= 80 %}bg-success{% elif obra.percentual_concluido >= 40 %}bg-primary{% else %}bg-warning{% endif %}"
-                           role="progressbar" style="width: {{ obra.percentual_concluido }}%"></div>
+        <div class="analytics-table-wrap">
+          <div class="table-responsive">
+            <table class="table analytics-table">
+              <thead>
+                <tr>
+                  <th>Obra</th>
+                  <th>Cliente</th>
+                  <th class="text-end">Progresso</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for obra in obras_em_andamento %}
+                <tr>
+                  <td>
+                    <a href="{% url 'obras:obra_detail' obra.pk %}" class="analytics-obra-link">{{ obra.nome }}</a>
+                  </td>
+                  <td>
+                    <span class="analytics-cliente">{{ obra.cliente|default:"-" }}</span>
+                  </td>
+                  <td>
+                    <div class="analytics-progress">
+                      <div class="progress">
+                        <div
+                          class="progress-bar {% if obra.percentual_concluido >= 80 %}bg-success{% elif obra.percentual_concluido >= 40 %}bg-primary{% else %}bg-warning{% endif %}"
+                          role="progressbar"
+                          style="width: {{ obra.percentual_concluido }}%"
+                        ></div>
+                      </div>
+                      <span class="analytics-progress-value">{{ obra.percentual_concluido }}%</span>
                     </div>
-                    <small class="fw-semibold" style="min-width: 32px; text-align: right;">{{ obra.percentual_concluido }}%</small>
-                  </div>
-                </td>
-              </tr>
-              {% empty %}
-              <tr>
-                <td colspan="3" class="text-center text-muted py-4">
-                  <i class="bi bi-inbox fs-4 d-block mb-1"></i>
-                  Nenhuma obra em andamento.
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="3" class="analytics-empty">
+                    <i class="bi bi-inbox fs-4 d-block mb-2"></i>
+                    Nenhuma obra em andamento.
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="analytics-mobile-list">
+          {% for obra in obras_em_andamento %}
+          <div class="analytics-mobile-card">
+            <div class="analytics-mobile-head">
+              <div>
+                <a href="{% url 'obras:obra_detail' obra.pk %}">{{ obra.nome }}</a>
+                <small>{{ obra.cliente|default:"-" }}</small>
+              </div>
+              <span class="analytics-chip">{{ obra.percentual_concluido }}%</span>
+            </div>
+            <div class="analytics-mobile-progress">
+              <div class="progress" style="height: 8px; border-radius: 999px; background: #e9f0f7;">
+                <div
+                  class="progress-bar {% if obra.percentual_concluido >= 80 %}bg-success{% elif obra.percentual_concluido >= 40 %}bg-primary{% else %}bg-warning{% endif %}"
+                  role="progressbar"
+                  style="width: {{ obra.percentual_concluido }}%"
+                ></div>
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="analytics-empty">
+            <i class="bi bi-inbox fs-4 d-block mb-2"></i>
+            Nenhuma obra em andamento.
+          </div>
+          {% endfor %}
         </div>
       </div>
     </div>
   </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
@@ -281,67 +719,73 @@
 <script>
   (function(){
     const labels = {{ chart_labels|default:'[]'|safe }};
-    const data   = {{ chart_values|default:'[]'|safe }};
-
+    const data = {{ chart_values|default:'[]'|safe }};
     const ctx = document.getElementById('obrasChart');
-    if (ctx) {
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'Percentual Médio',
-            data: data,
-            fill: true,
-            backgroundColor: function(context){
-              const chart = context.chart;
-              const {ctx: c, chartArea} = chart;
-              if(!chartArea) return 'rgba(26,35,126,0.08)';
-              const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-              g.addColorStop(0, 'rgba(26,35,126,0.18)');
-              g.addColorStop(1, 'rgba(26,35,126,0.01)');
-              return g;
-            },
-            borderColor: '#1a237e',
-            borderWidth: 2.5,
-            tension: 0.35,
-            pointRadius: 4,
-            pointBackgroundColor: '#fff',
-            pointBorderColor: '#1a237e',
-            pointBorderWidth: 2,
-            pointHoverRadius: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              backgroundColor: '#1a237e',
-              titleFont: { size: 12 },
-              bodyFont: { size: 13, weight: 'bold' },
-              padding: 10,
-              cornerRadius: 8,
-              callbacks: {
-                label: function(ctx){ return ' ' + ctx.parsed.y.toFixed(1) + '%'; }
+
+    if (!ctx) return;
+
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Percentual Médio',
+          data: data,
+          fill: true,
+          backgroundColor: function(context) {
+            const chart = context.chart;
+            const area = chart.chartArea;
+            if (!area) return 'rgba(24,95,200,0.08)';
+            const gradient = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+            gradient.addColorStop(0, 'rgba(24,95,200,0.22)');
+            gradient.addColorStop(1, 'rgba(24,95,200,0.02)');
+            return gradient;
+          },
+          borderColor: '#185fc8',
+          borderWidth: 2.8,
+          tension: 0.34,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#ffffff',
+          pointBorderColor: '#185fc8',
+          pointBorderWidth: 2
+        }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#17324d',
+            titleFont: { size: 12 },
+            bodyFont: { size: 13, weight: 'bold' },
+            padding: 10,
+            cornerRadius: 10,
+            callbacks: {
+              label: function(context) {
+                return ' ' + context.parsed.y.toFixed(1) + '%';
               }
             }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: 100,
-              ticks: { callback: function(v){ return v + '%'; }, font: { size: 11 } },
-              grid: { color: 'rgba(0,0,0,.05)' }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100,
+            ticks: {
+              callback: function(value) { return value + '%'; },
+              font: { size: 11 }
             },
-            x: {
-              ticks: { font: { size: 10 } },
-              grid: { display: false }
-            }
+            grid: { color: 'rgba(20,50,77,0.08)' }
+          },
+          x: {
+            ticks: { font: { size: 10 } },
+            grid: { display: false }
           }
         }
-      });
-    }
+      }
+    });
   })();
 </script>
 {% endblock %}

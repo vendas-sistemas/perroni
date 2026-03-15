@@ -1,274 +1,410 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 
-{% block title %}Relatorio de Ferramentas{% endblock %}
+{% block title %}Relatório de Ferramentas{% endblock %}
 
 {% block extra_css %}
 <style>
-  .report-wrap {
-    max-width: 1200px;
-    margin: 0 auto;
+  .report-shell {
+    --report-blue: #1666a8;
+    --report-navy: #123b5f;
+    --report-cyan: #1fb6aa;
+    --report-amber: #f3c556;
+    --report-soft: #f5f9fd;
   }
-  .summary-card {
-    border: 1px solid #dee2e6;
-    border-radius: .6rem;
-    background: #fff;
+
+  .report-hero {
+    position: relative;
+    overflow: hidden;
+    border: 0;
+    border-radius: 1.6rem;
+    background:
+      radial-gradient(circle at top right, rgba(243, 197, 86, .34), transparent 24%),
+      radial-gradient(circle at left center, rgba(31, 182, 170, .2), transparent 28%),
+      linear-gradient(135deg, #113b5f 0%, #1666a8 58%, #1cb3aa 100%);
+    color: #fff;
+    box-shadow: 0 24px 46px rgba(18, 59, 95, .18);
   }
-  .summary-card .label {
+
+  .report-hero .card-body {
+    position: relative;
+    z-index: 1;
+    padding: 1.5rem;
+  }
+
+  .report-hero-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .45rem .85rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .14);
+    font-weight: 600;
+    font-size: .85rem;
+  }
+
+  .report-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+  }
+
+  .report-panel {
+    border: 0;
+    border-radius: 1.45rem;
+    box-shadow: 0 18px 38px rgba(15, 23, 42, .08);
+  }
+
+  .report-panel .card-body {
+    padding: 1.2rem;
+  }
+
+  .report-stat {
+    height: 100%;
+    border: 0;
+    border-radius: 1.25rem;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, .08);
+  }
+
+  .report-stat .card-body { padding: 1.15rem; }
+  .report-stat.modelos { background: linear-gradient(135deg, rgba(22, 102, 168, .16), rgba(22, 102, 168, .05)); }
+  .report-stat.unidades { background: linear-gradient(135deg, rgba(31, 182, 170, .18), rgba(31, 182, 170, .05)); }
+  .report-stat.deposito { background: linear-gradient(135deg, rgba(25, 135, 84, .16), rgba(25, 135, 84, .05)); }
+  .report-stat.obra { background: linear-gradient(135deg, rgba(13, 110, 253, .14), rgba(13, 110, 253, .05)); }
+  .report-stat.manutencao { background: linear-gradient(135deg, rgba(243, 197, 86, .22), rgba(243, 197, 86, .06)); }
+  .report-stat.baixas { background: linear-gradient(135deg, rgba(220, 53, 69, .18), rgba(220, 53, 69, .05)); }
+
+  .report-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.2rem 0;
+  }
+
+  .report-section-title h2 {
+    font-size: 1rem;
+    margin: 0;
+    color: #274764;
+  }
+
+  .report-table thead th {
+    background: #eef5fb;
+    color: #31526e;
+    text-transform: uppercase;
+    letter-spacing: .03em;
     font-size: .8rem;
-    color: #6c757d;
+    border-bottom: 0;
   }
-  .summary-card .value {
-    font-size: 1.4rem;
-    font-weight: 700;
-    line-height: 1.2;
+
+  .report-table tbody tr + tr td {
+    border-top: 1px solid rgba(18, 59, 95, .08);
   }
-  .table th, .table td {
-    vertical-align: middle;
+
+  .report-mobile-card {
+    display: none;
   }
+
+  .report-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+  }
+
+  .report-caption {
+    color: #6e8498;
+    font-size: .85rem;
+  }
+
   @media print {
-    .no-print { display: none !important; }
-    .card { box-shadow: none !important; }
-    body { background: #fff !important; }
+    .no-print {
+      display: none !important;
+    }
+
+    .report-panel,
+    .report-stat,
+    .report-hero {
+      box-shadow: none !important;
+    }
+
+    .report-shell {
+      font-size: 12px;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .report-hero .card-body,
+    .report-panel .card-body {
+      padding: 1rem;
+    }
+
+    .report-desktop-table {
+      display: none;
+    }
+
+    .report-mobile-card {
+      display: block;
+      border: 1px solid rgba(18, 59, 95, .08);
+      border-radius: 1rem;
+      padding: 1rem;
+      background: linear-gradient(180deg, #fff 0%, #f8fbfe 100%);
+    }
+
+    .report-mobile-card + .report-mobile-card {
+      margin-top: .8rem;
+    }
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-3 report-wrap">
-  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 no-print">
-    <h1 class="h4 mb-0"><i class="bi bi-printer"></i> Relatorio de Localizacao de Ferramentas</h1>
-    <div class="d-flex gap-2">
-      <button class="btn btn-dark btn-sm" onclick="window.print()">
-        <i class="bi bi-printer"></i> Imprimir
-      </button>
-      <a href="{% url 'ferramentas:ferramenta_list' %}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left"></i> Voltar
-      </a>
+<div class="report-shell">
+  <div class="card report-hero mb-4 no-print">
+    <div class="card-body">
+      <div class="d-flex flex-column flex-xl-row justify-content-between align-items-start gap-3">
+        <div>
+          <span class="report-hero-chip mb-3"><i class="bi bi-geo-alt"></i> Localização e histórico em um só lugar</span>
+          <h1 class="h2 mb-2">Relatório de Ferramentas</h1>
+          <p class="mb-2 opacity-75">Visão clara para localizar ferramentas, entender distribuição por obra e compartilhar o relatório com o cliente.</p>
+          <div class="small opacity-75">Gerado em {{ gerado_em|date:"d/m/Y H:i" }}</div>
+          {% if filtros.data_inicial or filtros.data_final %}
+            <div class="small opacity-75">
+              Período do histórico:
+              {{ filtros.data_inicial|default:"início" }} até {{ filtros.data_final|default:"hoje" }}
+            </div>
+          {% endif %}
+        </div>
+        <div class="report-hero-actions">
+          <button class="btn btn-light btn-sm" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i> Imprimir
+          </button>
+          <a href="?{% if export_query %}{{ export_query }}&{% endif %}export=pdf" class="btn btn-warning btn-sm text-dark fw-semibold">
+            <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF
+          </a>
+          <a href="?{% if export_query %}{{ export_query }}&{% endif %}export=xlsx" class="btn btn-outline-light btn-sm">
+            <i class="bi bi-file-earmark-excel me-1"></i> Exportar Excel
+          </a>
+          <a href="{% url 'ferramentas:ferramenta_list' %}" class="btn btn-outline-light btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 
-  <form method="get" class="card p-3 no-print mb-3">
-    <div class="row g-2 align-items-end">
+  <form method="get" class="card report-panel mb-4 no-print">
+    <div class="card-body">
       {% for id_sel in ids_selecionados %}
-      <input type="hidden" name="ids" value="{{ id_sel }}">
+        <input type="hidden" name="ids" value="{{ id_sel }}">
       {% endfor %}
-      <div class="col-12 col-md-3">
-        <label class="form-label mb-1">Ferramenta</label>
-        <select name="ferramenta" class="form-select form-select-sm">
-          <option value="">Todas</option>
-          {% for item in ferramentas_filtro_opcoes %}
-          <option value="{{ item.id }}" {% if filtros.ferramenta == item.id|stringformat:"s" %}selected{% endif %}>
-            {{ item.codigo }} - {{ item.nome }}
-          </option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-12 col-md-3">
-        <label class="form-label mb-1">Tipo</label>
-        <select name="tipo" class="form-select form-select-sm">
-          <option value="">Todos</option>
-          {% for valor, label in tipo_choices %}
-          <option value="{{ valor }}" {% if filtros.tipo == valor %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-12 col-md-2">
-        <label class="form-label mb-1">Origem</label>
-        <input type="text" name="origem" class="form-control form-control-sm" value="{{ filtros.origem }}" placeholder="Deposito, obra...">
-      </div>
-      <div class="col-12 col-md-2">
-        <label class="form-label mb-1">Destino</label>
-        <input type="text" name="destino" class="form-control form-control-sm" value="{{ filtros.destino }}" placeholder="Deposito, obra...">
-      </div>
-      <div class="col-12 col-md-2 d-flex gap-2">
-        <button type="submit" class="btn btn-primary btn-sm w-100">Filtrar</button>
-        <a href="{% url 'ferramentas:ferramenta_relatorio_impressao' %}" class="btn btn-outline-secondary btn-sm w-100">Limpar</a>
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-lg-3">
+          <label class="form-label fw-semibold">Ferramenta</label>
+          <select name="ferramenta" class="form-select">
+            <option value="">Todas</option>
+            {% for item in ferramentas_filtro_opcoes %}
+              <option value="{{ item.id }}" {% if filtros.ferramenta == item.id|stringformat:"s" %}selected{% endif %}>{{ item.codigo }} - {{ item.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-lg-2">
+          <label class="form-label fw-semibold">Fornecedor</label>
+          <select name="fornecedor" class="form-select">
+            <option value="">Todos</option>
+            {% for id, nome in fornecedor_choices %}
+              <option value="{{ id }}" {% if filtros.fornecedor == id|stringformat:"s" %}selected{% endif %}>{{ nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-lg-2">
+          <label class="form-label fw-semibold">Tipo</label>
+          <select name="tipo" class="form-select">
+            <option value="">Todos</option>
+            {% for valor, label in tipo_choices %}
+              <option value="{{ valor }}" {% if filtros.tipo == valor %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-lg-2">
+          <label class="form-label fw-semibold">Origem</label>
+          <select name="origem" class="form-select">
+            <option value="">Todas</option>
+            {% for obra in obra_choices %}
+              <option value="{{ obra }}" {% if filtros.origem == obra %}selected{% endif %}>{{ obra }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-lg-2">
+          <label class="form-label fw-semibold">Destino</label>
+          <select name="destino" class="form-select">
+            <option value="">Todos</option>
+            {% for obra in obra_choices %}
+              <option value="{{ obra }}" {% if filtros.destino == obra %}selected{% endif %}>{{ obra }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-lg-2">
+          <label class="form-label fw-semibold">Data inicial</label>
+          <input type="date" name="data_inicial" value="{{ filtros.data_inicial }}" class="form-control">
+        </div>
+        <div class="col-6 col-lg-2">
+          <label class="form-label fw-semibold">Data final</label>
+          <input type="date" name="data_final" value="{{ filtros.data_final }}" class="form-control">
+        </div>
+        <div class="col-12 col-lg-4 d-flex gap-2">
+          <button type="submit" class="btn btn-primary flex-fill">Filtrar</button>
+          <a href="{% url 'ferramentas:ferramenta_relatorio_impressao' %}" class="btn btn-outline-secondary flex-fill">Limpar filtros</a>
+        </div>
       </div>
     </div>
   </form>
 
-  <div class="mb-3">
-    <h2 class="h5 mb-1">Resumo Geral</h2>
-    <small class="text-muted">
-      Ferramentas selecionadas: {{ total_modelos }} modelo(s) | Total de unidades: {{ total_unidades }}
-      {% if filtros.ferramenta or filtros.tipo or filtros.origem or filtros.destino %}
-      | Filtros:
-      {% if filtros.ferramenta %} Ferramenta selecionada{% endif %}
-      {% if filtros.tipo %}{% if filtros.ferramenta %} - {% else %} {% endif %}Tipo "{{ filtros.tipo }}"{% endif %}
-      {% if filtros.origem %} - Origem "{{ filtros.origem }}"{% endif %}
-      {% if filtros.destino %} - Destino "{{ filtros.destino }}"{% endif %}
-      {% endif %}
-    </small>
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-xl-2">
+      <div class="card report-stat modelos"><div class="card-body"><div class="small text-muted">Modelos</div><div class="fs-4 fw-bold">{{ total_modelos }}</div></div></div>
+    </div>
+    <div class="col-6 col-xl-2">
+      <div class="card report-stat unidades"><div class="card-body"><div class="small text-muted">Unidades</div><div class="fs-4 fw-bold">{{ total_unidades }}</div></div></div>
+    </div>
+    <div class="col-6 col-xl-2">
+      <div class="card report-stat deposito"><div class="card-body"><div class="small text-muted">Depósito</div><div class="fs-4 fw-bold">{{ total_deposito }}</div></div></div>
+    </div>
+    <div class="col-6 col-xl-2">
+      <div class="card report-stat obra"><div class="card-body"><div class="small text-muted">Obras</div><div class="fs-4 fw-bold">{{ total_em_obra }}</div></div></div>
+    </div>
+    <div class="col-6 col-xl-2">
+      <div class="card report-stat manutencao"><div class="card-body"><div class="small text-muted">Manutenção</div><div class="fs-4 fw-bold">{{ total_manutencao }}</div></div></div>
+    </div>
+    <div class="col-6 col-xl-2">
+      <div class="card report-stat baixas"><div class="card-body"><div class="small text-muted">Baixas</div><div class="fs-4 fw-bold">{{ total_descartada }}</div></div></div>
+    </div>
   </div>
 
-  <div class="row g-2 mb-3">
-    <div class="col-6 col-md-4 col-lg-2"><div class="summary-card p-2"><div class="label">Deposito</div><div class="value">{{ total_deposito }}</div></div></div>
-    <div class="col-6 col-md-4 col-lg-2"><div class="summary-card p-2"><div class="label">Em Obra</div><div class="value">{{ total_em_obra }}</div></div></div>
-    <div class="col-6 col-md-4 col-lg-2"><div class="summary-card p-2"><div class="label">Manutencao</div><div class="value">{{ total_manutencao }}</div></div></div>
-    <div class="col-6 col-md-4 col-lg-2"><div class="summary-card p-2"><div class="label">Perdidas</div><div class="value">{{ total_perdida }}</div></div></div>
-    <div class="col-6 col-md-4 col-lg-2"><div class="summary-card p-2"><div class="label">Descartadas/Baixa</div><div class="value">{{ total_descartada }}</div></div></div>
-    <div class="col-6 col-md-4 col-lg-2"><div class="summary-card p-2"><div class="label">Modelos</div><div class="value">{{ total_modelos }}</div></div></div>
-  </div>
-
-  <div class="card mb-3">
-    <div class="card-header fw-semibold">Onde Estao Atualmente (por obra)</div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-sm mb-0">
-          <thead class="table-light">
-            <tr>
-              <th>Obra</th>
-              <th class="text-end">Quantidade</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in obras_distribuicao %}
-            <tr>
-              <td>{{ item.obra__nome|default:"Sem obra" }}</td>
-              <td class="text-end">{{ item.total }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="2" class="text-center text-muted py-3">Nenhuma ferramenta alocada em obra no momento.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
+  <div class="card report-panel mb-4">
+    <div class="report-section-title">
+      <div>
+        <h2>Distribuição por Ferramenta</h2>
+        <div class="report-caption">Resumo por modelo, fornecedor e saldo atual.</div>
       </div>
     </div>
-    {% if obras_distribuicao.paginator.num_pages > 1 %}
-    <div class="card-footer no-print">
-      <nav>
-        <ul class="pagination pagination-sm mb-0 flex-wrap">
-          {% if obras_distribuicao.has_next %}
-          <li class="page-item">
-            <a class="page-link" href="?{% if qs_sem_page_obras %}{{ qs_sem_page_obras }}&{% endif %}page_obra={{ obras_distribuicao.next_page_number }}">Proxima</a>
-          </li>
-          {% endif %}
-          {% for p in obras_distribuicao.paginator.page_range %}
-          <li class="page-item {% if p == obras_distribuicao.number %}active{% endif %}">
-            <a class="page-link" href="?{% if qs_sem_page_obras %}{{ qs_sem_page_obras }}&{% endif %}page_obra={{ p }}">{{ p }}</a>
-          </li>
-          {% endfor %}
-          <li class="page-item">
-            <a class="page-link" href="?{% if qs_sem_page_obras %}{{ qs_sem_page_obras }}&{% endif %}page_obra={{ obras_distribuicao.paginator.num_pages }}">Ultima</a>
-          </li>
-        </ul>
-      </nav>
-    </div>
-    {% endif %}
-  </div>
-
-  <div class="card mb-3">
-    <div class="card-header fw-semibold">Distribuicao por Ferramenta</div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-sm mb-0">
-          <thead class="table-light">
+    <div class="card-body pt-3">
+      <div class="report-desktop-table table-responsive">
+        <table class="table report-table align-middle mb-0">
+          <thead>
             <tr>
-              <th>Codigo</th>
+              <th>Código</th>
               <th>Ferramenta</th>
+              <th>Classificação</th>
+              <th>Fornecedor</th>
               <th class="text-end">Total</th>
-              <th class="text-end">Deposito</th>
+              <th class="text-end">Depósito</th>
               <th class="text-end">Obras</th>
-              <th class="text-end">Manutencao</th>
-              <th class="text-end">Perdida</th>
+              <th class="text-end">Manutenção</th>
             </tr>
           </thead>
           <tbody>
             {% for f in ferramentas %}
-            <tr>
-              <td class="font-monospace">{{ f.codigo }}</td>
-              <td>{{ f.nome }}</td>
-              <td class="text-end">{{ f.quantidade_total }}</td>
-              <td class="text-end">{{ f.quantidade_deposito }}</td>
-              <td class="text-end">{{ f.quantidade_em_obras }}</td>
-              <td class="text-end">{{ f.quantidade_manutencao }}</td>
-              <td class="text-end">{{ f.quantidade_perdida }}</td>
-            </tr>
+              <tr>
+                <td>{{ f.codigo }}</td>
+                <td>{{ f.nome }}</td>
+                <td>{{ f.get_classificacao_display }}</td>
+                <td>{{ f.fornecedor.nome|default:'-' }}</td>
+                <td class="text-end">{{ f.quantidade_total }}</td>
+                <td class="text-end">{{ f.quantidade_deposito }}</td>
+                <td class="text-end">{{ f.quantidade_em_obras }}</td>
+                <td class="text-end">{{ f.quantidade_manutencao }}</td>
+              </tr>
             {% empty %}
-            <tr><td colspan="7" class="text-center text-muted py-3">Nenhuma ferramenta para imprimir.</td></tr>
+              <tr><td colspan="8" class="text-center text-muted py-4">Nenhuma ferramenta para exibir.</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+
+      {% for f in ferramentas %}
+        <div class="report-mobile-card">
+          <div class="fw-semibold">{{ f.codigo }} - {{ f.nome }}</div>
+          <div class="small text-muted mb-2">{{ f.fornecedor.nome|default:'Sem fornecedor' }}</div>
+          <div class="report-badges">
+            <span class="badge bg-primary">{{ f.quantidade_total }} total</span>
+            <span class="badge bg-success">{{ f.quantidade_deposito }} depósito</span>
+            <span class="badge bg-info text-dark">{{ f.quantidade_em_obras }} obras</span>
+            <span class="badge bg-warning text-dark">{{ f.quantidade_manutencao }} manutenção</span>
+          </div>
+        </div>
+      {% empty %}{% endfor %}
     </div>
-    {% if ferramentas.paginator.num_pages > 1 %}
-    <div class="card-footer no-print">
-      <nav>
-        <ul class="pagination pagination-sm mb-0 flex-wrap">
-          {% if ferramentas.has_next %}
-          <li class="page-item">
-            <a class="page-link" href="?{% if qs_sem_page_ferramenta %}{{ qs_sem_page_ferramenta }}&{% endif %}page_ferramenta={{ ferramentas.next_page_number }}">Proxima</a>
-          </li>
-          {% endif %}
-          {% for p in ferramentas.paginator.page_range %}
-          <li class="page-item {% if p == ferramentas.number %}active{% endif %}">
-            <a class="page-link" href="?{% if qs_sem_page_ferramenta %}{{ qs_sem_page_ferramenta }}&{% endif %}page_ferramenta={{ p }}">{{ p }}</a>
-          </li>
-          {% endfor %}
-          <li class="page-item">
-            <a class="page-link" href="?{% if qs_sem_page_ferramenta %}{{ qs_sem_page_ferramenta }}&{% endif %}page_ferramenta={{ ferramentas.paginator.num_pages }}">Ultima</a>
-          </li>
-        </ul>
-      </nav>
-    </div>
-    {% endif %}
   </div>
 
-  <div class="card">
-    <div class="card-header fw-semibold">Historico de Movimentacoes (Lote)</div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-sm mb-0">
-          <thead class="table-light">
-            <tr>
-              <th>Data/Hora</th>
-              <th>Ferramenta</th>
-              <th>Tipo</th>
-              <th class="text-end">Qtd</th>
-              <th>Origem</th>
-              <th>Destino</th>
-              <th>Responsavel</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for m in movimentacoes %}
-            <tr>
-              <td>{{ m.data_movimentacao|date:"d/m/Y H:i" }}</td>
-              <td>{{ m.ferramenta.codigo }} - {{ m.ferramenta.nome }}</td>
-              <td>{{ m.get_tipo_display }}</td>
-              <td class="text-end">{{ m.quantidade }}</td>
-              <td>{% if m.obra_origem %}{{ m.obra_origem.nome }}{% else %}{{ m.origem_tipo|default:"-" }}{% endif %}</td>
-              <td>{% if m.obra_destino %}{{ m.obra_destino.nome }}{% else %}{{ m.destino_tipo|default:"-" }}{% endif %}</td>
-              <td>{% if m.responsavel %}{{ m.responsavel.username }}{% else %}-{% endif %}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="7" class="text-center text-muted py-3">Sem movimentacoes para as ferramentas selecionadas.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
+  <div class="row g-4">
+    <div class="col-12 col-xl-4">
+      <div class="card report-panel h-100">
+        <div class="report-section-title">
+          <div>
+            <h2>Onde Estão Atualmente</h2>
+            <div class="report-caption">Concentração das ferramentas em obras ativas.</div>
+          </div>
+        </div>
+        <div class="card-body pt-3">
+          <div class="table-responsive">
+            <table class="table report-table align-middle mb-0">
+              <thead>
+                <tr><th>Obra</th><th class="text-end">Quantidade</th></tr>
+              </thead>
+              <tbody>
+                {% for item in obras_distribuicao %}
+                  <tr><td>{{ item.obra__nome|default:"Sem obra" }}</td><td class="text-end">{{ item.total }}</td></tr>
+                {% empty %}
+                  <tr><td colspan="2" class="text-center text-muted py-4">Nenhuma ferramenta alocada em obra no momento.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
-    {% if movimentacoes.paginator.num_pages > 1 %}
-    <div class="card-footer no-print">
-      <nav>
-        <ul class="pagination pagination-sm mb-0 flex-wrap">
-          {% if movimentacoes.has_next %}
-          <li class="page-item">
-            <a class="page-link" href="?{% if qs_sem_page_historico %}{{ qs_sem_page_historico }}&{% endif %}page_historico={{ movimentacoes.next_page_number }}">Proxima</a>
-          </li>
-          {% endif %}
-          {% for p in movimentacoes.paginator.page_range %}
-          <li class="page-item {% if p == movimentacoes.number %}active{% endif %}">
-            <a class="page-link" href="?{% if qs_sem_page_historico %}{{ qs_sem_page_historico }}&{% endif %}page_historico={{ p }}">{{ p }}</a>
-          </li>
-          {% endfor %}
-          <li class="page-item">
-            <a class="page-link" href="?{% if qs_sem_page_historico %}{{ qs_sem_page_historico }}&{% endif %}page_historico={{ movimentacoes.paginator.num_pages }}">Ultima</a>
-          </li>
-        </ul>
-      </nav>
+
+    <div class="col-12 col-xl-8">
+      <div class="card report-panel h-100">
+        <div class="report-section-title">
+          <div>
+            <h2>Histórico de Movimentações</h2>
+            <div class="report-caption">Últimos registros filtrados para conferência rápida.</div>
+          </div>
+        </div>
+        <div class="card-body pt-3">
+          <div class="table-responsive">
+            <table class="table report-table align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Data/Hora</th>
+                  <th>Ferramenta</th>
+                  <th>Tipo</th>
+                  <th class="text-end">Qtd</th>
+                  <th>Origem</th>
+                  <th>Destino</th>
+                  <th>Responsável</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for m in movimentacoes %}
+                  <tr>
+                    <td>{{ m.data_movimentacao|date:"d/m/Y H:i" }}</td>
+                    <td>{{ m.ferramenta.codigo }} - {{ m.ferramenta.nome }}</td>
+                    <td>{{ m.get_tipo_display }}</td>
+                    <td class="text-end">{{ m.quantidade }}</td>
+                    <td>{{ m.get_origem_label }}</td>
+                    <td>{{ m.get_destino_label }}</td>
+                    <td>{{ m.responsavel.username|default:'-' }}</td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="7" class="text-center text-muted py-4">Sem movimentações para as ferramentas selecionadas.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
-    {% endif %}
   </div>
 </div>
 {% endblock %}

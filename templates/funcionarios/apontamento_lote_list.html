@@ -2,285 +2,691 @@
 {% load static %}
 {% load obras_extras %}
 
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  :root {
+    --lote-bg: linear-gradient(180deg, #f5f1ea 0%, #edf4fb 100%);
+    --lote-ink: #15344f;
+    --lote-soft: #66788a;
+    --lote-border: #d9e4ee;
+    --lote-shadow: 0 18px 34px rgba(15, 23, 42, .08);
+  }
+  body {
+    background: var(--lote-bg);
+  }
+  .lote-shell {
+    max-width: 1440px;
+  }
+  .lote-hero {
+    background:
+      radial-gradient(circle at top right, rgba(255,255,255,.24), transparent 30%),
+      linear-gradient(135deg, #12344d 0%, #2a628f 55%, #8ba86b 100%);
+    color: #fff;
+    border: none;
+    border-radius: 1.3rem;
+    box-shadow: 0 24px 48px rgba(18, 52, 77, .22);
+  }
+  .lote-hero .text-muted {
+    color: rgba(255,255,255,.78) !important;
+  }
+  .lote-hero .btn {
+    border-radius: .9rem;
+    font-weight: 700;
+  }
+  .lote-panel {
+    border: 1px solid var(--lote-border);
+    border-radius: 1.2rem;
+    box-shadow: var(--lote-shadow);
+    overflow: hidden;
+  }
+  .lote-panel .card-body {
+    padding: 1.2rem;
+  }
+  .lote-filter-wrap {
+    background: linear-gradient(180deg, #f9fbfd 0%, #f1f6fb 100%);
+    border: 1px solid #e0e9f2;
+    border-radius: 1rem;
+    padding: 1rem;
+  }
+  .lote-filter-grid .form-control,
+  .lote-filter-grid .form-select {
+    min-height: 46px;
+    border-radius: .9rem;
+    border: 1px solid #ccd9e7;
+    box-shadow: inset 0 1px 2px rgba(15,23,42,.03);
+  }
+  .lote-filter-grid .form-control:focus,
+  .lote-filter-grid .form-select:focus {
+    border-color: #5d92c3;
+    box-shadow: 0 0 0 .2rem rgba(42, 98, 143, .12);
+  }
+  .lote-filter-block {
+    background: rgba(255,255,255,.82);
+    border: 1px solid #e1e9f2;
+    border-radius: 1rem;
+    padding: .8rem;
+    min-height: 100%;
+  }
+  .lote-filter-label {
+    display: block;
+    font-size: .75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #5b7288;
+    margin-bottom: .45rem;
+  }
+  .lote-period-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .65rem;
+  }
+  .lote-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .lote-stat {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 12px 28px rgba(15,23,42,.06);
+    padding: 1rem 1.1rem;
+  }
+  .lote-stat.stat-registros { background: linear-gradient(135deg, #dcecff 0%, #c2defd 100%); }
+  .lote-stat.stat-periodo { background: linear-gradient(135deg, #fff2cd 0%, #ffe0a1 100%); }
+  .lote-stat.stat-pagina { background: linear-gradient(135deg, #dcf7e8 0%, #beeecf 100%); }
+  .lote-stat .label {
+    font-size: .78rem;
+    color: rgba(21,52,79,.74);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+  .lote-stat .value {
+    color: var(--lote-ink);
+    font-size: 1.45rem;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+  .lote-table-wrap {
+    border: 1px solid #e1e9f2;
+    border-radius: 1rem;
+    overflow: hidden;
+    background: #fff;
+  }
+  .lote-table {
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    width: 100%;
+  }
+  .lote-table thead th {
+    background: linear-gradient(180deg, #16324f 0%, #234c73 100%);
+    color: #fff;
+    font-size: .76rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    border: none;
+    padding: 1rem .85rem;
+    white-space: normal;
+  }
+  .lote-table tbody td {
+    padding: 1rem .85rem;
+    border-color: #e7eef6;
+    vertical-align: middle;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .lote-table tbody tr:nth-child(odd) {
+    background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+  }
+  .lote-table tbody tr:nth-child(even) {
+    background: linear-gradient(180deg, #f7fbff 0%, #f2f7fd 100%);
+  }
+  .lote-table tbody tr:hover {
+    background: linear-gradient(180deg, #edf6ff 0%, #e6f1fd 100%);
+  }
+  .lote-table a {
+    text-decoration: none;
+    font-weight: 700;
+  }
+  .lote-table .text-muted {
+    font-size: .84rem;
+  }
+  .lote-table .badge {
+    border-radius: 999px;
+    padding: .45rem .65rem;
+    font-weight: 700;
+  }
+  .lote-etapa .badge {
+    display: inline-block;
+    max-width: 100%;
+    white-space: normal;
+    line-height: 1.2;
+    text-align: center;
+  }
+  .lote-producao strong {
+    display: inline-block;
+    margin-right: .25rem;
+  }
+  .lote-producao {
+    line-height: 1.3;
+  }
+  .lote-producao small {
+    margin-top: .2rem;
+  }
+  .lote-obra {
+    width: 17%;
+  }
+  .lote-etapa {
+    width: 16%;
+  }
+  .lote-producao {
+    width: 19%;
+  }
+  .lote-acoes .btn {
+    border-radius: .75rem;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .lote-acoes {
+    width: 110px;
+    white-space: nowrap;
+  }
+  .lote-acoes .btn-group {
+    flex-wrap: nowrap;
+    gap: .35rem;
+  }
+  .lote-table td:nth-child(1) { width: 9%; }
+  .lote-table td:nth-child(5) { width: 13%; }
+  .lote-table td:nth-child(6) { width: 8%; }
+  .lote-table td:nth-child(7) { width: 8%; }
+  .lote-table td:nth-child(8) { width: 110px; }
+  .lote-table small.d-block {
+    line-height: 1.25;
+  }
+  .lote-table td:nth-child(3),
+  .lote-table td:nth-child(4) {
+    vertical-align: top;
+  }
+  .lote-pagination .pagination {
+    gap: .25rem;
+    flex-wrap: wrap;
+  }
+  .lote-pagination .page-link {
+    border-radius: .75rem;
+  }
+  .lote-mobile-list {
+    display: none;
+  }
+  .lote-mobile-card {
+    border: 1px solid #dde8f2;
+    border-radius: 1.15rem;
+    padding: 1rem;
+    background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+    box-shadow: 0 14px 28px rgba(15, 23, 42, .08);
+  }
+  .lote-mobile-card + .lote-mobile-card {
+    margin-top: 1rem;
+  }
+  .lote-mobile-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: .85rem;
+    margin-bottom: .9rem;
+  }
+  .lote-mobile-date {
+    color: var(--lote-ink);
+    font-weight: 800;
+    font-size: 1rem;
+  }
+  .lote-mobile-actions {
+    display: flex;
+    gap: .4rem;
+    flex-shrink: 0;
+  }
+  .lote-mobile-actions .btn {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: .8rem;
+    padding: 0;
+  }
+  .lote-mobile-grid {
+    display: grid;
+    gap: .75rem;
+  }
+  .lote-mobile-item {
+    background: rgba(255,255,255,.86);
+    border: 1px solid #e4edf5;
+    border-radius: .95rem;
+    padding: .75rem .85rem;
+  }
+  .lote-mobile-label {
+    display: block;
+    font-size: .72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #6a8094;
+    margin-bottom: .28rem;
+  }
+  .lote-mobile-value {
+    color: var(--lote-ink);
+    font-weight: 700;
+    line-height: 1.35;
+  }
+  .lote-mobile-value a {
+    color: #1d5fc1;
+    text-decoration: none;
+  }
+  .lote-mobile-value small {
+    display: block;
+    margin-top: .18rem;
+    color: #64788c;
+    font-weight: 500;
+  }
+  .lote-mobile-funcs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    margin-top: .35rem;
+  }
+  .lote-mobile-funcs span {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .35rem .6rem;
+    border-radius: 999px;
+    background: #edf4ff;
+    color: #1a4f84;
+    font-size: .8rem;
+    font-weight: 700;
+  }
+  @media (max-width: 991.98px) {
+    .lote-stats {
+      grid-template-columns: 1fr;
+    }
+    .lote-table thead th,
+    .lote-table tbody td {
+      padding: .8rem .55rem;
+      font-size: .88rem;
+    }
+    .lote-acoes {
+      width: 96px;
+    }
+    .lote-acoes .btn {
+      width: 30px;
+      height: 30px;
+    }
+  }
+  @media (max-width: 767.98px) {
+    .lote-shell {
+      padding-left: .35rem;
+      padding-right: .35rem;
+    }
+    .lote-panel .card-body {
+      padding: 1rem;
+    }
+    .lote-period-grid {
+      grid-template-columns: 1fr;
+    }
+    .lote-hero .btn {
+      flex: 1 1 auto;
+    }
+    .lote-table-wrap {
+      display: none;
+    }
+    .lote-mobile-list {
+      display: block;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2><i class="bi bi-list-check text-primary"></i> {{ title }}</h2>
-            <small class="text-muted">Apontamentos em lote registrados</small>
-        </div>
-        <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Novo Apontamento em Lote
-        </a>
+<div class="container-fluid mt-4 lote-shell">
+  <div class="lote-hero p-4 mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+      <div>
+        <h2 class="mb-1"><i class="bi bi-list-check"></i> {{ title }}</h2>
+        <small class="text-muted">Visualize, filtre e acompanhe os apontamentos em lote com mais clareza.</small>
+      </div>
+      <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-light">
+        <i class="bi bi-plus-circle"></i> Novo Apontamento em Lote
+      </a>
     </div>
+  </div>
 
-    <!-- Filtros -->
-    <div class="card mb-4 shadow-sm">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">Obra</label>
-                    <select name="obra" class="form-select">
-                        <option value="">Todas as obras</option>
-                        {% for obra in obras %}
-                        <option value="{{ obra.pk }}">{{ obra.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Data Início</label>
-                    <input type="date" name="data_inicio" class="form-control">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Data Fim</label>
-                    <input type="date" name="data_fim" class="form-control">
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Filtrar
+  <div class="card lote-panel mb-4">
+    <div class="card-body">
+      <div class="lote-filter-wrap">
+        <div class="mb-3">
+          <h5 class="mb-1">Filtros</h5>
+          <small class="text-muted">Use obra e período para encontrar rapidamente os lotes desejados.</small>
+        </div>
+        <form method="get" class="row g-3 lote-filter-grid">
+          <div class="col-12 col-md-4">
+            <div class="lote-filter-block">
+              <label class="lote-filter-label">Obra</label>
+              <select name="obra" class="form-select">
+                <option value="">Todas as obras</option>
+                {% for obra in obras %}
+                <option value="{{ obra.pk }}" {% if request.GET.obra == obra.pk|stringformat:"s" %}selected{% endif %}>{{ obra.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="col-12 col-md-5">
+            <div class="lote-filter-block">
+              <label class="lote-filter-label">Período</label>
+              <div class="lote-period-grid">
+                <input type="date" name="data_inicio" class="form-control" value="{{ request.GET.data_inicio }}">
+                <input type="date" name="data_fim" class="form-control" value="{{ request.GET.data_fim }}">
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="lote-filter-block d-flex align-items-end">
+              <div class="d-flex gap-2 w-100">
+                <button type="submit" class="btn btn-primary w-100">
+                  <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{% url 'funcionarios:apontamento_lote_list' %}" class="btn btn-outline-secondary w-100">Limpar</a>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="card lote-panel shadow">
+    <div class="card-body">
+      {% if lotes %}
+      <div class="lote-stats">
+        <div class="lote-stat stat-registros">
+          <div class="label">Registros</div>
+          <div class="value">{{ lotes.paginator.count }}</div>
+          <small class="text-muted">{{ lotes.paginator.count|pluralize:"registro,registros" }} encontrados</small>
+        </div>
+        <div class="lote-stat stat-periodo">
+          <div class="label">Faixa Exibida</div>
+          <div class="value">{{ lotes.start_index }} - {{ lotes.end_index }}</div>
+          <small class="text-muted">Resultados desta página</small>
+        </div>
+        <div class="lote-stat stat-pagina">
+          <div class="label">Paginação</div>
+          <div class="value">{{ lotes.number }}/{{ lotes.paginator.num_pages }}</div>
+          <small class="text-muted">20 registros por página</small>
+        </div>
+      </div>
+
+      <div class="lote-table-wrap">
+          <table class="table lote-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Obra</th>
+                <th>Etapa</th>
+                <th>Produção</th>
+                <th>Funcionários</th>
+                <th>Clima</th>
+                <th>Criado por</th>
+                <th class="text-center">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for lote in lotes %}
+              <tr>
+                <td><strong>{{ lote.data|date:"d/m/Y" }}</strong></td>
+                <td class="lote-obra">
+                  <a href="{% url 'obras:obra_detail' lote.obra.pk %}">{{ lote.obra.nome }}</a>
+                </td>
+                <td class="lote-etapa">
+                  {% if lote.etapa %}
+                  <span class="badge bg-light text-dark border">{{ lote.etapa.get_numero_etapa_display }}</span>
+                  {% else %}
+                  <span class="text-muted">-</span>
+                  {% endif %}
+                </td>
+                <td class="lote-producao">
+                  {% if lote.producao_total and lote.producao_total > 0 %}
+                    <strong>{{ lote.producao_total }}</strong>
+                    {% if lote.unidade_medida == 'blocos' %}blocos{% elif lote.unidade_medida == 'm2' %}m²{% elif lote.unidade_medida == 'percentual' %}%{% endif %}
+                  {% endif %}
+
+                  {% with detalhes=lote.get_detalhes_producao %}
+                    {% if detalhes %}
+                      {% for detalhe in detalhes %}
+                        <small class="d-block text-muted">{{ detalhe }}</small>
+                      {% endfor %}
+                    {% elif not lote.producao_total or lote.producao_total == 0 %}
+                      <span class="text-muted">-</span>
+                    {% endif %}
+                  {% endwith %}
+                </td>
+                <td>
+                  <span class="badge bg-primary">{{ lote.funcionarios.count }}</span>
+                  {% for fl in lote.funcionarios.all|slice:":3" %}
+                  <small class="d-block">{{ fl.funcionario.nome_completo }}</small>
+                  {% endfor %}
+                  {% if lote.funcionarios.count > 3 %}
+                  <small class="text-muted">+ {{ lote.funcionarios.count|add:"-3" }} mais</small>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge {% if lote.clima == 'sol' %}bg-warning text-dark{% elif lote.clima == 'chuva' %}bg-info text-dark{% else %}bg-secondary{% endif %}">
+                    {{ lote.get_clima_display }}
+                  </span>
+                </td>
+                <td>{{ lote.criado_por.username }}</td>
+                <td class="text-center lote-acoes">
+                  <div class="btn-group" role="group">
+                    <a href="{% url 'funcionarios:apontamento_lote_detail' lote.pk %}" class="btn btn-sm btn-outline-info" title="Ver detalhes">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                    <a href="{% url 'funcionarios:apontamento_lote_edit' lote.pk %}" class="btn btn-sm btn-outline-warning" title="Editar">
+                      <i class="bi bi-pencil"></i>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modal-excluir-{{ lote.pk }}" title="Excluir">
+                      <i class="bi bi-trash"></i>
                     </button>
-                </div>
-            </form>
-        </div>
-    </div>
+                  </div>
+                </td>
+              </tr>
 
-    <!-- Lista -->
-    <div class="card shadow">
-        <div class="card-body">
-            {% if lotes %}
-            <!-- Contador de registros -->
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                    <span class="badge bg-primary">
-                        {{ lotes.paginator.count }} {{ lotes.paginator.count|pluralize:"registro,registros" }}
-                    </span>
-                    <small class="text-muted ms-2">
-                        Exibindo {{ lotes.start_index }} - {{ lotes.end_index }}
-                    </small>
+              <div class="modal fade" id="modal-excluir-{{ lote.pk }}" tabindex="-1">
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                      <h5 class="modal-title">Confirmar Exclusão</h5>
+                      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                      <p><strong>Tem certeza que deseja excluir este apontamento?</strong></p>
+                      <ul class="list-unstyled">
+                        <li><strong>Data:</strong> {{ lote.data|date:"d/m/Y" }}</li>
+                        <li><strong>Obra:</strong> {{ lote.obra.nome }}</li>
+                        <li><strong>Etapa:</strong> {% if lote.etapa %}{{ lote.etapa.get_numero_etapa_display }}{% else %}-{% endif %}</li>
+                        <li><strong>Funcionários:</strong> {{ lote.funcionarios.count }}</li>
+                      </ul>
+                      <div class="alert alert-warning mb-0">
+                        <strong>Atenção:</strong>
+                        <ul class="mb-0 mt-1">
+                          <li>Registros de produção serão excluídos</li>
+                          <li>Valores serão removidos das etapas</li>
+                          <li>Relatórios serão recalculados</li>
+                          <li>Esta ação não pode ser desfeita</li>
+                        </ul>
+                      </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                      <form method="post" action="{% url 'funcionarios:apontamento_lote_delete' lote.pk %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                          <i class="bi bi-trash"></i> Sim, Excluir
+                        </button>
+                      </form>
+                    </div>
+                  </div>
                 </div>
-                <small class="text-muted">
-                    20 registros por página
-                </small>
+              </div>
+              {% endfor %}
+            </tbody>
+          </table>
+      </div>
+
+      <div class="lote-mobile-list">
+        {% for lote in lotes %}
+        <div class="lote-mobile-card">
+          <div class="lote-mobile-top">
+            <div class="lote-mobile-date">{{ lote.data|date:"d/m/Y" }}</div>
+            <div class="lote-mobile-actions">
+              <a href="{% url 'funcionarios:apontamento_lote_detail' lote.pk %}" class="btn btn-sm btn-outline-info" title="Ver detalhes">
+                <i class="bi bi-eye"></i>
+              </a>
+              <a href="{% url 'funcionarios:apontamento_lote_edit' lote.pk %}" class="btn btn-sm btn-outline-warning" title="Editar">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modal-excluir-{{ lote.pk }}" title="Excluir">
+                <i class="bi bi-trash"></i>
+              </button>
             </div>
-            
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Data</th>
-                            <th>Obra</th>
-                            <th>Etapa</th>
-                            <th>Produção</th>
-                            <th>Funcionários</th>
-                            <th>Clima</th>
-                            <th>Criado por</th>
-                            <th class="text-center">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for lote in lotes %}
-                        <tr class="{{ lote_cor_map|get_item:lote.pk }}">
-                            <td>{{ lote.data|date:"d/m/Y" }}</td>
-                            <td>
-                                <a href="{% url 'obras:obra_detail' lote.obra.pk %}">
-                                    {{ lote.obra.nome }}
-                                </a>
-                            </td>
-                            <td>
-                                {% if lote.etapa %}
-                                {{ lote.etapa.get_numero_etapa_display }}
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if lote.producao_total and lote.producao_total > 0 %}
-                                    <strong>{{ lote.producao_total }}</strong>
-                                    {% if lote.unidade_medida == 'blocos' %}blocos{% elif lote.unidade_medida == 'm2' %}m²{% elif lote.unidade_medida == 'percentual' %}%{% endif %}
-                                {% endif %}
-                                
-                                {% with detalhes=lote.get_detalhes_producao %}
-                                    {% if detalhes %}
-                                        {% for detalhe in detalhes %}
-                                            <small class="d-block text-muted">{{ detalhe }}</small>
-                                        {% endfor %}
-                                    {% elif not lote.producao_total or lote.producao_total == 0 %}
-                                        <span class="text-muted">-</span>
-                                    {% endif %}
-                                {% endwith %}
-                            </td>
-                            <td>
-                                <span class="badge bg-primary">{{ lote.funcionarios.count }}</span>
-                                {% for fl in lote.funcionarios.all|slice:":3" %}
-                                <small class="d-block">{{ fl.funcionario.nome_completo }}</small>
-                                {% endfor %}
-                                {% if lote.funcionarios.count > 3 %}
-                                <small class="text-muted">+ {{ lote.funcionarios.count|add:"-3" }} mais</small>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <span class="badge 
-                                    {% if lote.clima == 'sol' %}bg-warning text-dark
-                                    {% elif lote.clima == 'chuva' %}bg-info
-                                    {% else %}bg-secondary{% endif %}">
-                                    {{ lote.get_clima_display }}
-                                </span>
-                            </td>
-                            <td>{{ lote.criado_por.username }}</td>
-                            <td class="text-center">
-                                <div class="btn-group" role="group">
-                                    <a href="{% url 'funcionarios:apontamento_lote_detail' lote.pk %}" 
-                                       class="btn btn-sm btn-outline-info" title="Ver detalhes">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    <a href="{% url 'funcionarios:apontamento_lote_edit' lote.pk %}" 
-                                       class="btn btn-sm btn-outline-warning" title="Editar">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <button type="button" 
-                                            class="btn btn-sm btn-outline-danger"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#modal-excluir-{{ lote.pk }}"
-                                            title="Excluir">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
+          </div>
 
-                        <!-- Modal de confirmação de exclusão -->
-                        <div class="modal fade" id="modal-excluir-{{ lote.pk }}" tabindex="-1">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header bg-danger text-white">
-                                        <h5 class="modal-title">⚠️ Confirmar Exclusão</h5>
-                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <p><strong>Tem certeza que deseja excluir este apontamento?</strong></p>
-                                        <ul class="list-unstyled">
-                                            <li><strong>Data:</strong> {{ lote.data|date:"d/m/Y" }}</li>
-                                            <li><strong>Obra:</strong> {{ lote.obra.nome }}</li>
-                                            <li><strong>Etapa:</strong> {% if lote.etapa %}{{ lote.etapa.get_numero_etapa_display }}{% else %}-{% endif %}</li>
-                                            <li><strong>Funcionários:</strong> {{ lote.funcionarios.count }}</li>
-                                        </ul>
-                                        <div class="alert alert-warning mb-0">
-                                            <i class="bi bi-exclamation-triangle"></i>
-                                            <strong>ATENÇÃO:</strong>
-                                            <ul class="mb-0 mt-1">
-                                                <li>Registros de produção serão <strong>EXCLUÍDOS</strong></li>
-                                                <li>Valores serão <strong>REMOVIDOS</strong> das etapas</li>
-                                                <li>Relatórios serão recalculados</li>
-                                                <li>Esta ação <strong>NÃO</strong> pode ser desfeita!</li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                        <form method="post" action="{% url 'funcionarios:apontamento_lote_delete' lote.pk %}" style="display:inline;">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-danger">
-                                                <i class="bi bi-trash"></i> Sim, Excluir
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </tbody>
-                </table>
+          <div class="lote-mobile-grid">
+            <div class="lote-mobile-item">
+              <span class="lote-mobile-label">Obra</span>
+              <div class="lote-mobile-value">
+                <a href="{% url 'obras:obra_detail' lote.obra.pk %}">{{ lote.obra.nome }}</a>
+              </div>
             </div>
 
-            <!-- Paginação -->
-            {% if lotes.has_other_pages %}
-            <nav aria-label="Navegação de páginas" class="mt-4">
-                <ul class="pagination justify-content-center">
-                    <!-- Primeira página -->
-                    {% if lotes.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page=1{% if request.GET.obra %}&obra={{ request.GET.obra }}{% endif %}{% if request.GET.data_inicio %}&data_inicio={{ request.GET.data_inicio }}{% endif %}{% if request.GET.data_fim %}&data_fim={{ request.GET.data_fim }}{% endif %}" aria-label="Primeira">
-                            <span aria-hidden="true">&laquo;&laquo;</span>
-                        </a>
-                    </li>
-                    {% else %}
-                    <li class="page-item disabled">
-                        <span class="page-link">&laquo;&laquo;</span>
-                    </li>
-                    {% endif %}
-                    
-                    <!-- Anterior -->
-                    {% if lotes.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ lotes.previous_page_number }}{% if request.GET.obra %}&obra={{ request.GET.obra }}{% endif %}{% if request.GET.data_inicio %}&data_inicio={{ request.GET.data_inicio }}{% endif %}{% if request.GET.data_fim %}&data_fim={{ request.GET.data_fim }}{% endif %}" aria-label="Anterior">
-                            <span aria-hidden="true">&laquo;</span>
-                        </a>
-                    </li>
-                    {% else %}
-                    <li class="page-item disabled">
-                        <span class="page-link">&laquo;</span>
-                    </li>
-                    {% endif %}
-                    
-                    <!-- Números das páginas -->
-                    {% for num in lotes.paginator.page_range %}
-                        {% if lotes.number == num %}
-                            <li class="page-item active" aria-current="page">
-                                <span class="page-link">{{ num }}</span>
-                            </li>
-                        {% elif num > lotes.number|add:'-3' and num < lotes.number|add:'3' %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ num }}{% if request.GET.obra %}&obra={{ request.GET.obra }}{% endif %}{% if request.GET.data_inicio %}&data_inicio={{ request.GET.data_inicio }}{% endif %}{% if request.GET.data_fim %}&data_fim={{ request.GET.data_fim }}{% endif %}">{{ num }}</a>
-                            </li>
-                        {% endif %}
+            <div class="lote-mobile-item">
+              <span class="lote-mobile-label">Etapa</span>
+              <div class="lote-mobile-value">
+                {% if lote.etapa %}
+                <span class="badge bg-light text-dark border">{{ lote.etapa.get_numero_etapa_display }}</span>
+                {% else %}
+                <span class="text-muted">-</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="lote-mobile-item">
+              <span class="lote-mobile-label">Produção</span>
+              <div class="lote-mobile-value">
+                {% if lote.producao_total and lote.producao_total > 0 %}
+                  <strong>{{ lote.producao_total }}</strong>
+                  {% if lote.unidade_medida == 'blocos' %}blocos{% elif lote.unidade_medida == 'm2' %}m²{% elif lote.unidade_medida == 'percentual' %}%{% endif %}
+                {% endif %}
+
+                {% with detalhes=lote.get_detalhes_producao %}
+                  {% if detalhes %}
+                    {% for detalhe in detalhes %}
+                      <small>{{ detalhe }}</small>
                     {% endfor %}
-                    
-                    <!-- Próxima -->
-                    {% if lotes.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ lotes.next_page_number }}{% if request.GET.obra %}&obra={{ request.GET.obra }}{% endif %}{% if request.GET.data_inicio %}&data_inicio={{ request.GET.data_inicio }}{% endif %}{% if request.GET.data_fim %}&data_fim={{ request.GET.data_fim }}{% endif %}" aria-label="Próxima">
-                            <span aria-hidden="true">&raquo;</span>
-                        </a>
-                    </li>
-                    {% else %}
-                    <li class="page-item disabled">
-                        <span class="page-link">&raquo;</span>
-                    </li>
-                    {% endif %}
-                    
-                    <!-- Última página -->
-                    {% if lotes.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ lotes.paginator.num_pages }}{% if request.GET.obra %}&obra={{ request.GET.obra }}{% endif %}{% if request.GET.data_inicio %}&data_inicio={{ request.GET.data_inicio }}{% endif %}{% if request.GET.data_fim %}&data_fim={{ request.GET.data_fim }}{% endif %}" aria-label="Última">
-                            <span aria-hidden="true">&raquo;&raquo;</span>
-                        </a>
-                    </li>
-                    {% else %}
-                    <li class="page-item disabled">
-                        <span class="page-link">&raquo;&raquo;</span>
-                    </li>
-                    {% endif %}
-                </ul>
-                
-                <!-- Informação de páginas -->
-                <div class="text-center text-muted mt-2">
-                    <small>
-                        Página {{ lotes.number }} de {{ lotes.paginator.num_pages }} 
-                        ({{ lotes.paginator.count }} {{ lotes.paginator.count|pluralize:"registro,registros" }})
-                    </small>
-                </div>
-            </nav>
-            {% endif %}
-            {% else %}
-            <div class="text-center py-5">
-                <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
-                <p class="text-muted mt-3">Nenhum apontamento em lote encontrado</p>
-                <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-primary">
-                    Criar Primeiro Apontamento
-                </a>
+                  {% elif not lote.producao_total or lote.producao_total == 0 %}
+                    <span class="text-muted">-</span>
+                  {% endif %}
+                {% endwith %}
+              </div>
             </div>
-            {% endif %}
+
+            <div class="lote-mobile-item">
+              <span class="lote-mobile-label">Funcionários</span>
+              <div class="lote-mobile-value">
+                <span class="badge bg-primary">{{ lote.funcionarios.count }}</span>
+                <div class="lote-mobile-funcs">
+                  {% for fl in lote.funcionarios.all|slice:":3" %}
+                  <span><i class="bi bi-person-fill"></i> {{ fl.funcionario.nome_completo }}</span>
+                  {% endfor %}
+                  {% if lote.funcionarios.count > 3 %}
+                  <span>+ {{ lote.funcionarios.count|add:"-3" }} mais</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-2">
+              <div class="col-6">
+                <div class="lote-mobile-item h-100">
+                  <span class="lote-mobile-label">Clima</span>
+                  <div class="lote-mobile-value">
+                    <span class="badge {% if lote.clima == 'sol' %}bg-warning text-dark{% elif lote.clima == 'chuva' %}bg-info text-dark{% else %}bg-secondary{% endif %}">
+                      {{ lote.get_clima_display }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="lote-mobile-item h-100">
+                  <span class="lote-mobile-label">Criado por</span>
+                  <div class="lote-mobile-value">{{ lote.criado_por.username }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+        {% endfor %}
+      </div>
+
+      {% if lotes.has_other_pages %}
+      <nav aria-label="Navegação de páginas" class="mt-4 lote-pagination">
+        <ul class="pagination justify-content-center">
+          {% if lotes.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?page=1{% if request.GET.obra %}&obra={{ request.GET.obra }}{% endif %}{% if request.GET.data_inicio %}&data_inicio={{ request.GET.data_inicio }}{% endif %}{% if request.GET.data_fim %}&data_fim={{ request.GET.data_fim }}{% endif %}">Primeira</a>
+          </li>
+          {% else %}
+          <li class="page-item disabled"><span class="page-link">Primeira</span></li>
+          {% endif %}
+
+          {% for num in lotes.paginator.page_range %}
+            {% if lotes.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > lotes.number|add:'-3' and num < lotes.number|add:'3' %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ num }}{% if request.GET.obra %}&obra={{ request.GET.obra }}{% endif %}{% if request.GET.data_inicio %}&data_inicio={{ request.GET.data_inicio }}{% endif %}{% if request.GET.data_fim %}&data_fim={{ request.GET.data_fim }}{% endif %}">{{ num }}</a>
+            </li>
+            {% endif %}
+          {% endfor %}
+
+          {% if lotes.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ lotes.paginator.num_pages }}{% if request.GET.obra %}&obra={{ request.GET.obra }}{% endif %}{% if request.GET.data_inicio %}&data_inicio={{ request.GET.data_inicio }}{% endif %}{% if request.GET.data_fim %}&data_fim={{ request.GET.data_fim }}{% endif %}">Ultima</a>
+          </li>
+          {% else %}
+          <li class="page-item disabled"><span class="page-link">Ultima</span></li>
+          {% endif %}
+        </ul>
+
+        <div class="text-center text-muted mt-2">
+          <small>Página {{ lotes.number }} de {{ lotes.paginator.num_pages }} ({{ lotes.paginator.count }} {{ lotes.paginator.count|pluralize:"registro,registros" }})</small>
+        </div>
+      </nav>
+      {% endif %}
+      {% else %}
+      <div class="text-center py-5">
+        <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+        <p class="text-muted mt-3">Nenhum apontamento em lote encontrado</p>
+        <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-primary">
+          Criar Primeiro Apontamento
+        </a>
+      </div>
+      {% endif %}
     </div>
+  </div>
 </div>
 {% endblock %}

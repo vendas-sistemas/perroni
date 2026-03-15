@@ -12,6 +12,7 @@ class ModulePermissionMiddleware:
         'funcionarios',
         'ferramentas',
         'clientes',
+        'fornecedores',
         'analytics',
         'relatorios',
     }

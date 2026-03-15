@@ -12,6 +12,7 @@ AREAS: List[Dict[str, str]] = [
     {'key': 'analytics', 'label': 'Analytics'},
     {'key': 'relatorios', 'label': 'Relatórios'},
     {'key': 'clientes', 'label': 'Clientes'},
+    {'key': 'fornecedores', 'label': 'Fornecedores'},
 ]
 
 AREA_KEYS = [a['key'] for a in AREAS]
@@ -29,7 +30,7 @@ def resolve_area_from_request(app_name: str, view_name: str) -> str:
             return 'funcionarios_fechamentos'
         return 'funcionarios'
 
-    if app_name in {'obras', 'ferramentas', 'analytics', 'relatorios', 'clientes'}:
+    if app_name in {'obras', 'ferramentas', 'analytics', 'relatorios', 'clientes', 'fornecedores'}:
         return app_name
 
     return ''

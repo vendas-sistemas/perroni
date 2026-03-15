@@ -2,83 +2,294 @@
 
 {% block title %}{{ title }}{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-  <div class="row">
-    <div class="col-md-8 offset-md-2">
-      <div class="card">
-        <div class="card-body">
-          <h4 class="card-title mb-3">{{ title }}</h4>
-          <form method="post" id="movimentacao-form">
-            {% csrf_token %}
-            <input type="hidden" id="id_itens_json" name="itens_json" value="">
-            {% for field in form %}
-              <div class="mb-3" id="wrap_{{ field.name }}">
-                {{ field.label_tag }}
-                {{ field }}
-                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-                {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-              </div>
-              {% if field.name == 'ferramenta' %}
-                <div class="card border-info mb-3">
-                  <div class="card-body py-2">
-                    <div class="small text-muted mb-1">Quantidade disponível</div>
-                    <div class="fw-semibold" id="qtd-disponivel-valor">-</div>
-                    <div class="small text-muted" id="qtd-disponivel-contexto"></div>
-                  </div>
-                </div>
-              {% endif %}
-            {% endfor %}
-            <div class="mb-3 d-flex gap-2">
-              <button class="btn btn-outline-primary" type="button" id="btn-adicionar-item">Adicionar</button>
-            </div>
+{% block extra_css %}
+<style>
+  .move-shell {
+    --move-blue: #1666a8;
+    --move-navy: #123b5f;
+    --move-cyan: #1fb6aa;
+    --move-amber: #f3c556;
+  }
 
-            <div class="card mb-3">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h6 class="mb-0">Lista para salvar</h6>
-                  <span class="badge text-bg-secondary" id="badge-total-itens">0 item(ns)</span>
-                </div>
-                <div class="table-responsive">
-                  <table class="table table-sm align-middle mb-0">
-                    <thead>
-                      <tr>
-                        <th>Ferramenta</th>
-                        <th>Qtd</th>
-                        <th>Tipo</th>
-                        <th>Origem</th>
-                        <th>Destino</th>
-                        <th>Observações</th>
-                        <th class="text-end">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody id="lista-movimentacoes-body">
-                      <tr id="lista-vazia-row">
-                        <td colspan="7" class="text-muted">Nenhuma movimentação adicionada.</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-            <div class="d-flex gap-2">
-              <button class="btn btn-primary" type="button" id="btn-salvar-lista">Salvar</button>
-              <a href="{% url 'ferramentas:ferramenta_list' %}" class="btn btn-secondary">Voltar</a>
-            </div>
-          </form>
+  .move-hero {
+    position: relative;
+    overflow: hidden;
+    border: 0;
+    border-radius: 1.6rem;
+    background:
+      radial-gradient(circle at top right, rgba(243, 197, 86, .34), transparent 24%),
+      radial-gradient(circle at left center, rgba(31, 182, 170, .2), transparent 28%),
+      linear-gradient(135deg, #113b5f 0%, #1666a8 58%, #1cb3aa 100%);
+    color: #fff;
+    box-shadow: 0 22px 44px rgba(18, 59, 95, .18);
+  }
+
+  .move-hero .card-body { padding: 1.5rem; }
+
+  .move-hero-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .45rem .85rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .14);
+    font-size: .85rem;
+    font-weight: 600;
+  }
+
+  .move-layout-card {
+    border: 0;
+    border-radius: 1.45rem;
+    box-shadow: 0 18px 38px rgba(15, 23, 42, .08);
+  }
+
+  .move-layout-card .card-body { padding: 1.25rem; }
+
+  .move-form-panel {
+    border: 1px solid rgba(18, 59, 95, .08);
+    border-radius: 1.2rem;
+    background: linear-gradient(180deg, #fff 0%, #f8fbfe 100%);
+    padding: 1rem;
+    height: 100%;
+  }
+
+  .move-panel-title {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    margin-bottom: 1rem;
+  }
+
+  .move-panel-title i {
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: .75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(22, 102, 168, .1);
+    color: var(--move-blue);
+  }
+
+  .move-summary-box {
+    border-radius: 1rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, rgba(243, 197, 86, .18), rgba(255, 255, 255, .9));
+    border: 1px solid rgba(243, 197, 86, .28);
+  }
+
+  .move-info-card {
+    border-radius: 1.1rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, rgba(22, 102, 168, .1), rgba(31, 182, 170, .08));
+    border: 1px solid rgba(22, 102, 168, .1);
+  }
+
+  .move-list-table thead th {
+    background: #eef5fb;
+    color: #31526e;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    font-size: .79rem;
+    border-bottom: 0;
+  }
+
+  .move-actions {
+    position: sticky;
+    bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+    padding: .85rem;
+    border-radius: 1.2rem;
+    background: rgba(255, 255, 255, .92);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 14px 28px rgba(15, 23, 42, .08);
+  }
+
+  @media (max-width: 767.98px) {
+    .move-hero .card-body,
+    .move-layout-card .card-body {
+      padding: 1rem;
+    }
+
+    .move-actions {
+      position: static;
+      flex-direction: column-reverse;
+    }
+
+    .move-actions .btn {
+      width: 100%;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="move-shell">
+  <div class="card move-hero mb-4">
+    <div class="card-body">
+      <div class="d-flex flex-column flex-xl-row justify-content-between align-items-start gap-3">
+        <div>
+          <span class="move-hero-chip mb-3"><i class="bi bi-arrow-left-right"></i> Controle de entradas, saídas e transferências</span>
+          <h1 class="h2 mb-2">{{ title }}</h1>
+          <p class="mb-0 opacity-75">Organize movimentações com leitura clara, validações visuais e uma lista pronta para salvar várias ações de uma vez.</p>
         </div>
+        <a href="{% url 'ferramentas:ferramenta_list' %}" class="btn btn-light btn-sm">
+          <i class="bi bi-arrow-left me-1"></i> Voltar
+        </a>
       </div>
     </div>
   </div>
+
+  <div class="card move-layout-card">
+    <div class="card-body">
+      <form method="post" id="movimentacao-form">
+        {% csrf_token %}
+        <input type="hidden" id="id_itens_json" name="itens_json" value="">
+
+        <div class="row g-4">
+          <div class="col-12 col-xl-8">
+            <div class="move-form-panel">
+              <div class="move-panel-title">
+                <i class="bi bi-ui-checks-grid"></i>
+                <div>
+                  <h2 class="h5 mb-0">Nova Movimentação</h2>
+                  <small class="text-muted">Preencha os dados e monte a lista antes de salvar.</small>
+                </div>
+              </div>
+
+              <div class="row g-3">
+                <div class="col-12 col-lg-6">
+                  <label class="form-label fw-semibold">{{ form.ferramenta.label }}</label>
+                  {{ form.ferramenta }}
+                </div>
+                <div class="col-12 col-lg-6" id="wrap_fornecedor_movimentacao">
+                  <label class="form-label fw-semibold">{{ form.fornecedor_movimentacao.label }}</label>
+                  {{ form.fornecedor_movimentacao }}
+                  {% if form.fornecedor_movimentacao.help_text %}
+                    <div class="form-text">{{ form.fornecedor_movimentacao.help_text }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-12 col-md-6 col-lg-3">
+                  <label class="form-label fw-semibold">{{ form.quantidade.label }}</label>
+                  {{ form.quantidade }}
+                </div>
+                <div class="col-12 col-md-6 col-lg-3">
+                  <label class="form-label fw-semibold">{{ form.tipo.label }}</label>
+                  {{ form.tipo }}
+                </div>
+                <div class="col-12 col-lg-6" id="wrap_obra_origem">
+                  <label class="form-label fw-semibold">{{ form.obra_origem.label }}</label>
+                  {{ form.obra_origem }}
+                </div>
+                <div class="col-12 col-lg-6" id="wrap_obra_destino">
+                  <label class="form-label fw-semibold">{{ form.obra_destino.label }}</label>
+                  {{ form.obra_destino }}
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-semibold">{{ form.observacoes.label }}</label>
+                  {{ form.observacoes }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-xl-4">
+            <div class="move-form-panel h-100">
+              <div class="move-panel-title">
+                <i class="bi bi-info-circle"></i>
+                <div>
+                  <h2 class="h5 mb-0">Resumo da Ferramenta</h2>
+                  <small class="text-muted">Informações dinâmicas conforme a seleção.</small>
+                </div>
+              </div>
+
+              <div class="move-info-card mb-3" id="card-ferramenta-info" style="display:none;">
+                <div class="row g-3">
+                  <div class="col-12">
+                    <div class="small text-muted">Classificação</div>
+                    <div class="fw-semibold" id="info-classificacao">-</div>
+                  </div>
+                  <div class="col-12">
+                    <div class="small text-muted">Fornecedor</div>
+                    <div class="fw-semibold" id="info-fornecedor">-</div>
+                  </div>
+                  <div class="col-12">
+                    <div class="small text-muted">Estoque disponível</div>
+                    <div class="fw-semibold" id="info-estoque">-</div>
+                  </div>
+                </div>
+                <div class="alert alert-warning mt-3 mb-0 py-2" id="alert-alugada" style="display:none;">
+                  Esta ferramenta é alugada e pertence ao fornecedor <strong id="alert-fornecedor">-</strong>.
+                </div>
+              </div>
+
+              <div class="move-summary-box">
+                <div class="fw-semibold mb-2">Fluxo recomendado</div>
+                <div class="small text-muted mb-2">1. Selecione a ferramenta correta.</div>
+                <div class="small text-muted mb-2">2. Defina tipo, quantidade e obra quando necessário.</div>
+                <div class="small text-muted">3. Adicione à lista e salve tudo de uma vez.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="move-form-panel">
+              <div class="d-flex justify-content-between align-items-center mb-3 gap-2">
+                <div>
+                  <h2 class="h5 mb-1">Lista para Salvar</h2>
+                  <div class="text-muted small">Revise os itens antes de concluir.</div>
+                </div>
+                <span class="badge text-bg-secondary" id="badge-total-itens">0 item(ns)</span>
+              </div>
+              <div class="table-responsive">
+                <table class="table move-list-table align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Ferramenta</th>
+                      <th>Qtd</th>
+                      <th>Tipo</th>
+                      <th>Origem</th>
+                      <th>Destino</th>
+                      <th>Observações</th>
+                      <th class="text-end">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="lista-movimentacoes-body">
+                    <tr id="lista-vazia-row"><td colspan="7" class="text-muted">Nenhuma movimentação adicionada.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="move-actions">
+          <button class="btn btn-outline-primary" type="button" id="btn-adicionar-item">
+            <i class="bi bi-plus-circle me-1"></i> Adicionar à lista
+          </button>
+          <button class="btn btn-success" type="button" id="btn-salvar-lista">
+            <i class="bi bi-save me-1"></i> Salvar movimentações
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
+
 {{ form.ferramenta_obras_map|json_script:"ferramenta-obras-map" }}
 {{ form.ferramenta_saldos_map|json_script:"ferramenta-saldos-map" }}
 {{ form.ferramenta_obras_quantidades_map|json_script:"ferramenta-obras-quantidades-map" }}
+{{ form.ferramenta_info_map|json_script:"ferramenta-info-map" }}
 
 <script>
 (function () {
   const tipoEl = document.getElementById('id_tipo');
   const ferramentaEl = document.getElementById('id_ferramenta');
+  const fornecedorMovimentacaoEl = document.getElementById('id_fornecedor_movimentacao');
   const quantidadeEl = document.getElementById('id_quantidade');
   const origemEl = document.getElementById('id_obra_origem');
   const destinoEl = document.getElementById('id_obra_destino');
@@ -89,342 +300,255 @@
   const listaBodyEl = document.getElementById('lista-movimentacoes-body');
   const badgeTotalItensEl = document.getElementById('badge-total-itens');
   const formEl = document.getElementById('movimentacao-form');
-
   const wrapOrigem = document.getElementById('wrap_obra_origem');
   const wrapDestino = document.getElementById('wrap_obra_destino');
+  const wrapFornecedorMovimentacao = document.getElementById('wrap_fornecedor_movimentacao');
 
-  if (!tipoEl || !ferramentaEl || !origemEl || !destinoEl || !wrapOrigem || !wrapDestino) {
-    return;
-  }
+  const ferramentaObrasMap = JSON.parse(document.getElementById('ferramenta-obras-map').textContent || '{}');
+  const ferramentaSaldosMap = JSON.parse(document.getElementById('ferramenta-saldos-map').textContent || '{}');
+  const ferramentaObrasQtdMap = JSON.parse(document.getElementById('ferramenta-obras-quantidades-map').textContent || '{}');
+  const ferramentaInfoMap = JSON.parse(document.getElementById('ferramenta-info-map').textContent || '{}');
 
-  const obrasMapEl = document.getElementById('ferramenta-obras-map');
-  const ferramentaObrasMap = obrasMapEl ? JSON.parse(obrasMapEl.textContent || '{}') : {};
-  const saldosMapEl = document.getElementById('ferramenta-saldos-map');
-  const ferramentaSaldosMap = saldosMapEl ? JSON.parse(saldosMapEl.textContent || '{}') : {};
-  const obrasQtdMapEl = document.getElementById('ferramenta-obras-quantidades-map');
-  const ferramentaObrasQtdMap = obrasQtdMapEl ? JSON.parse(obrasQtdMapEl.textContent || '{}') : {};
+  const infoCard = document.getElementById('card-ferramenta-info');
+  const infoClassificacao = document.getElementById('info-classificacao');
+  const infoFornecedor = document.getElementById('info-fornecedor');
+  const infoEstoque = document.getElementById('info-estoque');
+  const alertAlugada = document.getElementById('alert-alugada');
+  const alertFornecedor = document.getElementById('alert-fornecedor');
 
-  const qtdDisponivelValorEl = document.getElementById('qtd-disponivel-valor');
-  const qtdDisponivelContextoEl = document.getElementById('qtd-disponivel-contexto');
-
-  const origemBaseOptions = Array.from(origemEl.options).map((opt) => ({
-    value: opt.value,
-    text: opt.text,
-  }));
-
-  const destinoBaseOptions = Array.from(destinoEl.options).map((opt) => ({
-    value: opt.value,
-    text: opt.text,
-  }));
-
-  function setFieldState(wrapper, input, visible, enabled, required) {
-    wrapper.style.display = visible ? '' : 'none';
-    input.disabled = !enabled;
-    input.required = !!required;
-    if (!enabled) {
-      input.value = '';
-    }
-  }
+  const origemBaseOptions = Array.from(origemEl.options).map((opt) => ({ value: opt.value, text: opt.text }));
+  const destinoBaseOptions = Array.from(destinoEl.options).map((opt) => ({ value: opt.value, text: opt.text }));
+  const ferramentaBaseOptions = Array.from(ferramentaEl.options).map((opt) => ({ value: opt.value, text: opt.text }));
+  const itensPendentes = [];
 
   function rebuildOptions(selectEl, options, allowedSet, excludedValue) {
     const currentValue = selectEl.value;
     selectEl.innerHTML = '';
-
     options.forEach((item) => {
       const value = String(item.value || '');
-      if (value && allowedSet && !allowedSet.has(value)) {
-        return;
-      }
-      if (value && excludedValue && value === String(excludedValue)) {
-        return;
-      }
-
+      if (value && allowedSet && !allowedSet.has(value)) return;
+      if (value && excludedValue && value === String(excludedValue)) return;
       const opt = document.createElement('option');
       opt.value = item.value;
       opt.textContent = item.text;
       selectEl.appendChild(opt);
     });
-
-    const canKeepCurrent = Array.from(selectEl.options).some((opt) => opt.value === currentValue);
-    if (canKeepCurrent) {
+    if (Array.from(selectEl.options).some((opt) => opt.value === currentValue)) {
       selectEl.value = currentValue;
     }
+  }
+
+  function setFieldState(wrapper, input, visible, required) {
+    wrapper.style.display = visible ? '' : 'none';
+    input.disabled = !visible;
+    input.required = !!required;
+    if (!visible) input.value = '';
   }
 
   function getAllowedOrigemSet() {
     const ferramentaId = String(ferramentaEl.value || '');
     const obras = ferramentaObrasMap[ferramentaId] || [];
-    return new Set(obras.map((id) => String(id)));
+    return new Set(obras.map(String));
   }
 
-  function setQuantidadeDisponivel(valor, contexto) {
-    if (!qtdDisponivelValorEl || !qtdDisponivelContextoEl) {
-      return;
+  function getQuantidadeDisponivelAtual() {
+    const ferramentaId = String(ferramentaEl.value || '');
+    const tipo = String(tipoEl.value || '');
+    const saldos = ferramentaSaldosMap[ferramentaId] || {};
+    const obrasQtd = ferramentaObrasQtdMap[ferramentaId] || {};
+    const obraOrigemId = String(origemEl.value || '');
+
+    if (!ferramentaId) return { valor: '-', contexto: 'Selecione uma ferramenta.' };
+    if (tipo === 'transferencia' || tipo === 'retorno_deposito') {
+      return obraOrigemId ? { valor: obrasQtd[obraOrigemId] ?? 0, contexto: 'Disponível na obra de origem.' } : { valor: '-', contexto: 'Selecione a obra de origem.' };
     }
-    qtdDisponivelValorEl.textContent = String(valor);
-    qtdDisponivelContextoEl.textContent = contexto || '';
+    if (tipo === 'retorno_manutencao') return { valor: saldos.manutencao ?? 0, contexto: 'Disponível em manutenção.' };
+    return { valor: saldos.deposito ?? 0, contexto: 'Disponível no depósito.' };
   }
 
-  const itensPendentes = [];
-
-  function atualizarBadgeItens() {
-    if (!badgeTotalItensEl) {
+  function updateInfoCard() {
+    const ferramentaId = String(ferramentaEl.value || '');
+    const info = ferramentaInfoMap[ferramentaId];
+    if (!info) {
+      infoCard.style.display = 'none';
       return;
     }
+    const disponibilidade = getQuantidadeDisponivelAtual();
+    infoCard.style.display = '';
+    infoClassificacao.textContent = info.classificacao_label || '-';
+    infoFornecedor.textContent = info.fornecedor || 'Sem fornecedor';
+    infoEstoque.textContent = `${disponibilidade.valor} unidade(s)`;
+    alertAlugada.style.display = info.eh_alugada ? '' : 'none';
+    alertFornecedor.textContent = info.fornecedor || '-';
+  }
+
+  function getFerramentasPendentesSet() {
+    return new Set(itensPendentes.map((item) => String(item.ferramenta || '')).filter(Boolean));
+  }
+
+  function atualizarOpcoesFerramenta() {
+    const selecionadaAtual = String(ferramentaEl.value || '');
+    const pendentes = getFerramentasPendentesSet();
+    ferramentaEl.innerHTML = '';
+    ferramentaBaseOptions.forEach((item) => {
+      const value = String(item.value || '');
+      if (value && pendentes.has(value)) return;
+      const opt = document.createElement('option');
+      opt.value = item.value;
+      opt.textContent = item.text;
+      ferramentaEl.appendChild(opt);
+    });
+    if (Array.from(ferramentaEl.options).some((opt) => opt.value === selecionadaAtual)) {
+      ferramentaEl.value = selecionadaAtual;
+    }
+  }
+
+  function updateRules() {
+    const tipo = String(tipoEl.value || '');
+    const ferramentaId = String(ferramentaEl.value || '');
+    const info = ferramentaInfoMap[ferramentaId] || {};
+    const exigeFornecedorMovimentacao = tipo === 'entrada_deposito' && !!info.eh_alugada;
+    rebuildOptions(origemEl, origemBaseOptions, tipo === 'transferencia' || tipo === 'retorno_deposito' ? getAllowedOrigemSet() : null, null);
+    rebuildOptions(destinoEl, destinoBaseOptions, null, tipo === 'transferencia' ? origemEl.value || null : null);
+
+    setFieldState(wrapFornecedorMovimentacao, fornecedorMovimentacaoEl, exigeFornecedorMovimentacao, exigeFornecedorMovimentacao);
+    if (exigeFornecedorMovimentacao) {
+      fornecedorMovimentacaoEl.value = String(info.fornecedor_id || '');
+    }
+    if (tipo === 'saida_obra') {
+      setFieldState(wrapOrigem, origemEl, false, false);
+      setFieldState(wrapDestino, destinoEl, true, true);
+    } else if (tipo === 'transferencia') {
+      setFieldState(wrapOrigem, origemEl, true, true);
+      setFieldState(wrapDestino, destinoEl, true, true);
+    } else if (tipo === 'retorno_deposito') {
+      setFieldState(wrapOrigem, origemEl, true, true);
+      setFieldState(wrapDestino, destinoEl, false, false);
+    } else {
+      setFieldState(wrapOrigem, origemEl, false, false);
+      setFieldState(wrapDestino, destinoEl, false, false);
+    }
+    updateInfoCard();
+  }
+
+  function updateBadge() {
     badgeTotalItensEl.textContent = `${itensPendentes.length} item(ns)`;
   }
 
-  function renderListaItens() {
-    if (!listaBodyEl) {
-      return;
-    }
+  function renderLista() {
     listaBodyEl.innerHTML = '';
-
     if (!itensPendentes.length) {
-      const tr = document.createElement('tr');
-      tr.id = 'lista-vazia-row';
-      tr.innerHTML = '<td colspan="7" class="text-muted">Nenhuma movimentação adicionada.</td>';
-      listaBodyEl.appendChild(tr);
-      atualizarBadgeItens();
+      listaBodyEl.innerHTML = '<tr id="lista-vazia-row"><td colspan="7" class="text-muted">Nenhuma movimentação adicionada.</td></tr>';
+      updateBadge();
       return;
     }
 
     itensPendentes.forEach((item, index) => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${item._ferramenta_label || '-'}</td>
+        <td>${item._ferramenta_label}</td>
         <td>${item.quantidade}</td>
-        <td>${item._tipo_label || '-'}</td>
+        <td>${item._tipo_label}</td>
         <td>${item._origem_label || '-'}</td>
         <td>${item._destino_label || '-'}</td>
         <td>${item.observacoes || '-'}</td>
-        <td class="text-end">
-          <button type="button" class="btn btn-sm btn-outline-danger btn-remover-item" data-index="${index}">Remover</button>
-        </td>
+        <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger btn-remover-item" data-index="${index}">Remover</button></td>
       `;
       listaBodyEl.appendChild(tr);
     });
-
-    atualizarBadgeItens();
-  }
-
-  function limparCamposAposAdicionar() {
-    if (quantidadeEl) {
-      quantidadeEl.value = '1';
-    }
-    if (observacoesEl) {
-      observacoesEl.value = '';
-    }
+    updateBadge();
   }
 
   function validarItemAtual() {
-    const ferramenta = String(ferramentaEl.value || '');
-    const quantidade = Number(quantidadeEl ? quantidadeEl.value : 0);
+    const ferramentaId = String(ferramentaEl.value || '');
     const tipo = String(tipoEl.value || '');
-    const obraOrigem = String(origemEl.value || '');
-    const obraDestino = String(destinoEl.value || '');
+    const quantidade = Number(quantidadeEl.value || 0);
+    const info = ferramentaInfoMap[ferramentaId] || {};
+    const disponibilidade = Number(getQuantidadeDisponivelAtual().valor);
 
-    if (!ferramenta) {
-      return 'Selecione a ferramenta.';
-    }
-    if (!tipo) {
-      return 'Selecione o tipo de movimentação.';
-    }
-    if (!quantidade || quantidade < 1) {
-      return 'Informe uma quantidade válida.';
-    }
-
-    if (tipo === 'saida_obra' && !obraDestino) {
-      return 'Informe a obra de destino.';
-    }
-    if (tipo === 'transferencia') {
-      if (!obraOrigem) {
-        return 'Informe a obra de origem.';
-      }
-      if (!obraDestino) {
-        return 'Informe a obra de destino.';
-      }
-      if (obraOrigem === obraDestino) {
-        return 'Origem e destino devem ser diferentes.';
-      }
-    }
-    if (tipo === 'retorno_deposito' && !obraOrigem) {
-      return 'Informe a obra de origem.';
-    }
-
+    if (!ferramentaId) return 'Selecione a ferramenta.';
+    if (!tipo) return 'Selecione o tipo de movimentação.';
+    if (!quantidade || quantidade < 1) return 'Informe uma quantidade válida.';
+    if (tipo === 'entrada_deposito' && info.eh_alugada && !fornecedorMovimentacaoEl.value) return 'Selecione o fornecedor da ferramenta alugada.';
+    if (tipo !== 'entrada_deposito' && Number.isFinite(disponibilidade) && quantidade > disponibilidade) return 'Quantidade maior que o estoque disponível.';
+    if (tipo === 'saida_obra' && !destinoEl.value) return 'Selecione a obra de destino.';
+    if (tipo === 'transferencia' && (!origemEl.value || !destinoEl.value)) return 'Selecione origem e destino.';
+    if (tipo === 'retorno_deposito' && !origemEl.value) return 'Selecione a obra de origem.';
+    if (tipo === 'devolver_fornecedor' && !info.eh_alugada) return 'Somente ferramentas alugadas podem ser devolvidas ao fornecedor.';
     return '';
   }
 
   function montarItemAtual() {
-    const item = {
+    return {
       ferramenta: String(ferramentaEl.value || ''),
-      quantidade: String(quantidadeEl ? quantidadeEl.value : ''),
+      fornecedor_movimentacao: String(fornecedorMovimentacaoEl.value || ''),
+      quantidade: String(quantidadeEl.value || ''),
       tipo: String(tipoEl.value || ''),
       obra_origem: String(origemEl.value || ''),
       obra_destino: String(destinoEl.value || ''),
-      observacoes: String(observacoesEl ? observacoesEl.value : ''),
+      observacoes: String(observacoesEl.value || ''),
       _ferramenta_label: ferramentaEl.options[ferramentaEl.selectedIndex]?.text || '',
       _tipo_label: tipoEl.options[tipoEl.selectedIndex]?.text || '',
-      _origem_label: origemEl.value ? (origemEl.options[origemEl.selectedIndex]?.text || '') : '',
-      _destino_label: destinoEl.value ? (destinoEl.options[destinoEl.selectedIndex]?.text || '') : '',
+      _origem_label: origemEl.value ? origemEl.options[origemEl.selectedIndex]?.text || '' : '',
+      _destino_label: tipoEl.value === 'devolver_fornecedor'
+        ? (ferramentaInfoMap[String(ferramentaEl.value || '')]?.fornecedor || 'Fornecedor')
+        : (destinoEl.value ? destinoEl.options[destinoEl.selectedIndex]?.text || '' : ''),
     };
-    return item;
   }
 
-  function prepararPayloadSalvar() {
-    return itensPendentes.map((item) => ({
+  btnAdicionarEl.addEventListener('click', function () {
+    const erro = validarItemAtual();
+    if (erro) {
+      alert(erro);
+      return;
+    }
+    const item = montarItemAtual();
+    if (getFerramentasPendentesSet().has(item.ferramenta)) {
+      alert('Essa ferramenta já foi adicionada na lista.');
+      return;
+    }
+    itensPendentes.push(item);
+    renderLista();
+    atualizarOpcoesFerramenta();
+    fornecedorMovimentacaoEl.value = '';
+    quantidadeEl.value = '1';
+    observacoesEl.value = '';
+    updateRules();
+  });
+
+  listaBodyEl.addEventListener('click', function (event) {
+    const btn = event.target.closest('.btn-remover-item');
+    if (!btn) return;
+    itensPendentes.splice(Number(btn.dataset.index), 1);
+    renderLista();
+    atualizarOpcoesFerramenta();
+    updateRules();
+  });
+
+  btnSalvarListaEl.addEventListener('click', function () {
+    if (!itensPendentes.length) {
+      alert('Adicione pelo menos uma movimentação antes de salvar.');
+      return;
+    }
+    itensJsonEl.value = JSON.stringify(itensPendentes.map((item) => ({
       ferramenta: item.ferramenta,
+      fornecedor_movimentacao: item.fornecedor_movimentacao,
       quantidade: item.quantidade,
       tipo: item.tipo,
-      obra_origem: item.obra_origem || '',
-      obra_destino: item.obra_destino || '',
-      observacoes: item.observacoes || '',
-    }));
-  }
+      obra_origem: item.obra_origem,
+      obra_destino: item.obra_destino,
+      observacoes: item.observacoes,
+    })));
+    formEl.submit();
+  });
 
-  function getQuantidadeDisponivelAtual() {
-    const ferramentaId = String(ferramentaEl.value || '');
-    const tipo = String(tipoEl.value || '');
-    if (!ferramentaId) {
-      return { valor: '-', contexto: 'Selecione uma ferramenta.' };
-    }
+  tipoEl.addEventListener('change', updateRules);
+  ferramentaEl.addEventListener('change', updateRules);
+  origemEl.addEventListener('change', updateRules);
 
-    const saldos = ferramentaSaldosMap[ferramentaId] || {};
-    const obrasQtd = ferramentaObrasQtdMap[ferramentaId] || {};
-    const obraOrigemId = String(origemEl.value || '');
-
-    if (tipo === 'retorno_manutencao') {
-      return { valor: saldos.manutencao ?? 0, contexto: 'Disponível em manutenção.' };
-    }
-
-    if (tipo === 'transferencia' || tipo === 'retorno_deposito') {
-      if (obraOrigemId) {
-        return {
-          valor: obrasQtd[obraOrigemId] ?? 0,
-          contexto: 'Disponível na obra de origem selecionada.'
-        };
-      }
-      return { valor: '-', contexto: 'Selecione a obra de origem para ver o saldo.' };
-    }
-
-    if (tipo === 'entrada_deposito') {
-      return { valor: saldos.total ?? 0, contexto: 'Estoque total atual da ferramenta.' };
-    }
-
-    return { valor: saldos.deposito ?? 0, contexto: 'Disponível no depósito.' };
-  }
-
-  function applyRules() {
-    const tipo = tipoEl.value;
-
-    if (tipo === 'transferencia' || tipo === 'retorno_deposito') {
-      rebuildOptions(origemEl, origemBaseOptions, getAllowedOrigemSet(), null);
-    } else {
-      rebuildOptions(origemEl, origemBaseOptions, null, null);
-    }
-
-    if (tipo === 'transferencia') {
-      rebuildOptions(destinoEl, destinoBaseOptions, null, origemEl.value || null);
-    } else {
-      rebuildOptions(destinoEl, destinoBaseOptions, null, null);
-    }
-
-    if (tipo === 'entrada_deposito') {
-      setFieldState(wrapOrigem, origemEl, true, false, false);
-      setFieldState(wrapDestino, destinoEl, true, false, false);
-      const info = getQuantidadeDisponivelAtual();
-      setQuantidadeDisponivel(info.valor, info.contexto);
-      return;
-    }
-
-    if (tipo === 'saida_obra') {
-      setFieldState(wrapOrigem, origemEl, false, false, false);
-      setFieldState(wrapDestino, destinoEl, true, true, true);
-      const info = getQuantidadeDisponivelAtual();
-      setQuantidadeDisponivel(info.valor, info.contexto);
-      return;
-    }
-
-    if (tipo === 'transferencia') {
-      setFieldState(wrapOrigem, origemEl, true, true, true);
-      setFieldState(wrapDestino, destinoEl, true, true, true);
-      const info = getQuantidadeDisponivelAtual();
-      setQuantidadeDisponivel(info.valor, info.contexto);
-      return;
-    }
-
-    if (tipo === 'retorno_deposito') {
-      setFieldState(wrapOrigem, origemEl, true, true, true);
-      setFieldState(wrapDestino, destinoEl, false, false, false);
-      const info = getQuantidadeDisponivelAtual();
-      setQuantidadeDisponivel(info.valor, info.contexto);
-      return;
-    }
-
-    if (['envio_manutencao', 'retorno_manutencao', 'perda', 'descarte'].includes(tipo)) {
-      setFieldState(wrapOrigem, origemEl, false, false, false);
-      setFieldState(wrapDestino, destinoEl, false, false, false);
-      const info = getQuantidadeDisponivelAtual();
-      setQuantidadeDisponivel(info.valor, info.contexto);
-      return;
-    }
-
-    setFieldState(wrapOrigem, origemEl, true, true, false);
-    setFieldState(wrapDestino, destinoEl, true, true, false);
-
-    const info = getQuantidadeDisponivelAtual();
-    setQuantidadeDisponivel(info.valor, info.contexto);
-  }
-
-  tipoEl.addEventListener('change', applyRules);
-  ferramentaEl.addEventListener('change', applyRules);
-  origemEl.addEventListener('change', applyRules);
-  if (btnAdicionarEl) {
-    btnAdicionarEl.addEventListener('click', function () {
-      const erro = validarItemAtual();
-      if (erro) {
-        alert(erro);
-        return;
-      }
-      const item = montarItemAtual();
-      itensPendentes.push(item);
-      renderListaItens();
-      limparCamposAposAdicionar();
-      applyRules();
-    });
-  }
-
-  if (listaBodyEl) {
-    listaBodyEl.addEventListener('click', function (event) {
-      const alvo = event.target;
-      if (!alvo.classList.contains('btn-remover-item')) {
-        return;
-      }
-      const idx = Number(alvo.getAttribute('data-index'));
-      if (Number.isNaN(idx) || idx < 0 || idx >= itensPendentes.length) {
-        return;
-      }
-      itensPendentes.splice(idx, 1);
-      renderListaItens();
-    });
-  }
-
-  if (btnSalvarListaEl) {
-    btnSalvarListaEl.addEventListener('click', function () {
-      if (!itensPendentes.length) {
-        alert('Adicione pelo menos uma movimentação antes de salvar.');
-        return;
-      }
-      if (!itensJsonEl || !formEl) {
-        return;
-      }
-      itensJsonEl.value = JSON.stringify(prepararPayloadSalvar());
-      formEl.submit();
-    });
-  }
-
-  applyRules();
-  renderListaItens();
+  atualizarOpcoesFerramenta();
+  updateRules();
+  renderLista();
 })();
 </script>
 {% endblock %}

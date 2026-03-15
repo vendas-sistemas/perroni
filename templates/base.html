@@ -416,15 +416,23 @@
           </li>
           {% endif %}
 
-          <!-- Clientes -->
-          {% if nav_perms.clientes %}
+          {% if nav_perms.clientes or nav_perms.fornecedores %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="bi bi-person-vcard"></i> Clientes
+              <i class="bi bi-folder2-open"></i> Cadastros
             </a>
             <ul class="dropdown-menu">
+              {% if nav_perms.clientes %}
+              <li class="dropdown-section-label">Clientes</li>
               <li><a class="dropdown-item" href="{% url 'clientes:cliente_list' %}"><i class="bi bi-people text-primary"></i> Lista de Clientes</a></li>
               <li><a class="dropdown-item" href="{% url 'clientes:cliente_create' %}"><i class="bi bi-person-plus text-success"></i> Cadastrar Cliente</a></li>
+              {% endif %}
+              {% if nav_perms.fornecedores %}
+              {% if nav_perms.clientes %}<li><hr class="dropdown-divider"></li>{% endif %}
+              <li class="dropdown-section-label">Fornecedores</li>
+              <li><a class="dropdown-item" href="{% url 'fornecedores:fornecedor_list' %}"><i class="bi bi-truck text-primary"></i> Lista de Fornecedores</a></li>
+              <li><a class="dropdown-item" href="{% url 'fornecedores:fornecedor_create' %}"><i class="bi bi-plus-circle text-success"></i> Cadastrar Fornecedor</a></li>
+              {% endif %}
             </ul>
           </li>
           {% endif %}
@@ -583,17 +591,25 @@
           </li>
           {% endif %}
 
-          {% if nav_perms.clientes %}
+          {% if nav_perms.clientes or nav_perms.fornecedores %}
           <hr class="offcanvas-divider">
 
-          <!-- Clientes -->
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-              <i class="bi bi-person-vcard"></i> Clientes
+              <i class="bi bi-folder2-open"></i> Cadastros
             </a>
             <ul class="dropdown-menu">
+              {% if nav_perms.clientes %}
+              <li class="dropdown-section-label">Clientes</li>
               <li><a class="dropdown-item" href="{% url 'clientes:cliente_list' %}"><i class="bi bi-people"></i> Lista de Clientes</a></li>
               <li><a class="dropdown-item" href="{% url 'clientes:cliente_create' %}"><i class="bi bi-person-plus"></i> Cadastrar Cliente</a></li>
+              {% endif %}
+              {% if nav_perms.fornecedores %}
+              {% if nav_perms.clientes %}<li><hr class="dropdown-divider"></li>{% endif %}
+              <li class="dropdown-section-label">Fornecedores</li>
+              <li><a class="dropdown-item" href="{% url 'fornecedores:fornecedor_list' %}"><i class="bi bi-truck"></i> Lista de Fornecedores</a></li>
+              <li><a class="dropdown-item" href="{% url 'fornecedores:fornecedor_create' %}"><i class="bi bi-plus-circle"></i> Cadastrar Fornecedor</a></li>
+              {% endif %}
             </ul>
           </li>
           {% endif %}

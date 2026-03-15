@@ -74,6 +74,7 @@ INSTALLED_APPS += [
     'apps.ferramentas',
     'apps.analytics',
     'apps.clientes',
+    'apps.fornecedores',
     'apps.relatorios',
     'apps.configuracoes',
 ]

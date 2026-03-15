@@ -7,6 +7,7 @@ def navigation_permissions(request):
         'funcionarios': False,
         'ferramentas': False,
         'clientes': False,
+        'fornecedores': False,
         'analytics': False,
         'relatorios': False,
         'admin': False,
@@ -33,6 +34,7 @@ def navigation_permissions(request):
         'funcionarios': 'funcionarios',
         'ferramentas': 'ferramentas',
         'clientes': 'clientes',
+        'fornecedores': 'fornecedores',
         'analytics': 'analytics',
         'relatorios': 'relatorios',
     }

@@ -3,195 +3,517 @@
 
 {% block title %}Apontamentos{% endblock %}
 
+{% block extra_css %}
+<style>
+  :root {
+    --ap-bg: linear-gradient(180deg, #f6f3ed 0%, #eef3f9 100%);
+    --ap-ink: #16324f;
+    --ap-soft: #64748b;
+    --ap-border: #d9e2ec;
+    --ap-card-shadow: 0 18px 34px rgba(15, 23, 42, .08);
+  }
+  body {
+    background: var(--ap-bg);
+  }
+  .ap-shell {
+    max-width: 1400px;
+  }
+  .ap-hero {
+    background:
+      radial-gradient(circle at top right, rgba(255,255,255,.28), transparent 28%),
+      linear-gradient(135deg, #133c55 0%, #2d6a8d 55%, #6f9f76 100%);
+    border: none;
+    border-radius: 1.25rem;
+    color: #fff;
+    box-shadow: 0 24px 50px rgba(19, 60, 85, .22);
+  }
+  .ap-hero .text-muted {
+    color: rgba(255,255,255,.76) !important;
+  }
+  .ap-hero-actions .btn {
+    border-radius: .85rem;
+    border-width: 1.5px;
+    font-weight: 700;
+    box-shadow: 0 10px 22px rgba(0, 0, 0, .12);
+  }
+  .ap-hero-actions .btn-outline-danger {
+    background: rgba(255, 255, 255, .96);
+    border-color: #f05b52;
+    color: #c93d36;
+  }
+  .ap-hero-actions .btn-outline-danger:hover,
+  .ap-hero-actions .btn-outline-danger:focus {
+    background: #f05b52;
+    border-color: #f05b52;
+    color: #fff;
+  }
+  .ap-hero-actions .btn-outline-success {
+    background: rgba(255, 255, 255, .96);
+    border-color: #2e9f68;
+    color: #1f7c50;
+  }
+  .ap-hero-actions .btn-outline-success:hover,
+  .ap-hero-actions .btn-outline-success:focus {
+    background: #2e9f68;
+    border-color: #2e9f68;
+    color: #fff;
+  }
+  .ap-hero-actions .btn-primary {
+    background: linear-gradient(135deg, #f7fbff 0%, #d9ecff 100%);
+    border-color: #d9ecff;
+    color: #123b61;
+  }
+  .ap-hero-actions .btn-primary:hover,
+  .ap-hero-actions .btn-primary:focus {
+    background: #ffffff;
+    border-color: #ffffff;
+    color: #123b61;
+  }
+  .ap-metric {
+    border: none;
+    border-radius: 1rem;
+    min-height: 100%;
+    box-shadow: var(--ap-card-shadow);
+    overflow: hidden;
+  }
+  .ap-metric .card-body {
+    padding: 1rem 1.1rem;
+  }
+  .ap-metric .metric-label {
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: rgba(22, 50, 79, .72);
+  }
+  .ap-metric .metric-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--ap-ink);
+    line-height: 1.15;
+  }
+  .ap-metric.metric-registros { background: linear-gradient(135deg, #fff5d7 0%, #ffe4a8 100%); }
+  .ap-metric.metric-horas { background: linear-gradient(135deg, #ddefff 0%, #bfdcff 100%); }
+  .ap-metric.metric-valor { background: linear-gradient(135deg, #dcf7e8 0%, #b8eccd 100%); }
+  .ap-metric.metric-ociosidade { background: linear-gradient(135deg, #fff0c9 0%, #ffd985 100%); }
+  .ap-metric.metric-retrabalho { background: linear-gradient(135deg, #ffe0df 0%, #ffb9b4 100%); }
+  .ap-panel {
+    border: 1px solid var(--ap-border);
+    border-radius: 1.25rem;
+    box-shadow: var(--ap-card-shadow);
+    overflow: hidden;
+  }
+  .ap-panel .card-body {
+    padding: 1.25rem;
+  }
+  .ap-filter-wrap {
+    background: linear-gradient(180deg, #f9fbfd 0%, #f1f6fb 100%);
+    border: 1px solid #e1ebf3;
+    border-radius: 1rem;
+    padding: 1rem;
+  }
+  .ap-filter-grid .form-control,
+  .ap-filter-grid .form-select {
+    min-height: 46px;
+    width: 100%;
+    min-width: 0;
+    border-radius: .9rem;
+    border: 1px solid #cfdbe8;
+    background: #fff;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, .03);
+  }
+  .ap-filter-grid .form-control:focus,
+  .ap-filter-grid .form-select:focus {
+    border-color: #5b93c5;
+    box-shadow: 0 0 0 .2rem rgba(45, 106, 141, .14);
+  }
+  .ap-filter-block {
+    background: rgba(255, 255, 255, .78);
+    border: 1px solid #e0e9f2;
+    border-radius: 1rem;
+    padding: .75rem;
+    min-height: 100%;
+    overflow: hidden;
+  }
+  .ap-filter-label {
+    display: block;
+    font-size: .75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #587086;
+    margin-bottom: .45rem;
+  }
+  .ap-table-wrap {
+    border: 1px solid #e4ecf4;
+    border-radius: 1rem;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 10px 24px rgba(15, 23, 42, .05);
+  }
+  .ap-table {
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .ap-table thead th {
+    background: linear-gradient(180deg, #16324f 0%, #234c73 62%, #2b5a86 100%);
+    color: #fff;
+    font-size: .76rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    border: none;
+    white-space: nowrap;
+    padding: 1rem .85rem;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .ap-table tbody td {
+    vertical-align: middle;
+    border-color: #e9eff6;
+    padding: 1rem .85rem;
+  }
+  .ap-table tbody td:first-child {
+    min-width: 146px;
+  }
+  .ap-table tbody td:nth-child(2) {
+    min-width: 190px;
+  }
+  .ap-table tbody td:nth-child(3) {
+    min-width: 320px;
+  }
+  .ap-table tbody tr:nth-child(odd) {
+    background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+  }
+  .ap-table tbody tr:nth-child(even) {
+    background: linear-gradient(180deg, #f7fbff 0%, #f2f7fd 100%);
+  }
+  .ap-table tbody tr:hover {
+    background: linear-gradient(180deg, #edf6ff 0%, #e6f1fd 100%);
+    transform: translateY(-1px);
+    box-shadow: inset 4px 0 0 #4f8fc8;
+  }
+  .ap-table tbody tr.table-warning {
+    background: #fff6dc !important;
+  }
+  .ap-table tbody tr.table-danger {
+    background: #ffe7e5 !important;
+  }
+  .ap-table a {
+    text-decoration: none;
+    font-weight: 600;
+    color: #165dca;
+  }
+  .ap-table a:hover {
+    color: #0f4ea9;
+  }
+  .ap-table .text-muted {
+    font-size: .84rem;
+    display: inline-block;
+    margin-top: .2rem;
+  }
+  .ap-table .badge {
+    border-radius: 999px;
+    padding: .45rem .65rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .08);
+  }
+  .ap-table .badge.bg-success {
+    background: linear-gradient(180deg, #27a463 0%, #1f8a53 100%) !important;
+  }
+  .ap-table .badge.bg-warning {
+    background: linear-gradient(180deg, #ffd96a 0%, #ffca3a 100%) !important;
+  }
+  .ap-table .badge.bg-danger {
+    background: linear-gradient(180deg, #f1665d 0%, #dc4b43 100%) !important;
+  }
+  .ap-money {
+    font-weight: 700;
+    color: #103b61;
+    white-space: nowrap;
+  }
+  .ap-hours,
+  .ap-date,
+  .ap-weather {
+    font-weight: 600;
+    color: #23435f;
+  }
+  .ap-delete-btn {
+    min-width: 88px;
+    border-radius: .8rem;
+    border-width: 1.5px;
+    font-weight: 600;
+    background: #fff;
+  }
+  .ap-period-inputs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .65rem;
+  }
+  .ap-toolbar-note {
+    color: var(--ap-soft);
+  }
+  .ap-pagination .pagination {
+    margin-bottom: 0;
+    gap: .25rem;
+    flex-wrap: wrap;
+  }
+  .ap-pagination .page-link {
+    border-radius: .75rem;
+  }
+  @media (max-width: 767.98px) {
+    .ap-shell {
+      padding-left: .35rem;
+      padding-right: .35rem;
+    }
+    .ap-hero {
+      border-radius: 1rem;
+    }
+    .ap-panel .card-body {
+      padding: 1rem;
+    }
+    .ap-filter-wrap {
+      padding: .85rem;
+    }
+    .ap-metric .metric-value {
+      font-size: 1.3rem;
+    }
+    .ap-table thead th,
+    .ap-table tbody td {
+      font-size: .9rem;
+    }
+    .ap-hero-actions {
+      width: 100%;
+    }
+    .ap-hero-actions .btn {
+      flex: 1 1 auto;
+    }
+    .ap-period-inputs {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid py-4">
-  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-    <h3 class="mb-0">Diárias</h3>
-    <div class="d-flex gap-2">
-      <a href="{% url 'funcionarios:apontamento_list' %}?{% if querystring %}{{ querystring }}&{% endif %}export=pdf" class="btn btn-sm btn-outline-danger">
-        <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
-      </a>
-      <a href="{% url 'funcionarios:apontamento_list' %}?{% if querystring %}{{ querystring }}&{% endif %}export=excel" class="btn btn-sm btn-outline-success">
-        <i class="bi bi-file-earmark-excel"></i> Exportar Excel
-      </a>
-      <!-- Botões antigos removidos em 21/02/2026: Registro Diário e Novo Individual -->
-      <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-sm btn-primary">
-        <i class="bi bi-plus-circle"></i> Novo Apontamento em Lote
-      </a>
+<div class="container-fluid py-4 ap-shell">
+  <div class="ap-hero p-4 mb-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+      <div>
+        <h3 class="mb-1">Diarias</h3>
+        <div class="text-muted">Acompanhe registros, horas, valores e ocorrencias com uma leitura mais clara e profissional.</div>
+      </div>
+      <div class="d-flex flex-wrap gap-2 ap-hero-actions">
+        <a href="{% url 'funcionarios:apontamento_list' %}?{% if querystring %}{{ querystring }}&{% endif %}export=pdf" class="btn btn-sm btn-outline-danger">
+          <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
+        </a>
+        <a href="{% url 'funcionarios:apontamento_list' %}?{% if querystring %}{{ querystring }}&{% endif %}export=excel" class="btn btn-sm btn-outline-success">
+          <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+        </a>
+        <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-sm btn-primary">
+          <i class="bi bi-plus-circle"></i> Novo Apontamento em Lote
+        </a>
+      </div>
     </div>
   </div>
 
-  <!-- Summary cards -->
   {% if totais %}
-  <div class="row g-2 mb-3 dashboard-summary">
+  <div class="row g-3 mb-3 dashboard-summary">
     <div class="col-6 col-md-2">
-      <div class="card text-center">
-        <div class="card-body p-2">
-          <div class="small text-muted">Registros</div>
-          <div class="h5 mb-0">{{ totais.total_registros }}</div>
+      <div class="card ap-metric metric-registros">
+        <div class="card-body">
+          <div class="metric-label">Registros</div>
+          <div class="metric-value">{{ totais.total_registros }}</div>
         </div>
       </div>
     </div>
     <div class="col-6 col-md-2">
-      <div class="card text-center">
-        <div class="card-body p-2">
-          <div class="small text-muted">Horas</div>
-          <div class="h5 mb-0">{{ totais.total_horas|default:"0" }}h</div>
+      <div class="card ap-metric metric-horas">
+        <div class="card-body">
+          <div class="metric-label">Horas</div>
+          <div class="metric-value">{{ totais.total_horas|default:"0" }}h</div>
         </div>
       </div>
     </div>
     <div class="col-6 col-md-3">
-      <div class="card text-center">
-        <div class="card-body p-2">
-          <div class="small text-muted">Valor Total</div>
-          <div class="h5 mb-0 text-success">{{ totais.total_valor|default:0|brl }}</div>
+      <div class="card ap-metric metric-valor">
+        <div class="card-body">
+          <div class="metric-label">Valor Total</div>
+          <div class="metric-value">{{ totais.total_valor|default:0|brl }}</div>
         </div>
       </div>
     </div>
     <div class="col-3 col-md-2">
-      <div class="card text-center border-warning">
-        <div class="card-body p-2">
-          <div class="small text-muted">Ociosidade</div>
-          <div class="h5 mb-0 text-warning">{{ totais.total_ociosidade }}</div>
+      <div class="card ap-metric metric-ociosidade">
+        <div class="card-body">
+          <div class="metric-label">Ociosidade</div>
+          <div class="metric-value">{{ totais.total_ociosidade }}</div>
         </div>
       </div>
     </div>
     <div class="col-3 col-md-2">
-      <div class="card text-center border-danger">
-        <div class="card-body p-2">
-          <div class="small text-muted">Retrabalho</div>
-          <div class="h5 mb-0 text-danger">{{ totais.total_retrabalho }}</div>
+      <div class="card ap-metric metric-retrabalho">
+        <div class="card-body">
+          <div class="metric-label">Retrabalho</div>
+          <div class="metric-value">{{ totais.total_retrabalho }}</div>
         </div>
       </div>
     </div>
   </div>
   {% endif %}
 
-  <div class="card">
+  <div class="card ap-panel">
     <div class="card-body">
-      <!-- Filters -->
-      <form method="get" class="row g-2 mb-3">
-        <div class="col-12 col-md-3">
-          <div class="d-flex gap-1">
-            <input type="date" name="data_inicio" class="form-control form-control-sm" value="{{ request.GET.data_inicio }}" placeholder="Início">
-            <input type="date" name="data_fim" class="form-control form-control-sm" value="{{ request.GET.data_fim }}" placeholder="Fim">
-          </div>
-          <small class="text-muted">Período início / fim</small>
-        </div>
-        <div class="col-6 col-md-2">
-          <select name="funcionario" class="form-select form-select-sm">
-            <option value="">Todos Funcionários</option>
-            {% for f in funcionarios %}
-              <option value="{{ f.id }}" {% if request.GET.funcionario == f.id|stringformat:"s" %}selected{% endif %}>{{ f.nome_completo }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-6 col-md-2">
-          <select name="obra" class="form-select form-select-sm">
-            <option value="">Todas Obras</option>
-            {% for o in obras %}
-              <option value="{{ o.id }}" {% if request.GET.obra == o.id|stringformat:"s" %}selected{% endif %}>{{ o.nome }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-6 col-md-2">
-          <select name="clima" class="form-select form-select-sm">
-            <option value="">Qualquer Clima</option>
-            <option value="sol" {% if request.GET.clima == "sol" %}selected{% endif %}>Sol</option>
-            <option value="chuva" {% if request.GET.clima == "chuva" %}selected{% endif %}>Chuva</option>
-            <option value="nublado" {% if request.GET.clima == "nublado" %}selected{% endif %}>Nublado</option>
-          </select>
-        </div>
-        <div class="col-6 col-md-2">
-          <select name="ocorrencia" class="form-select form-select-sm">
-            <option value="">Ociosidade e Retrabalho</option>
-            <option value="ociosidade" {% if request.GET.ocorrencia == "ociosidade" %}selected{% endif %}>Ociosidade</option>
-            <option value="retrabalho" {% if request.GET.ocorrencia == "retrabalho" %}selected{% endif %}>Retrabalho</option>
-          </select>
-        </div>
-        <div class="col-6 col-md-2">
-          <div class="d-flex gap-1">
-            <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
-            <a href="{% url 'funcionarios:apontamento_list' %}" class="btn btn-sm btn-outline-secondary">Limpar</a>
+      <div class="ap-filter-wrap mb-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div>
+            <h5 class="mb-1">Filtros</h5>
+            <small class="ap-toolbar-note">Refine por periodo, funcionario, obra, clima e ocorrencias.</small>
           </div>
         </div>
-      </form>
 
-      <!-- Table -->
-      <div class="table-responsive">
-        <table class="table table-sm table-striped table-hover">
-          <thead>
-            <tr>
-              <th>Funcionário</th>
-              <th>Obra</th>
-              <th>Etapa</th>
-              <th>Data</th>
-              <th>Horas</th>
-              <th>Clima</th>
-              <th>Valor</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for a in apontamentos %}
-              <tr class="{% if a.houve_retrabalho %}table-danger{% elif a.houve_ociosidade %}table-warning{% endif %}">
-                <td>
-                  <a href="{% url 'funcionarios:funcionario_historico' a.funcionario.pk %}">{{ a.funcionario.nome_completo }}</a>
-                  <br><small class="text-muted">{{ a.funcionario.get_funcao_display }}</small>
-                </td>
-                <td>
-                  {% if a.obra %}
-                    <a href="{% url 'obras:obra_detail' a.obra.pk %}?data={{ a.data|date:'Y-m-d' }}">{{ a.obra.nome }}</a>
-                  {% else %}
-                    —
-                  {% endif %}
-                </td>
-                <td>
-                  {% if a.etapa %}
-                    <a href="{% url 'funcionarios:apontamento_list' %}?etapa={{ a.etapa.pk }}&data={{ a.data|date:'Y-m-d' }}">{{ a.etapa }}</a>
-                  {% else %}
-                    -
-                  {% endif %}
-                </td>
-                <td>{{ a.data|date:'d/m/Y' }}</td>
-                <td>{{ a.horas_trabalhadas }}h</td>
-                <td>
-                  {% if a.clima == 'sol' %}☀️{% elif a.clima == 'chuva' %}🌧️{% else %}☁️{% endif %}
-                </td>
-                <td>{{ a.valor_diaria|brl }}</td>
-                <td>
-                  {% if a.houve_retrabalho %}<span class="badge bg-danger" title="{{ a.motivo_retrabalho }}">Retrabalho</span>{% endif %}
-                  {% if a.houve_ociosidade %}<span class="badge bg-warning text-dark" title="{{ a.observacao_ociosidade }}">Ocioso</span>{% endif %}
-                  {% if not a.houve_retrabalho and not a.houve_ociosidade %}<span class="badge bg-success">OK</span>{% endif %}
-                </td>
-                <td>
-                  <form method="post" action="{% url 'funcionarios:apontamento_delete' a.pk %}" class="d-inline">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remover?')">✕</button>
-                  </form>
-                </td>
+        <form method="get" class="row g-2 ap-filter-grid">
+          <div class="col-12 col-md-3">
+            <div class="ap-filter-block">
+              <label class="ap-filter-label">Periodo</label>
+              <div class="ap-period-inputs">
+                <input type="date" name="data_inicio" class="form-control form-control-sm" value="{{ request.GET.data_inicio }}" placeholder="Inicio">
+                <input type="date" name="data_fim" class="form-control form-control-sm" value="{{ request.GET.data_fim }}" placeholder="Fim">
+              </div>
+              <small class="text-muted d-block mt-2">Inicio e fim da consulta</small>
+            </div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="ap-filter-block">
+              <label class="ap-filter-label">Funcionario</label>
+              <select name="funcionario" class="form-select form-select-sm">
+                <option value="">Todos Funcionarios</option>
+                {% for f in funcionarios %}
+                  <option value="{{ f.id }}" {% if request.GET.funcionario == f.id|stringformat:"s" %}selected{% endif %}>{{ f.nome_completo }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="ap-filter-block">
+              <label class="ap-filter-label">Obra</label>
+              <select name="obra" class="form-select form-select-sm">
+                <option value="">Todas Obras</option>
+                {% for o in obras %}
+                  <option value="{{ o.id }}" {% if request.GET.obra == o.id|stringformat:"s" %}selected{% endif %}>{{ o.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="ap-filter-block">
+              <label class="ap-filter-label">Clima</label>
+              <select name="clima" class="form-select form-select-sm">
+                <option value="">Qualquer Clima</option>
+                <option value="sol" {% if request.GET.clima == "sol" %}selected{% endif %}>Sol</option>
+                <option value="chuva" {% if request.GET.clima == "chuva" %}selected{% endif %}>Chuva</option>
+                <option value="nublado" {% if request.GET.clima == "nublado" %}selected{% endif %}>Nublado</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="ap-filter-block">
+              <label class="ap-filter-label">Ocorrencia</label>
+              <select name="ocorrencia" class="form-select form-select-sm">
+                <option value="">Ociosidade e Retrabalho</option>
+                <option value="ociosidade" {% if request.GET.ocorrencia == "ociosidade" %}selected{% endif %}>Ociosidade</option>
+                <option value="retrabalho" {% if request.GET.ocorrencia == "retrabalho" %}selected{% endif %}>Retrabalho</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="ap-filter-block d-flex align-items-end">
+              <div class="d-flex gap-2 w-100">
+                <button type="submit" class="btn btn-sm btn-primary flex-grow-1">Filtrar</button>
+                <a href="{% url 'funcionarios:apontamento_list' %}" class="btn btn-sm btn-outline-secondary flex-grow-1">Limpar</a>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="ap-table-wrap">
+        <div class="table-responsive">
+          <table class="table table-sm ap-table">
+            <thead>
+              <tr>
+                <th>Funcionario</th>
+                <th>Obra</th>
+                <th>Etapa</th>
+                <th>Data</th>
+                <th>Horas</th>
+                <th>Clima</th>
+                <th>Valor</th>
+                <th>Status</th>
+                <th></th>
               </tr>
-            {% empty %}
-              <tr><td colspan="9">Nenhum apontamento encontrado.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {% for a in apontamentos %}
+                <tr class="{% if a.houve_retrabalho %}table-danger{% elif a.houve_ociosidade %}table-warning{% endif %}">
+                  <td>
+                    <a href="{% url 'funcionarios:funcionario_historico' a.funcionario.pk %}">{{ a.funcionario.nome_completo }}</a>
+                    <br><small class="text-muted">{{ a.funcionario.get_funcao_display }}</small>
+                  </td>
+                  <td>
+                    {% if a.obra %}
+                      <a href="{% url 'obras:obra_detail' a.obra.pk %}?data={{ a.data|date:'Y-m-d' }}">{{ a.obra.nome }}</a>
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if a.etapa %}
+                      <a href="{% url 'funcionarios:apontamento_list' %}?etapa={{ a.etapa.pk }}&data={{ a.data|date:'Y-m-d' }}">{{ a.etapa }}</a>
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td class="ap-date">{{ a.data|date:'d/m/Y' }}</td>
+                  <td class="ap-hours">{{ a.horas_trabalhadas }}h</td>
+                  <td class="ap-weather">
+                    {% if a.clima == 'sol' %}Sol{% elif a.clima == 'chuva' %}Chuva{% else %}Nublado{% endif %}
+                  </td>
+                  <td class="ap-money">{{ a.valor_diaria|brl }}</td>
+                  <td>
+                    {% if a.houve_retrabalho %}<span class="badge bg-danger" title="{{ a.motivo_retrabalho }}">Retrabalho</span>{% endif %}
+                    {% if a.houve_ociosidade %}<span class="badge bg-warning text-dark" title="{{ a.observacao_ociosidade }}">Ocioso</span>{% endif %}
+                    {% if not a.houve_retrabalho and not a.houve_ociosidade %}<span class="badge bg-success">OK</span>{% endif %}
+                  </td>
+                  <td>
+                    <form method="post" action="{% url 'funcionarios:apontamento_delete' a.pk %}" class="d-inline">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-sm btn-outline-danger ap-delete-btn" onclick="return confirm('Remover?')">Excluir</button>
+                    </form>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="9">Nenhum apontamento encontrado.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {% if is_paginated %}
-        <nav aria-label="Paginação">
-          <ul class="pagination pagination-sm">
+        <nav aria-label="Paginacao" class="ap-pagination mt-3">
+          <ul class="pagination pagination-sm justify-content-center justify-content-md-start">
             {% if page_obj.has_previous %}
               <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a></li>
             {% else %}
               <li class="page-item disabled"><span class="page-link">Anterior</span></li>
             {% endif %}
-            <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+            <li class="page-item disabled"><span class="page-link">Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
             {% if page_obj.has_next %}
-              <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Próximo</a></li>
+              <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Proximo</a></li>
             {% else %}
-              <li class="page-item disabled"><span class="page-link">Próximo</span></li>
+              <li class="page-item disabled"><span class="page-link">Proximo</span></li>
             {% endif %}
           </ul>
         </nav>

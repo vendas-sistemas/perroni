@@ -2,63 +2,411 @@
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block extra_css %}
+<style>
+  :root {
+    --obraf-bg: linear-gradient(180deg, #f4f7fb 0%, #edf4fb 52%, #f9fbfe 100%);
+    --obraf-hero: linear-gradient(135deg, #15324d 0%, #23507a 55%, #5d8d69 100%);
+    --obraf-surface: rgba(255, 255, 255, 0.96);
+    --obraf-border: rgba(20, 50, 77, 0.12);
+    --obraf-text: #17324d;
+    --obraf-muted: #6a7d90;
+    --obraf-shadow: 0 24px 58px rgba(18, 43, 68, 0.12);
+  }
+
+  body {
+    background: var(--obraf-bg);
+  }
+
+  .obraf-shell {
+    max-width: 1320px;
+  }
+
+  .obraf-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 30px;
+    background: var(--obraf-hero);
+    color: #fff;
+    box-shadow: 0 28px 68px rgba(18, 50, 77, 0.2);
+  }
+
+  .obraf-hero::before,
+  .obraf-hero::after {
+    content: "";
+    position: absolute;
+    border-radius: 999px;
+    pointer-events: none;
+  }
+
+  .obraf-hero::before {
+    width: 300px;
+    height: 300px;
+    top: -145px;
+    right: -90px;
+    background: rgba(255,255,255,.12);
+  }
+
+  .obraf-hero::after {
+    width: 190px;
+    height: 190px;
+    bottom: -90px;
+    right: 18%;
+    background: rgba(164, 216, 255, .14);
+  }
+
+  .obraf-hero > .row {
+    position: relative;
+    z-index: 1;
+  }
+
+  .obraf-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .42rem .92rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.22);
+    background: rgba(255,255,255,.14);
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .obraf-title {
+    font-size: clamp(2rem, 3vw, 2.7rem);
+    font-weight: 800;
+    line-height: 1.04;
+    margin: 1rem 0 .7rem;
+  }
+
+  .obraf-subtitle {
+    max-width: 700px;
+    color: rgba(255,255,255,.82);
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .obraf-tip {
+    display: inline-flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .95rem 1.1rem;
+    border-radius: 18px;
+    background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.2);
+    font-weight: 700;
+  }
+
+  .obraf-panel {
+    background: var(--obraf-surface);
+    border: 1px solid var(--obraf-border);
+    border-radius: 28px;
+    box-shadow: var(--obraf-shadow);
+    overflow: hidden;
+  }
+
+  .obraf-panel-body {
+    padding: 1.5rem;
+  }
+
+  .obraf-section + .obraf-section {
+    margin-top: 1.15rem;
+  }
+
+  .obraf-section-head {
+    margin-bottom: .95rem;
+  }
+
+  .obraf-section-title {
+    color: var(--obraf-text);
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin-bottom: .25rem;
+  }
+
+  .obraf-section-subtitle {
+    color: var(--obraf-muted);
+    margin: 0;
+  }
+
+  .obraf-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .obraf-field {
+    background: linear-gradient(180deg, #fbfdff 0%, #f4f8fc 100%);
+    border: 1px solid #dfe9f3;
+    border-radius: 20px;
+    padding: .9rem;
+    min-width: 0;
+  }
+
+  .obraf-col-12 { grid-column: span 12; }
+  .obraf-col-6 { grid-column: span 6; }
+  .obraf-col-4 { grid-column: span 4; }
+  .obraf-col-3 { grid-column: span 3; }
+
+  .obraf-label {
+    display: block;
+    color: #6a8094;
+    font-size: .74rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: .45rem;
+  }
+
+  .obraf-field input,
+  .obraf-field select,
+  .obraf-field textarea {
+    width: 100%;
+    min-height: 50px;
+    border-radius: 15px;
+    border: 1px solid #cfdae6;
+    background: #fff;
+  }
+
+  .obraf-field input:focus,
+  .obraf-field select:focus,
+  .obraf-field textarea:focus {
+    border-color: #5d92c3;
+    box-shadow: 0 0 0 .2rem rgba(42, 98, 143, .12);
+    outline: none;
+  }
+
+  .obraf-toggle-wrap {
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+  }
+
+  .obraf-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .8rem .95rem;
+    border-radius: 16px;
+    background: #fff;
+    border: 1px solid #cfdae6;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
+  }
+
+  .obraf-toggle input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    min-height: 18px;
+    margin: 0;
+    accent-color: #1c60c1;
+    flex-shrink: 0;
+  }
+
+  .obraf-toggle .form-check-label {
+    margin: 0;
+    color: var(--obraf-text);
+    font-weight: 700;
+  }
+
+  .obraf-toggle-help {
+    display: block;
+    color: var(--obraf-muted);
+    font-size: .82rem;
+    margin-top: .45rem;
+    line-height: 1.35;
+  }
+
+  .obraf-errors {
+    margin-bottom: 1rem;
+    border-radius: 18px;
+  }
+
+  .obraf-meta {
+    border: 1px solid #dce6f0;
+    background: linear-gradient(180deg, #f8fbff 0%, #f1f6fb 100%);
+    border-radius: 20px;
+    padding: 1rem;
+    color: var(--obraf-muted);
+  }
+
+  .obraf-meta strong {
+    color: var(--obraf-text);
+  }
+
+  .obraf-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .85rem;
+    margin-top: 1.4rem;
+  }
+
+  .obraf-btn {
+    min-height: 54px;
+    padding: 0 1.25rem;
+    border-radius: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .6rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .obraf-btn-primary {
+    box-shadow: 0 16px 34px rgba(24, 95, 200, .18);
+  }
+
+  @media (max-width: 991.98px) {
+    .obraf-col-6,
+    .obraf-col-4,
+    .obraf-col-3 {
+      grid-column: span 6;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .obraf-shell {
+      padding-left: .35rem;
+      padding-right: .35rem;
+    }
+
+    .obraf-hero,
+    .obraf-panel {
+      border-radius: 22px;
+    }
+
+    .obraf-panel-body {
+      padding: 1rem;
+    }
+
+    .obraf-col-6,
+    .obraf-col-4,
+    .obraf-col-3,
+    .obraf-col-12 {
+      grid-column: span 12;
+    }
+
+    .obraf-tip,
+    .obraf-btn {
+      width: 100%;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-  <div class="mb-3">
-    <h1 class="h4">{{ title }}</h1>
+<div class="container-fluid py-4 obraf-shell">
+  <div class="obraf-hero p-4 p-lg-5 mb-4">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-8">
+        <span class="obraf-badge"><i class="bi bi-buildings"></i> Obras</span>
+        <h1 class="obraf-title">{{ title }}</h1>
+        <p class="obraf-subtitle">Cadastre a obra com um formulário mais claro, organizado e pronto para preenchimento confortável em computador e celular.</p>
+      </div>
+      <div class="col-lg-4 text-lg-end">
+        <span class="obraf-tip"><i class="bi bi-info-circle"></i> Preencha os dados principais e o status inicial da obra.</span>
+      </div>
+    </div>
   </div>
 
-  <form method="post" novalidate>
-    {% csrf_token %}
-    {{ form.non_field_errors }}
+  <div class="obraf-panel">
+    <div class="obraf-panel-body">
+      <form method="post" novalidate>
+        {% csrf_token %}
 
-    <div class="row g-3">
-      <div class="col-12">
-        <label class="form-label">Nome</label>
-        {{ form.nome }}
-      </div>
-      <div class="col-12">
-        <label class="form-label">Endereço</label>
-        {{ form.endereco }}
-      </div>
-      <div class="col-12 col-md-6">
-        <label class="form-label">Cliente</label>
-        {{ form.cliente }}
-      </div>
-      <div class="col-6 col-md-3">
-        <label class="form-label">Início</label>
-        {{ form.data_inicio }}
-      </div>
-      <div class="col-6 col-md-3">
-        <label class="form-label">Término previsto</label>
-        {{ form.data_previsao_termino }}
-      </div>
-      <div class="col-6 col-md-4">
-        <label class="form-label">Status</label>
-        {{ form.status }}
-      </div>
-      <div class="col-6 col-md-4">
-        <label class="form-label">Percentual concluído</label>
-        {{ form.percentual_concluido }}
-      </div>
-      <div class="col-12 col-md-4 d-flex align-items-center">
-        <div class="form-check mt-2">
-          {{ form.ativo }} <label class="form-check-label ms-2">Ativo</label>
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger obraf-errors mb-3">
+          {{ form.non_field_errors }}
         </div>
-      </div>
-      {% if obra %}
-      <div class="col-12">
-        <div class="small text-muted border rounded p-2 bg-light">
-          <div><i class="bi bi-clock me-1"></i> Criado em: {{ obra.created_at|date:"d/m/Y H:i" }}</div>
-          <div><i class="bi bi-arrow-clockwise me-1"></i> Atualizado em: {{ obra.updated_at|date:"d/m/Y H:i" }}</div>
+        {% endif %}
+
+        <div class="obraf-section">
+          <div class="obraf-section-head">
+            <div class="obraf-section-title">Dados Gerais</div>
+            <p class="obraf-section-subtitle">Informações principais para identificar a obra e vinculá-la ao cliente.</p>
+          </div>
+
+          <div class="obraf-grid">
+            <div class="obraf-field obraf-col-12">
+              <label class="obraf-label">Nome</label>
+              {{ form.nome }}
+            </div>
+
+            <div class="obraf-field obraf-col-12">
+              <label class="obraf-label">Endereço</label>
+              {{ form.endereco }}
+            </div>
+
+            <div class="obraf-field obraf-col-6">
+              <label class="obraf-label">Cliente</label>
+              {{ form.cliente }}
+            </div>
+
+            <div class="obraf-field obraf-col-3">
+              <label class="obraf-label">Início</label>
+              {{ form.data_inicio }}
+            </div>
+
+            <div class="obraf-field obraf-col-3">
+              <label class="obraf-label">Término Previsto</label>
+              {{ form.data_previsao_termino }}
+            </div>
+          </div>
         </div>
-      </div>
-      {% endif %}
-    </div>
 
-    <div class="mt-4 d-flex gap-2">
-      <button class="btn btn-primary">Salvar</button>
-      <a href="{% url 'obras:obra_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-    </div>
-  </form>
+        <div class="obraf-section">
+          <div class="obraf-section-head">
+            <div class="obraf-section-title">Situação da Obra</div>
+            <p class="obraf-section-subtitle">Defina o status, o percentual inicial e se a obra está ativa no sistema.</p>
+          </div>
 
+          <div class="obraf-grid">
+            <div class="obraf-field obraf-col-4">
+              <label class="obraf-label">Status</label>
+              {{ form.status }}
+            </div>
+
+            <div class="obraf-field obraf-col-4">
+              <label class="obraf-label">Percentual Concluído</label>
+              {{ form.percentual_concluido }}
+            </div>
+
+            <div class="obraf-field obraf-col-4">
+              <label class="obraf-label">Ativação</label>
+              <div class="obraf-toggle-wrap">
+                <div>
+                  <div class="obraf-toggle">
+                    {{ form.ativo }}
+                    <label class="form-check-label" for="{{ form.ativo.id_for_label }}">Obra ativa</label>
+                  </div>
+                  <small class="obraf-toggle-help">Desmarque apenas se a obra não deve aparecer como ativa no sistema.</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {% if obra %}
+        <div class="obraf-section">
+          <div class="obraf-meta">
+            <div><strong><i class="bi bi-clock-history me-1"></i> Criado em:</strong> {{ obra.created_at|date:"d/m/Y H:i" }}</div>
+            <div class="mt-1"><strong><i class="bi bi-arrow-repeat me-1"></i> Atualizado em:</strong> {{ obra.updated_at|date:"d/m/Y H:i" }}</div>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="obraf-actions">
+          <button class="btn btn-primary obraf-btn obraf-btn-primary">
+            <i class="bi bi-check2-circle"></i> Salvar
+          </button>
+          <a href="{% url 'obras:obra_list' %}" class="btn btn-outline-secondary obraf-btn">
+            <i class="bi bi-arrow-left"></i> Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}

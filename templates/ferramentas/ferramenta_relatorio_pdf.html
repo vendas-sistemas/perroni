@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>Relatório de Ferramentas</title>
+  <style>
+    @page { size: A4; margin: 1.4cm; }
+    body { font-family: Arial, sans-serif; color: #17324d; font-size: 11px; }
+    h1, h2 { margin: 0; }
+    .hero {
+      padding: 18px 20px;
+      border-radius: 16px;
+      color: #fff;
+      background: linear-gradient(135deg, #113b5f 0%, #1666a8 58%, #1cb3aa 100%);
+      margin-bottom: 18px;
+    }
+    .hero p { margin: 6px 0 0; opacity: .9; }
+    .stats { width: 100%; border-collapse: separate; border-spacing: 8px; margin: 0 0 14px; }
+    .stats td { width: 16.66%; padding: 12px; border-radius: 12px; background: #f5f9fd; border: 1px solid #dbe9f6; vertical-align: top; }
+    .stats strong { display: block; font-size: 18px; margin-top: 4px; }
+    .section { margin-top: 16px; }
+    .section-title { font-size: 14px; font-weight: bold; margin: 0 0 8px; }
+    table.grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table.grid th, table.grid td {
+      border: 1px solid #d9e7f3;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+      word-wrap: break-word;
+      overflow-wrap: anywhere;
+      white-space: normal;
+    }
+    table.grid th { background: #eef5fb; font-size: 10px; text-transform: uppercase; }
+    .text-end { text-align: right; }
+    .muted { color: #6c8296; }
+    .history-table { font-size: 9px; }
+    .history-cell { display: block; word-break: break-word; }
+    .history-col-data { width: 13%; }
+    .history-col-ferramenta { width: 18%; }
+    .history-col-tipo { width: 14%; }
+    .history-col-qtd { width: 8%; }
+    .history-col-origem { width: 15%; }
+    .history-col-destino { width: 14%; }
+    .history-col-responsavel { width: 18%; }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <h1>Relatório de Ferramentas</h1>
+    <p>Gerado em {{ gerado_em|date:"d/m/Y H:i" }}</p>
+    {% if filtros.data_inicial or filtros.data_final %}
+      <p>Período do histórico: {{ filtros.data_inicial|default:"início" }} até {{ filtros.data_final|default:"hoje" }}</p>
+    {% endif %}
+  </div>
+
+  <table class="stats">
+    <tr>
+      <td><span class="muted">Modelos</span><strong>{{ total_modelos }}</strong></td>
+      <td><span class="muted">Unidades</span><strong>{{ total_unidades }}</strong></td>
+      <td><span class="muted">Depósito</span><strong>{{ total_deposito }}</strong></td>
+      <td><span class="muted">Obras</span><strong>{{ total_em_obra }}</strong></td>
+      <td><span class="muted">Manutenção</span><strong>{{ total_manutencao }}</strong></td>
+      <td><span class="muted">Baixas</span><strong>{{ total_descartada }}</strong></td>
+    </tr>
+  </table>
+
+  <div class="section">
+    <div class="section-title">Distribuição por Ferramenta</div>
+    <table class="grid">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Ferramenta</th>
+          <th>Classificação</th>
+          <th>Fornecedor</th>
+          <th>Total</th>
+          <th>Depósito</th>
+          <th>Obras</th>
+          <th>Manutenção</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in ferramentas_lista %}
+          <tr>
+            <td>{{ f.codigo }}</td>
+            <td>{{ f.nome }}</td>
+            <td>{{ f.get_classificacao_display }}</td>
+            <td>{{ f.fornecedor.nome|default:"-" }}</td>
+            <td class="text-end">{{ f.quantidade_total }}</td>
+            <td class="text-end">{{ f.quantidade_deposito }}</td>
+            <td class="text-end">{{ f.quantidade_em_obras }}</td>
+            <td class="text-end">{{ f.quantidade_manutencao }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="8">Nenhuma ferramenta encontrada.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Distribuição em Obras</div>
+    <table class="grid">
+      <thead>
+        <tr>
+          <th>Obra</th>
+          <th>Quantidade</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in obras_distribuicao_lista %}
+          <tr>
+            <td>{{ item.obra__nome|default:"Sem obra" }}</td>
+            <td class="text-end">{{ item.total }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="2">Nenhuma ferramenta alocada em obra.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Histórico de Movimentações</div>
+    <table class="grid history-table">
+      <colgroup>
+        <col class="history-col-data">
+        <col class="history-col-ferramenta">
+        <col class="history-col-tipo">
+        <col class="history-col-qtd">
+        <col class="history-col-origem">
+        <col class="history-col-destino">
+        <col class="history-col-responsavel">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Data/Hora</th>
+          <th>Ferramenta</th>
+          <th>Tipo</th>
+          <th>Qtd</th>
+          <th>Origem</th>
+          <th>Destino</th>
+          <th>Responsável</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in movimentacoes_lista %}
+          <tr>
+            <td><span class="history-cell">{{ m.data_movimentacao|date:"d/m/Y H:i" }}</span></td>
+            <td><span class="history-cell">{{ m.ferramenta.codigo }} - {{ m.ferramenta.nome }}</span></td>
+            <td>
+              <span class="history-cell">
+                {% if m.tipo == 'entrada_deposito' %}
+                  Entrada Depósito
+                {% elif m.tipo == 'saida_obra' %}
+                  Saída Obra
+                {% elif m.tipo == 'transferencia' %}
+                  Transferência
+                {% elif m.tipo == 'retorno_deposito' %}
+                  Retorno Depósito
+                {% elif m.tipo == 'envio_manutencao' %}
+                  Envio Manutenção
+                {% elif m.tipo == 'retorno_manutencao' %}
+                  Retorno Manutenção
+                {% elif m.tipo == 'perda' %}
+                  Perda
+                {% elif m.tipo == 'descarte' %}
+                  Descarte
+                {% elif m.tipo == 'devolver_fornecedor' %}
+                  Devolução Forn.
+                {% else %}
+                  {{ m.get_tipo_display }}
+                {% endif %}
+              </span>
+            </td>
+            <td class="text-end"><span class="history-cell">{{ m.quantidade }}</span></td>
+            <td>
+              <span class="history-cell">
+                {% if m.tipo == 'entrada_deposito' %}
+                  Compra/Receb.
+                {% else %}
+                  {{ m.get_origem_label }}
+                {% endif %}
+              </span>
+            </td>
+            <td>
+              <span class="history-cell">
+                {% if m.tipo == 'entrada_deposito' or m.tipo == 'retorno_deposito' or m.tipo == 'retorno_manutencao' %}
+                  Depósito
+                {% else %}
+                  {{ m.get_destino_label }}
+                {% endif %}
+              </span>
+            </td>
+            <td><span class="history-cell">{{ m.responsavel.username|default:"-" }}</span></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7">Sem movimentações para as ferramentas selecionadas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

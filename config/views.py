@@ -16,6 +16,7 @@ def home_redirect(request):
         ('funcionarios', 'funcionarios:funcionario_list'),
         ('ferramentas', 'ferramentas:ferramenta_list'),
         ('clientes', 'clientes:cliente_list'),
+        ('fornecedores', 'fornecedores:fornecedor_list'),
         ('analytics', 'analytics:dashboard'),
         ('relatorios', 'relatorios:dashboard'),
     ]

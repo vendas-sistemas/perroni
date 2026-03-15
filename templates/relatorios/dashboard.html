@@ -4,153 +4,570 @@
 
 {% block extra_css %}
 <style>
-  .filter-card { border: none; border-radius: .75rem; }
-  .section-card { border: none; border-radius: .75rem; }
-  .ranking-badge-best { background-color: #2e7d32; color: #fff; }
-  .ranking-badge-worst { background-color: #c62828; color: #fff; }
-  .metric-highlight {
-    font-size: 1.8rem;
+  :root {
+    --rel-bg: linear-gradient(180deg, #f4f7fb 0%, #edf4fb 52%, #f9fbfe 100%);
+    --rel-hero: linear-gradient(135deg, #15324d 0%, #24517a 54%, #5a8a67 100%);
+    --rel-surface: rgba(255, 255, 255, 0.96);
+    --rel-border: rgba(20, 50, 77, 0.12);
+    --rel-text: #17324d;
+    --rel-muted: #677b8f;
+    --rel-shadow: 0 24px 58px rgba(18, 43, 68, 0.12);
+  }
+
+  body {
+    background: var(--rel-bg);
+  }
+
+  .rel-shell {
+    max-width: 1460px;
+  }
+
+  .rel-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 30px;
+    background: var(--rel-hero);
+    color: #fff;
+    box-shadow: 0 28px 68px rgba(18, 50, 77, 0.2);
+  }
+
+  .rel-hero::before,
+  .rel-hero::after {
+    content: "";
+    position: absolute;
+    border-radius: 999px;
+    pointer-events: none;
+  }
+
+  .rel-hero::before {
+    width: 300px;
+    height: 300px;
+    top: -145px;
+    right: -95px;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .rel-hero::after {
+    width: 190px;
+    height: 190px;
+    bottom: -90px;
+    right: 20%;
+    background: rgba(164, 216, 255, 0.14);
+  }
+
+  .rel-hero > .row {
+    position: relative;
+    z-index: 1;
+  }
+
+  .rel-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .42rem .92rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.22);
+    background: rgba(255,255,255,.14);
+    font-size: .8rem;
     font-weight: 700;
-    line-height: 1.2;
-  }
-  .metric-label-sm {
-    font-size: .72rem;
-    font-weight: 600;
+    letter-spacing: .08em;
     text-transform: uppercase;
-    letter-spacing: .04em;
-    color: #9e9e9e;
   }
-  .table-ranking th {
-    font-size: .78rem;
+
+  .rel-title {
+    font-size: clamp(2rem, 3vw, 2.8rem);
+    font-weight: 800;
+    line-height: 1.04;
+    margin: 1rem 0 .7rem;
+  }
+
+  .rel-subtitle {
+    max-width: 720px;
+    color: rgba(255,255,255,.82);
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .rel-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: .75rem;
+  }
+
+  .rel-hero-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .6rem;
+    min-height: 52px;
+    padding: .9rem 1.2rem;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,.18);
+    text-decoration: none;
+    font-weight: 700;
+    box-shadow: 0 16px 34px rgba(16, 33, 52, .18);
+  }
+
+  .rel-hero-btn.light {
+    background: #fff;
+    color: #15324d;
+  }
+
+  .rel-hero-btn.outline {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+  }
+
+  .rel-panel,
+  .rel-section,
+  .rel-empty {
+    background: var(--rel-surface);
+    border: 1px solid var(--rel-border);
+    border-radius: 28px;
+    box-shadow: var(--rel-shadow);
+  }
+
+  .rel-panel {
+    padding: 1.4rem;
+  }
+
+  .rel-panel-title {
+    color: var(--rel-text);
+    font-size: 1.12rem;
+    font-weight: 800;
+    margin-bottom: .3rem;
+  }
+
+  .rel-panel-subtitle {
+    color: var(--rel-muted);
+    margin-bottom: 1rem;
+  }
+
+  .rel-filter-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 1.1fr 1.1fr .8fr 1fr 1fr auto auto;
+    gap: .85rem;
+    align-items: end;
+  }
+
+  .rel-filter-item {
+    background: linear-gradient(180deg, #fbfdff 0%, #f4f8fc 100%);
+    border: 1px solid #dfe9f3;
+    border-radius: 18px;
+    padding: .8rem;
+    min-width: 0;
+  }
+
+  .rel-filter-label {
+    display: block;
+    font-size: .74rem;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: .03em;
+    letter-spacing: .06em;
+    color: #6a8094;
+    margin-bottom: .45rem;
   }
-  .export-btn { min-width: 140px; }
-  .empty-state {
-    padding: 3rem;
+
+  .rel-filter-item select,
+  .rel-filter-item input {
+    min-height: 48px;
+    border-radius: 14px;
+    border: 1px solid #cfdae6;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .rel-filter-item select:focus,
+  .rel-filter-item input:focus {
+    border-color: #5d92c3;
+    box-shadow: 0 0 0 .2rem rgba(42, 98, 143, .12);
+    outline: none;
+  }
+
+  .rel-filter-action {
+    min-height: 56px;
+    padding: 0 1.15rem;
+    border-radius: 16px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+    white-space: nowrap;
+  }
+
+  .rel-export-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .8rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .rel-export-btn {
+    min-width: 180px;
+    min-height: 52px;
+    border-radius: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .6rem;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 14px 30px rgba(18, 43, 68, .1);
+  }
+
+  .rel-export-btn.pdf {
+    background: linear-gradient(135deg, #d83447, #f05666);
+    color: #fff;
+  }
+
+  .rel-export-btn.excel {
+    background: linear-gradient(135deg, #1f8e58, #31b56f);
+    color: #fff;
+  }
+
+  .rel-section {
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+  }
+
+  .rel-section-head {
+    padding: 1.2rem 1.35rem 0;
+  }
+
+  .rel-section-title {
+    color: var(--rel-text);
+    font-size: 1.08rem;
+    font-weight: 800;
+    margin-bottom: .3rem;
+  }
+
+  .rel-section-subtitle {
+    color: var(--rel-muted);
+    margin: 0;
+  }
+
+  .rel-section-body {
+    padding: 1.25rem 1.35rem 1.35rem;
+  }
+
+  .rel-stage-card {
+    border: 1px solid #dce7f0;
+    border-radius: 24px;
+    padding: 1rem;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    box-shadow: 0 14px 30px rgba(18, 43, 68, .08);
+  }
+
+  .rel-stage-card + .rel-stage-card {
+    margin-top: 1rem;
+  }
+
+  .rel-stage-name {
+    color: #1c60c1;
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin-bottom: .95rem;
+    padding-bottom: .65rem;
+    border-bottom: 2px solid rgba(28, 96, 193, .14);
+  }
+
+  .rel-indicator-card {
+    border: 1px solid #e2ebf4;
+    border-left: 4px solid #1c60c1;
+    border-radius: 18px;
+    padding: 1rem;
+    background: #fbfdff;
+  }
+
+  .rel-indicator-card + .rel-indicator-card {
+    margin-top: .9rem;
+  }
+
+  .rel-indicator-title {
+    color: #425b73;
+    font-size: .98rem;
+    font-weight: 800;
+    margin-bottom: .8rem;
+  }
+
+  .rel-ranking-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .9rem;
+  }
+
+  .rel-mini-panel {
+    border: 1px solid #e2ebf4;
+    border-radius: 18px;
+    background: #fff;
+    padding: .95rem;
+  }
+
+  .rel-mini-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .34rem .7rem;
+    border-radius: 999px;
+    font-size: .74rem;
+    font-weight: 800;
+    margin-bottom: .75rem;
+  }
+
+  .rel-mini-badge.best {
+    background: #2e7d32;
+    color: #fff;
+  }
+
+  .rel-mini-badge.worst {
+    background: #c62828;
+    color: #fff;
+  }
+
+  .rel-table {
+    margin: 0;
+  }
+
+  .rel-table thead th {
+    border: 0;
+    background: linear-gradient(135deg, #17324d 0%, #234d73 100%);
+    color: #fff;
+    font-size: .75rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    padding: .95rem .85rem;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .rel-table tbody tr:nth-child(odd) {
+    background: rgba(249, 252, 255, .98);
+  }
+
+  .rel-table tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, .98);
+  }
+
+  .rel-table tbody tr:hover {
+    background: #eef5ff;
+  }
+
+  .rel-table tbody td {
+    padding: .9rem .85rem;
+    border-top: 1px solid rgba(20, 50, 77, .08);
+    vertical-align: middle;
+  }
+
+  .rel-note {
+    background: linear-gradient(135deg, rgba(23, 50, 77, .06), rgba(42, 98, 143, .08));
+    border: 1px solid rgba(20, 50, 77, .08);
+    border-radius: 18px;
+    padding: .85rem 1rem;
+    color: #516779;
+  }
+
+  .rel-pill {
+    border-radius: 999px;
+    font-weight: 700;
+    padding: .42rem .7rem;
+  }
+
+  .rel-pagination .pagination {
+    gap: .35rem;
+    flex-wrap: wrap;
+  }
+
+  .rel-pagination .page-link {
+    border-radius: 14px;
+    border: 1px solid rgba(20, 50, 77, .12);
+    color: var(--rel-text);
+    box-shadow: 0 10px 20px rgba(18, 43, 68, .06);
+  }
+
+  .rel-pagination .page-item.active .page-link {
+    background: #17324d;
+    border-color: #17324d;
+    color: #fff;
+  }
+
+  .rel-empty {
+    padding: 3rem 1.5rem;
     text-align: center;
-    color: #9e9e9e;
+    color: var(--rel-muted);
   }
-  .empty-state i { font-size: 3rem; margin-bottom: .75rem; display: block; }
+
+  .rel-empty i {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: .85rem;
+    color: #79a4c7;
+  }
+
+  @media (max-width: 1399.98px) {
+    .rel-filter-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 991.98px) {
+    .rel-hero {
+      border-radius: 26px;
+    }
+
+    .rel-hero-actions {
+      justify-content: flex-start;
+    }
+
+    .rel-filter-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .rel-ranking-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .rel-shell {
+      padding-left: .35rem;
+      padding-right: .35rem;
+    }
+
+    .rel-hero,
+    .rel-panel,
+    .rel-section,
+    .rel-empty {
+      border-radius: 22px;
+    }
+
+    .rel-panel,
+    .rel-section-body {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    .rel-section-head {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    .rel-filter-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .rel-hero-btn,
+    .rel-export-btn,
+    .rel-filter-action {
+      width: 100%;
+    }
+
+    .rel-table thead th,
+    .rel-table tbody td {
+      font-size: .8rem;
+      padding: .75rem .6rem;
+    }
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-
-  <!-- Header -->
-  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
-    <div>
-      <h1 class="h3 mb-0"><i class="bi bi-bar-chart-line text-primary"></i> {{ title }}</h1>
-      <small class="text-muted">Análise de produção diária por pedreiro e etapa</small>
-    </div>
-    <div class="d-flex gap-2 flex-wrap">
-      <a href="{% url 'funcionarios:apontamento_list' %}" class="btn btn-outline-primary btn-sm">
-        <i class="bi bi-list-ul"></i> Apontamentos
-      </a>
-      <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-primary btn-sm">
-        <i class="bi bi-plus-lg"></i> Novo Apontamento
-      </a>
-    </div>
-  </div>
-
-  <!-- Filtros -->
-  <div class="card filter-card shadow-sm mb-4">
-    <div class="card-body">
-      <form method="get" id="filtro-form">
-        <div class="row g-3 align-items-end">
-          <div class="col-md-2">
-            <label class="form-label small fw-semibold">Obra</label>
-            {{ form.obra }}
-          </div>
-          <div class="col-md-2">
-            <label class="form-label small fw-semibold">Etapa</label>
-            {{ form.etapa }}
-          </div>
-          <div class="col-md-2">
-            <label class="form-label small fw-semibold">Funcionário</label>
-            {{ form.funcionario }}
-          </div>
-          <div class="col-md-1">
-            <label class="form-label small fw-semibold">Clima</label>
-            {{ form.clima }}
-          </div>
-          <div class="col-md-2">
-            <label class="form-label small fw-semibold">Data Início</label>
-            {{ form.data_inicio }}
-          </div>
-          <div class="col-md-2">
-            <label class="form-label small fw-semibold">Data Fim</label>
-            {{ form.data_fim }}
-          </div>
-          <div class="col-md-1 d-flex gap-1">
-            <button type="submit" class="btn btn-primary btn-sm w-100">
-              <i class="bi bi-funnel"></i> Filtrar
-            </button>
-          </div>
-          <div class="col-md-1 d-flex gap-1">
-            <a href="{% url 'relatorios:dashboard' %}" class="btn btn-outline-secondary btn-sm w-100">
-              <i class="bi bi-x-circle"></i> Limpar
-            </a>
-          </div>
+<div class="container-fluid py-4 rel-shell">
+  <div class="rel-hero p-4 p-lg-5 mb-4">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-8">
+        <span class="rel-badge"><i class="bi bi-bar-chart-line"></i> Relatórios</span>
+        <h1 class="rel-title">{{ title }}</h1>
+        <p class="rel-subtitle">Acompanhe produção, rankings, médias por etapa e apontamentos detalhados em um painel mais claro, responsivo e pronto para computador e celular.</p>
+      </div>
+      <div class="col-lg-4">
+        <div class="rel-hero-actions">
+          <a href="{% url 'funcionarios:apontamento_list' %}" class="rel-hero-btn outline">
+            <i class="bi bi-list-ul"></i> Apontamentos
+          </a>
+          <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="rel-hero-btn light">
+            <i class="bi bi-plus-lg"></i> Novo Apontamento
+          </a>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 
-  
-  <!-- Exportações -->
-  <div class="d-flex gap-2 mb-4 flex-wrap">
-    <a href="{% url 'relatorios:exportar_pdf' %}{% if export_querystring %}?{{ export_querystring }}{% endif %}"
-       class="btn btn-danger btn-sm export-btn">
+  <div class="rel-panel mb-4">
+    <div class="rel-panel-title">Filtros do Relatório</div>
+    <div class="rel-panel-subtitle">Refine os dados por obra, etapa, funcionário, clima e intervalo de datas.</div>
+    <form method="get" id="filtro-form" class="rel-filter-grid">
+      <div class="rel-filter-item">
+        <label class="rel-filter-label">Obra</label>
+        {{ form.obra }}
+      </div>
+      <div class="rel-filter-item">
+        <label class="rel-filter-label">Etapa</label>
+        {{ form.etapa }}
+      </div>
+      <div class="rel-filter-item">
+        <label class="rel-filter-label">Funcionário</label>
+        {{ form.funcionario }}
+      </div>
+      <div class="rel-filter-item">
+        <label class="rel-filter-label">Clima</label>
+        {{ form.clima }}
+      </div>
+      <div class="rel-filter-item">
+        <label class="rel-filter-label">Data Início</label>
+        {{ form.data_inicio }}
+      </div>
+      <div class="rel-filter-item">
+        <label class="rel-filter-label">Data Fim</label>
+        {{ form.data_fim }}
+      </div>
+      <button type="submit" class="btn btn-primary rel-filter-action">
+        <i class="bi bi-funnel"></i> Filtrar
+      </button>
+      <a href="{% url 'relatorios:dashboard' %}" class="btn btn-outline-secondary rel-filter-action">
+        <i class="bi bi-x-circle"></i> Limpar
+      </a>
+    </form>
+  </div>
+
+  <div class="rel-export-row">
+    <a href="{% url 'relatorios:exportar_pdf' %}{% if export_querystring %}?{{ export_querystring }}{% endif %}" class="rel-export-btn pdf">
       <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
     </a>
-    <a href="{% url 'relatorios:exportar_excel' %}{% if export_querystring %}?{{ export_querystring }}{% endif %}"
-       class="btn btn-success btn-sm export-btn">
+    <a href="{% url 'relatorios:exportar_excel' %}{% if export_querystring %}?{{ export_querystring }}{% endif %}" class="rel-export-btn excel">
       <i class="bi bi-file-earmark-excel"></i> Exportar Excel
     </a>
   </div>
-  
 
   {% if not ranking_por_etapas and not media_dias_etapa and not media_individual and not apontamentos_periodo %}
-    <div class="card section-card shadow-sm">
-      <div class="card-body empty-state">
-        <i class="bi bi-clipboard-data"></i>
-        <h5>Nenhum dado encontrado</h5>
-        <p>Cadastre apontamentos diários com metragem executada para visualizar os relatórios.</p>
-        <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-primary btn-sm">
-          <i class="bi bi-plus-lg"></i> Novo Apontamento
-        </a>
-      </div>
-    </div>
+  <div class="rel-empty">
+    <i class="bi bi-clipboard-data"></i>
+    <h5 class="fw-bold text-dark">Nenhum dado encontrado</h5>
+    <p>Cadastre apontamentos diários com metragem executada para visualizar os relatórios.</p>
+    <a href="{% url 'funcionarios:apontamento_lote_create' %}" class="btn btn-primary rel-filter-action mt-2">
+      <i class="bi bi-plus-lg"></i> Novo Apontamento
+    </a>
+  </div>
   {% else %}
 
-  <!-- ════════════════════════════════════════════ -->
-  <!-- SEÇÃO 1: Ranking por Etapa e Indicador      -->
-  <!-- ════════════════════════════════════════════ -->
-  <div class="card section-card shadow-sm mb-4">
-    <div class="card-header bg-white border-0 pt-3">
-      <h5 class="mb-0"><i class="bi bi-trophy text-warning"></i> 1. Ranking por Etapa (Melhores e Piores)</h5>
-      <small class="text-muted">Critério: média de quantidade produzida por dia em cada indicador</small>
+  <section class="rel-section">
+    <div class="rel-section-head">
+      <div class="rel-section-title"><i class="bi bi-trophy text-warning me-1"></i> 1. Ranking por Etapa</div>
+      <p class="rel-section-subtitle">Critério: média de quantidade produzida por dia em cada indicador.</p>
     </div>
-    <div class="card-body">
+    <div class="rel-section-body">
       {% for etapa in ranking_por_etapas %}
-      <div class="mb-5">
-        <h5 class="fw-bold text-primary mb-4" style="border-bottom: 2px solid #0d6efd; padding-bottom: 10px;">
-          {{ etapa.nome }}
-        </h5>
-        
+      <div class="rel-stage-card">
+        <div class="rel-stage-name">{{ etapa.nome }}</div>
         {% for indicador in etapa.indicadores %}
-        <div class="mb-4 p-3" style="background-color: #f8f9fa; border-left: 4px solid #0d6efd;">
-          <h6 class="fw-bold text-secondary mb-3">
-            📊 {{ indicador.nome }} ({{ indicador.unidade }})
-          </h6>
-          <div class="row g-3">
-            <!-- Melhores -->
-            <div class="col-md-6">
-              <div class="border rounded p-3 h-100 bg-white">
-                <span class="badge ranking-badge-best mb-2"><i class="bi bi-arrow-up-circle"></i> Top 3 Melhores</span>
-                <table class="table table-sm table-ranking mb-0">
+        <div class="rel-indicator-card">
+          <div class="rel-indicator-title"><i class="bi bi-graph-up-arrow me-1"></i> {{ indicador.nome }} ({{ indicador.unidade }})</div>
+          <div class="rel-ranking-grid">
+            <div class="rel-mini-panel">
+              <span class="rel-mini-badge best"><i class="bi bi-arrow-up-circle"></i> Top 3 Melhores</span>
+              <div class="table-responsive">
+                <table class="table table-sm rel-table mb-0">
                   <thead>
                     <tr>
                       <th>#</th>
@@ -162,28 +579,23 @@
                   <tbody>
                     {% for m in indicador.melhores %}
                     <tr>
-                      <td>
-                        {% if forloop.counter == 1 %}🥇
-                        {% elif forloop.counter == 2 %}🥈
-                        {% elif forloop.counter == 3 %}🥉
-                        {% else %}{{ forloop.counter }}{% endif %}
-                      </td>
+                      <td>{% if forloop.counter == 1 %}🥇{% elif forloop.counter == 2 %}🥈{% elif forloop.counter == 3 %}🥉{% else %}{{ forloop.counter }}{% endif %}</td>
                       <td>{{ m.nome }}</td>
                       <td class="text-end fw-bold text-success">{{ m.media_producao }}</td>
                       <td class="text-end">{{ m.total_dias }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="4" class="text-muted text-center">Sem dados</td></tr>
+                    <tr><td colspan="4" class="text-center text-muted">Sem dados</td></tr>
                     {% endfor %}
                   </tbody>
                 </table>
               </div>
             </div>
-            <!-- Piores -->
-            <div class="col-md-6">
-              <div class="border rounded p-3 h-100 bg-white">
-                <span class="badge ranking-badge-worst mb-2"><i class="bi bi-arrow-down-circle"></i> Top 3 Piores</span>
-                <table class="table table-sm table-ranking mb-0">
+
+            <div class="rel-mini-panel">
+              <span class="rel-mini-badge worst"><i class="bi bi-arrow-down-circle"></i> Top 3 Piores</span>
+              <div class="table-responsive">
+                <table class="table table-sm rel-table mb-0">
                   <thead>
                     <tr>
                       <th>#</th>
@@ -201,7 +613,7 @@
                       <td class="text-end">{{ p.total_dias }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="4" class="text-muted text-center">Sem dados</td></tr>
+                    <tr><td colspan="4" class="text-center text-muted">Sem dados</td></tr>
                     {% endfor %}
                   </tbody>
                 </table>
@@ -210,29 +622,24 @@
           </div>
         </div>
         {% empty %}
-        <p class="text-muted">Nenhum indicador com dados para esta etapa.</p>
+        <p class="text-muted mb-0">Nenhum indicador com dados para esta etapa.</p>
         {% endfor %}
       </div>
       {% empty %}
-      <p class="text-muted">Nenhum dado de ranking disponível.</p>
+      <p class="text-muted mb-0">Nenhum dado de ranking disponível.</p>
       {% endfor %}
     </div>
-  </div>
+  </section>
 
-  <!-- ════════════════════════════════════════════ -->
-  <!-- SEÇÃO 2: Média de Dias por Etapa            -->
-  <!-- ════════════════════════════════════════════ -->
-  <div class="card section-card shadow-sm mb-4">
-    <div class="card-header bg-white border-0 pt-3">
-      <h5 class="mb-0"><i class="bi bi-calendar-week text-info"></i> 2. Média de Dias para Execução de Cada Etapa</h5>
-      <small class="text-muted">
-        <i class="bi bi-info-circle"></i> Considerando apenas etapas em andamento de obras não concluídas
-      </small>
+  <section class="rel-section">
+    <div class="rel-section-head">
+      <div class="rel-section-title"><i class="bi bi-calendar-week text-info me-1"></i> 2. Média de Dias por Etapa</div>
+      <p class="rel-section-subtitle">Considerando apenas etapas em andamento de obras não concluídas.</p>
     </div>
-    <div class="card-body">
+    <div class="rel-section-body">
       <div class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead class="table-light">
+        <table class="table rel-table align-middle">
+          <thead>
             <tr>
               <th>Etapa</th>
               <th class="text-center">Média de Dias</th>
@@ -243,60 +650,55 @@
             {% for e in media_dias_etapa %}
             <tr>
               <td class="fw-semibold">{{ e.etapa_nome }}</td>
-              <td class="text-center">
-                <span class="badge bg-info text-dark fs-6">{{ e.media_dias }} dias</span>
-              </td>
+              <td class="text-center"><span class="badge bg-info text-dark rel-pill">{{ e.media_dias }} dias</span></td>
               <td class="text-center">{{ e.total_obras }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="3" class="text-muted text-center">Sem dados</td></tr>
+            <tr><td colspan="3" class="text-center text-muted">Sem dados</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- ════════════════════════════════════════════ -->
-  <!-- SEÇÃO 3: Média Individual                   -->
-  <!-- ════════════════════════════════════════════ -->
-  <div class="card section-card shadow-sm mb-4">
-    <div class="card-header bg-white border-0 pt-3">
-      <h5 class="mb-0"><i class="bi bi-person-lines-fill text-primary"></i> 3. Rendimento Individual por Pedreiro</h5>
-      <small class="text-muted">Resumo do desempenho de cada pedreiro no período selecionado: produção média diária (blocos, m² etc.), dias trabalhados, horas, valor recebido e metragem executada.</small>
+  <section class="rel-section">
+    <div class="rel-section-head">
+      <div class="rel-section-title"><i class="bi bi-person-lines-fill text-primary me-1"></i> 3. Rendimento Individual por Pedreiro</div>
+      <p class="rel-section-subtitle">Resumo do desempenho de cada pedreiro no período selecionado.</p>
     </div>
-    <div class="card-body">
-      <!-- Legenda dos indicadores -->
-      <div class="alert alert-secondary py-2 mb-3">
+    <div class="rel-section-body">
+      <div class="rel-note mb-3">
         <small>
           <strong>Produção média diária por indicador:</strong>
-          <span class="badge bg-primary ms-2">7F</span> Parede 7 Fiadas (blocos/dia) &nbsp;
-          <span class="badge bg-secondary">Ali</span> Alicerce (%/dia) &nbsp;
-          <span class="badge bg-info text-dark">Plat</span> Platibanda (blocos/dia) &nbsp;
-          <span class="badge bg-warning text-dark">R.Ext</span> Reboco Externo (m²/dia) &nbsp;
-          <span class="badge bg-success">R.Int</span> Reboco Interno (m²/dia) &nbsp;
-          <span class="text-muted">— = sem registros no período</span>
+          <span class="badge bg-primary ms-2">7F</span> Parede 7 Fiadas
+          <span class="badge bg-secondary ms-2">Ali</span> Alicerce
+          <span class="badge bg-info text-dark ms-2">Plat</span> Platibanda
+          <span class="badge bg-warning text-dark ms-2">R.Ext</span> Reboco Externo
+          <span class="badge bg-success ms-2">R.Int</span> Reboco Interno
+          <span class="text-muted ms-2">- = sem registros no período</span>
         </small>
       </div>
+
       <div class="table-responsive">
-        <table class="table table-hover align-middle table-sm">
-          <thead class="table-light">
+        <table class="table rel-table align-middle table-sm">
+          <thead>
             <tr>
               <th rowspan="2" class="align-middle">#</th>
               <th rowspan="2" class="align-middle">Pedreiro</th>
-              <th colspan="5" class="text-center border-start border-end bg-light-blue">Produção Média Diária (por indicador)</th>
-              <th rowspan="2" class="text-center align-middle">Dias<br>Trab.</th>
-              <th rowspan="2" class="text-center align-middle">Ocio<br>sidade</th>
-              <th rowspan="2" class="text-center align-middle">Retra<br>balho</th>
+              <th colspan="5" class="text-center">Produção Média Diária</th>
+              <th rowspan="2" class="text-center align-middle">Dias Trab.</th>
+              <th rowspan="2" class="text-center align-middle">Ociosidade</th>
+              <th rowspan="2" class="text-center align-middle">Retrabalho</th>
               <th rowspan="2" class="text-center align-middle">Horas</th>
-              <th rowspan="2" class="text-center align-middle">Total<br>Recebido</th>
+              <th rowspan="2" class="text-center align-middle">Total Recebido</th>
             </tr>
             <tr>
-              <th class="text-center border-start"><span class="badge bg-primary">7F</span><br><small class="text-muted fw-normal">blocos</small></th>
-              <th class="text-center"><span class="badge bg-secondary">Ali</span><br><small class="text-muted fw-normal">%</small></th>
-              <th class="text-center"><span class="badge bg-info text-dark">Plat</span><br><small class="text-muted fw-normal">blocos</small></th>
-              <th class="text-center"><span class="badge bg-warning text-dark">R.Ext</span><br><small class="text-muted fw-normal">m²</small></th>
-              <th class="text-center border-end"><span class="badge bg-success">R.Int</span><br><small class="text-muted fw-normal">m²</small></th>
+              <th class="text-center"><span class="badge bg-primary">7F</span></th>
+              <th class="text-center"><span class="badge bg-secondary">Ali</span></th>
+              <th class="text-center"><span class="badge bg-info text-dark">Plat</span></th>
+              <th class="text-center"><span class="badge bg-warning text-dark">R.Ext</span></th>
+              <th class="text-center"><span class="badge bg-success">R.Int</span></th>
             </tr>
           </thead>
           <tbody>
@@ -304,44 +706,27 @@
             <tr>
               <td>{{ media_individual.start_index|add:forloop.counter0 }}</td>
               <td class="fw-semibold">{{ r.nome }}</td>
-              <td class="text-center border-start">
-                {% if r.media_7fiadas != '-' %}<span class="badge bg-primary">{{ r.media_7fiadas }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
-              </td>
-              <td class="text-center">
-                {% if r.media_alicerce != '-' %}<span class="badge bg-secondary">{{ r.media_alicerce }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
-              </td>
-              <td class="text-center">
-                {% if r.media_platibanda != '-' %}<span class="badge bg-info text-dark">{{ r.media_platibanda }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
-              </td>
-              <td class="text-center">
-                {% if r.media_reboco_ext != '-' %}<span class="badge bg-warning text-dark">{{ r.media_reboco_ext }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
-              </td>
-              <td class="text-center border-end">
-                {% if r.media_reboco_int != '-' %}<span class="badge bg-success">{{ r.media_reboco_int }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
-              </td>
+              <td class="text-center">{% if r.media_7fiadas != '-' %}<span class="badge bg-primary">{{ r.media_7fiadas }}</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
+              <td class="text-center">{% if r.media_alicerce != '-' %}<span class="badge bg-secondary">{{ r.media_alicerce }}</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
+              <td class="text-center">{% if r.media_platibanda != '-' %}<span class="badge bg-info text-dark">{{ r.media_platibanda }}</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
+              <td class="text-center">{% if r.media_reboco_ext != '-' %}<span class="badge bg-warning text-dark">{{ r.media_reboco_ext }}</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
+              <td class="text-center">{% if r.media_reboco_int != '-' %}<span class="badge bg-success">{{ r.media_reboco_int }}</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
               <td class="text-center">{{ r.total_dias }}</td>
-              <td class="text-center">
-                {% if r.total_ociosidade > 0 %}
-                  <span class="text-warning fw-bold">{{ r.total_ociosidade }}</span>
-                {% else %}0{% endif %}
-              </td>
-              <td class="text-center">
-                {% if r.total_retrabalho > 0 %}
-                  <span class="text-danger fw-bold">{{ r.total_retrabalho }}</span>
-                {% else %}0{% endif %}
-              </td>
+              <td class="text-center">{% if r.total_ociosidade > 0 %}<span class="text-warning fw-bold">{{ r.total_ociosidade }}</span>{% else %}0{% endif %}</td>
+              <td class="text-center">{% if r.total_retrabalho > 0 %}<span class="text-danger fw-bold">{{ r.total_retrabalho }}</span>{% else %}0{% endif %}</td>
               <td class="text-center">{{ r.total_horas|floatformat:1 }}</td>
               <td class="text-center">R$ {{ r.total_valor|floatformat:2 }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="11" class="text-muted text-center">Sem dados</td></tr>
+            <tr><td colspan="12" class="text-center text-muted">Sem dados</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+
       {% if media_pag.page_obj.paginator.num_pages > 1 %}
-      <nav aria-label="Paginacao rendimento individual" class="mt-3">
-        <ul class="pagination pagination-sm flex-wrap mb-0">
+      <nav aria-label="Paginação rendimento individual" class="mt-3 rel-pagination">
+        <ul class="pagination mb-0">
           <li class="page-item {% if not media_pag.page_obj.has_previous %}disabled{% endif %}">
             <a class="page-link" href="{% if media_pag.page_obj.has_previous %}{{ media_pag.first_url }}{% else %}#{% endif %}">Primeira</a>
           </li>
@@ -354,29 +739,26 @@
           </li>
           {% endfor %}
           <li class="page-item {% if not media_pag.page_obj.has_next %}disabled{% endif %}">
-            <a class="page-link" href="{% if media_pag.page_obj.has_next %}{{ media_pag.next_url }}{% else %}#{% endif %}">Proxima</a>
+            <a class="page-link" href="{% if media_pag.page_obj.has_next %}{{ media_pag.next_url }}{% else %}#{% endif %}">Próxima</a>
           </li>
           <li class="page-item {% if not media_pag.page_obj.has_next %}disabled{% endif %}">
-            <a class="page-link" href="{% if media_pag.page_obj.has_next %}{{ media_pag.last_url }}{% else %}#{% endif %}">Ultima</a>
+            <a class="page-link" href="{% if media_pag.page_obj.has_next %}{{ media_pag.last_url }}{% else %}#{% endif %}">Última</a>
           </li>
         </ul>
       </nav>
       {% endif %}
     </div>
-  </div>
+  </section>
 
-  <!-- ════════════════════════════════════════════ -->
-  <!-- SEÇÃO 4: Apontamentos Detalhados            -->
-  <!-- ════════════════════════════════════════════ -->
-  <div class="card section-card shadow-sm mb-4">
-    <div class="card-header bg-white border-0 pt-3">
-      <h5 class="mb-0"><i class="bi bi-journal-text text-secondary"></i> 4. Apontamentos do Período</h5>
-      <small class="text-muted">Mostra o que foi preenchido no dia (ociosidade, retrabalho e observações)</small>
+  <section class="rel-section">
+    <div class="rel-section-head">
+      <div class="rel-section-title"><i class="bi bi-journal-text text-secondary me-1"></i> 4. Apontamentos do Período</div>
+      <p class="rel-section-subtitle">Mostra o que foi preenchido no dia, incluindo ociosidade, retrabalho e observações.</p>
     </div>
-    <div class="card-body">
+    <div class="rel-section-body">
       <div class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead class="table-light">
+        <table class="table rel-table align-middle">
+          <thead>
             <tr>
               <th>Data</th>
               <th>Funcionário</th>
@@ -396,33 +778,22 @@
               <td class="fw-semibold">{{ a.funcionario.nome_completo }}</td>
               <td>{{ a.obra.nome }}</td>
               <td>{% if a.etapa %}{{ a.etapa }}{% else %}-{% endif %}</td>
-              <td class="text-center">
-                {% if a.houve_ociosidade %}
-                  <span class="badge bg-warning text-dark">Sim</span>
-                {% else %}
-                  <span class="text-muted">Não</span>
-                {% endif %}
-              </td>
+              <td class="text-center">{% if a.houve_ociosidade %}<span class="badge bg-warning text-dark rel-pill">Sim</span>{% else %}<span class="text-muted">Não</span>{% endif %}</td>
               <td>{{ a.observacao_ociosidade|default:'-' }}</td>
-              <td class="text-center">
-                {% if a.houve_retrabalho %}
-                  <span class="badge bg-danger">Sim</span>
-                {% else %}
-                  <span class="text-muted">Não</span>
-                {% endif %}
-              </td>
+              <td class="text-center">{% if a.houve_retrabalho %}<span class="badge bg-danger rel-pill">Sim</span>{% else %}<span class="text-muted">Não</span>{% endif %}</td>
               <td>{{ a.motivo_retrabalho|default:'-' }}</td>
               <td>{{ a.observacoes|default:'-' }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="9" class="text-muted text-center">Sem apontamentos no período</td></tr>
+            <tr><td colspan="9" class="text-center text-muted">Sem apontamentos no período</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+
       {% if apontamentos_pag.page_obj.paginator.num_pages > 1 %}
-      <nav aria-label="Paginacao apontamentos do periodo" class="mt-3">
-        <ul class="pagination pagination-sm flex-wrap mb-0">
+      <nav aria-label="Paginação apontamentos do período" class="mt-3 rel-pagination">
+        <ul class="pagination mb-0">
           <li class="page-item {% if not apontamentos_pag.page_obj.has_previous %}disabled{% endif %}">
             <a class="page-link" href="{% if apontamentos_pag.page_obj.has_previous %}{{ apontamentos_pag.first_url }}{% else %}#{% endif %}">Primeira</a>
           </li>
@@ -435,19 +806,18 @@
           </li>
           {% endfor %}
           <li class="page-item {% if not apontamentos_pag.page_obj.has_next %}disabled{% endif %}">
-            <a class="page-link" href="{% if apontamentos_pag.page_obj.has_next %}{{ apontamentos_pag.next_url }}{% else %}#{% endif %}">Proxima</a>
+            <a class="page-link" href="{% if apontamentos_pag.page_obj.has_next %}{{ apontamentos_pag.next_url }}{% else %}#{% endif %}">Próxima</a>
           </li>
           <li class="page-item {% if not apontamentos_pag.page_obj.has_next %}disabled{% endif %}">
-            <a class="page-link" href="{% if apontamentos_pag.page_obj.has_next %}{{ apontamentos_pag.last_url }}{% else %}#{% endif %}">Ultima</a>
+            <a class="page-link" href="{% if apontamentos_pag.page_obj.has_next %}{{ apontamentos_pag.last_url }}{% else %}#{% endif %}">Última</a>
           </li>
         </ul>
       </nav>
       {% endif %}
     </div>
-  </div>
+  </section>
 
   {% endif %}
-
 </div>
 {% endblock %}
 
@@ -513,5 +883,3 @@
   });
 </script>
 {% endblock %}
-
-

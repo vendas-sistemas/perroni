@@ -5,266 +5,874 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <style>
-  .cli-row:nth-child(odd)  { background-color: #f8f9fa; }
-  .cli-row:nth-child(even) { background-color: #ffffff; }
-  .cli-row:hover { background-color: #e9ecef; transition: background-color .15s; }
-  .cli-row td { vertical-align: middle; }
-  .summary-card { border: none; border-radius: .75rem; }
-  .summary-card .card-body { padding: 1rem 1.25rem; }
-  .summary-icon { font-size: 1.5rem; opacity: .7; }
-  .search-box { max-width: 400px; }
+  :root {
+    --cli-bg: linear-gradient(180deg, #f3f7fc 0%, #eef4fb 52%, #f9fbfe 100%);
+    --cli-hero: linear-gradient(135deg, #14324d 0%, #204d73 58%, #2f6e98 100%);
+    --cli-surface: rgba(255, 255, 255, 0.94);
+    --cli-border: rgba(20, 50, 77, 0.12);
+    --cli-text: #17324d;
+    --cli-muted: #5f7389;
+    --cli-shadow: 0 24px 60px rgba(25, 62, 96, 0.12);
+  }
+
+  body {
+    background: var(--cli-bg);
+  }
+
+  .cli-shell {
+    max-width: 1400px;
+  }
+
+  .cli-hero {
+    background: var(--cli-hero);
+    border-radius: 30px;
+    box-shadow: 0 28px 65px rgba(13, 39, 64, 0.22);
+    color: #fff;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .cli-hero::before,
+  .cli-hero::after {
+    content: "";
+    position: absolute;
+    border-radius: 999px;
+    pointer-events: none;
+  }
+
+  .cli-hero::before {
+    width: 280px;
+    height: 280px;
+    top: -140px;
+    right: -70px;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .cli-hero::after {
+    width: 180px;
+    height: 180px;
+    bottom: -85px;
+    right: 22%;
+    background: rgba(134, 199, 255, 0.14);
+  }
+
+  .cli-hero-content,
+  .cli-hero-actions {
+    position: relative;
+    z-index: 1;
+  }
+
+  .cli-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.85rem;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .cli-title {
+    font-size: clamp(2rem, 3vw, 2.7rem);
+    font-weight: 800;
+    line-height: 1.05;
+    margin: 1rem 0 0.6rem;
+  }
+
+  .cli-subtitle {
+    max-width: 650px;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 1rem;
+    margin: 0;
+  }
+
+  .cli-hero-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    min-width: 220px;
+    padding: 0.95rem 1.35rem;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: #f9fbff;
+    color: #14324d;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 16px 32px rgba(15, 34, 53, 0.16);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .cli-hero-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 36px rgba(15, 34, 53, 0.2);
+    color: #14324d;
+  }
+
+  .cli-metric {
+    height: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 26px;
+    padding: 1.35rem 1.4rem;
+    box-shadow: var(--cli-shadow);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cli-metric::after {
+    content: "";
+    position: absolute;
+    inset: auto -24px -36px auto;
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .cli-metric-primary {
+    background: linear-gradient(135deg, rgba(17, 96, 192, 0.16), rgba(100, 177, 255, 0.16)), #ffffff;
+  }
+
+  .cli-metric-success {
+    background: linear-gradient(135deg, rgba(33, 137, 91, 0.14), rgba(131, 220, 181, 0.18)), #ffffff;
+  }
+
+  .cli-metric-info {
+    background: linear-gradient(135deg, rgba(20, 50, 77, 0.14), rgba(91, 160, 209, 0.18)), #ffffff;
+  }
+
+  .cli-metric-label {
+    color: var(--cli-muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.55rem;
+    text-transform: uppercase;
+  }
+
+  .cli-metric-value {
+    color: var(--cli-text);
+    font-size: clamp(1.8rem, 2.6vw, 2.35rem);
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .cli-metric-icon {
+    width: 54px;
+    height: 54px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    font-size: 1.4rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .cli-metric-primary .cli-metric-icon {
+    color: #165cc4;
+    background: rgba(22, 92, 196, 0.12);
+  }
+
+  .cli-metric-success .cli-metric-icon {
+    color: #22865a;
+    background: rgba(34, 134, 90, 0.12);
+  }
+
+  .cli-metric-info .cli-metric-icon {
+    color: #1d5b84;
+    background: rgba(29, 91, 132, 0.12);
+  }
+
+  .cli-panel,
+  .cli-table-card,
+  .cli-empty {
+    background: var(--cli-surface);
+    border: 1px solid var(--cli-border);
+    border-radius: 28px;
+    box-shadow: var(--cli-shadow);
+  }
+
+  .cli-panel {
+    padding: 1.5rem;
+  }
+
+  .cli-panel-title {
+    color: var(--cli-text);
+    font-size: 1.2rem;
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+  }
+
+  .cli-panel-subtitle {
+    color: var(--cli-muted);
+    margin-bottom: 1.15rem;
+  }
+
+  .cli-search-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.95rem;
+    align-items: center;
+  }
+
+  .cli-search-group {
+    display: flex;
+    align-items: center;
+    min-height: 62px;
+    background: #fff;
+    border: 1px solid rgba(24, 59, 90, 0.14);
+    border-radius: 18px;
+    padding: 0 0.45rem 0 1rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+
+  .cli-search-group i {
+    color: #2e6c95;
+    font-size: 1rem;
+    margin-right: 0.8rem;
+  }
+
+  .cli-search-group input {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    padding: 0.95rem 0;
+    color: var(--cli-text);
+    min-width: 0;
+  }
+
+  .cli-search-group input:focus {
+    outline: none;
+    box-shadow: none;
+  }
+
+  .cli-search-group input::placeholder {
+    color: #7c8d9f;
+  }
+
+  .cli-search-clear {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    border: 1px solid rgba(24, 59, 90, 0.14);
+    background: #f5f8fc;
+    color: #597085;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+  }
+
+  .cli-search-btn {
+    min-height: 62px;
+    padding: 0.95rem 1.5rem;
+    border-radius: 18px;
+    border: 0;
+    background: linear-gradient(135deg, #185fc8, #2a85e8);
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 16px 30px rgba(24, 95, 200, 0.2);
+  }
+
+  .cli-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .cli-results {
+    color: var(--cli-muted);
+    font-weight: 600;
+  }
+
+  .cli-display {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    color: var(--cli-muted);
+    font-weight: 600;
+  }
+
+  .cli-display a {
+    min-width: 42px;
+    text-align: center;
+    padding: 0.45rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid rgba(24, 59, 90, 0.12);
+    background: rgba(255, 255, 255, 0.82);
+    color: var(--cli-text);
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .cli-display a:hover,
+  .cli-display a.active {
+    background: #17324d;
+    border-color: #17324d;
+    color: #fff;
+  }
+
+  .cli-table-card {
+    overflow: hidden;
+  }
+
+  .cli-table {
+    margin-bottom: 0;
+  }
+
+  .cli-table thead th {
+    border: 0;
+    background: linear-gradient(135deg, #17324d 0%, #234d73 100%);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    padding: 1.15rem 1rem;
+    text-transform: uppercase;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  .cli-table thead th:first-child {
+    padding-left: 1.4rem;
+  }
+
+  .cli-row {
+    transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .cli-row:nth-child(odd) {
+    background: rgba(248, 251, 255, 0.96);
+  }
+
+  .cli-row:nth-child(even) {
+    background: rgba(255, 255, 255, 0.98);
+  }
+
+  .cli-row:hover {
+    background: #eef5ff;
+    box-shadow: inset 0 0 0 999px rgba(36, 101, 164, 0.04);
+  }
+
+  .cli-row td {
+    padding: 1.25rem 1rem;
+    border-top: 1px solid rgba(20, 50, 77, 0.08);
+    vertical-align: middle;
+  }
+
+  .cli-row td:first-child {
+    padding-left: 1.4rem;
+  }
+
+  .cli-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #13314c;
+    font-weight: 800;
+    text-decoration: none;
+  }
+
+  .cli-name:hover {
+    color: #1a64c9;
+  }
+
+  .cli-avatar {
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(26, 100, 201, 0.14), rgba(82, 157, 230, 0.18));
+    color: #1a64c9;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .cli-address {
+    margin-top: 0.45rem;
+    color: var(--cli-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    max-width: 320px;
+  }
+
+  .cli-mono {
+    color: var(--cli-text);
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+
+  .cli-contact {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: #244663;
+    font-weight: 600;
+  }
+
+  .cli-contact i {
+    color: #2a7e58;
+  }
+
+  .cli-contact.email i {
+    color: #1c78b0;
+  }
+
+  .cli-empty-value {
+    color: #9aacbe;
+    font-weight: 600;
+  }
+
+  .cli-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.55rem;
+  }
+
+  .cli-action-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(20, 50, 77, 0.14);
+    background: #fff;
+    color: #224764;
+    text-decoration: none;
+    transition: all 0.18s ease;
+  }
+
+  .cli-action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 22px rgba(20, 50, 77, 0.12);
+  }
+
+  .cli-action-btn.primary:hover {
+    border-color: rgba(27, 100, 201, 0.35);
+    color: #1b64c9;
+  }
+
+  .cli-action-btn.secondary:hover {
+    border-color: rgba(72, 97, 122, 0.35);
+    color: #244663;
+  }
+
+  .cli-mobile {
+    display: none;
+  }
+
+  .cli-mobile-card {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid var(--cli-border);
+    border-radius: 24px;
+    box-shadow: 0 18px 38px rgba(25, 62, 96, 0.1);
+    padding: 1.15rem;
+  }
+
+  .cli-mobile-card + .cli-mobile-card {
+    margin-top: 1rem;
+  }
+
+  .cli-mobile-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .cli-mobile-name {
+    display: flex;
+    gap: 0.85rem;
+    color: var(--cli-text);
+    text-decoration: none;
+  }
+
+  .cli-mobile-meta {
+    display: grid;
+    gap: 0.65rem;
+    margin-top: 1rem;
+    color: #244663;
+    font-weight: 600;
+  }
+
+  .cli-mobile-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    min-width: 0;
+  }
+
+  .cli-mobile-item i {
+    margin-top: 0.15rem;
+    color: #2e6c95;
+  }
+
+  .cli-pagination .pagination {
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
+
+  .cli-pagination .page-link {
+    border: 1px solid rgba(20, 50, 77, 0.12);
+    color: var(--cli-text);
+    border-radius: 14px;
+    min-width: 42px;
+    text-align: center;
+    box-shadow: 0 10px 20px rgba(25, 62, 96, 0.08);
+  }
+
+  .cli-pagination .page-item.active .page-link {
+    background: #17324d;
+    border-color: #17324d;
+    color: #fff;
+  }
+
+  .cli-empty {
+    padding: 3.3rem 1.5rem;
+    text-align: center;
+  }
+
+  .cli-empty-icon {
+    width: 82px;
+    height: 82px;
+    margin: 0 auto 1.2rem;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(26, 100, 201, 0.12), rgba(82, 157, 230, 0.2));
+    color: #1a64c9;
+    font-size: 2rem;
+  }
+
+  @media (max-width: 991.98px) {
+    .cli-hero {
+      border-radius: 26px;
+    }
+
+    .cli-hero-actions {
+      width: 100%;
+    }
+
+    .cli-hero-btn {
+      width: 100%;
+    }
+
+    .cli-search-form,
+    .cli-toolbar {
+      grid-template-columns: 1fr;
+      display: grid;
+    }
+
+    .cli-toolbar {
+      gap: 0.85rem;
+    }
+  }
+
   @media (max-width: 767.98px) {
-    .cli-table { display: none; }
-    .cli-mobile { display: block !important; }
+    .cli-shell {
+      padding-left: 0.35rem;
+      padding-right: 0.35rem;
+    }
+
+    .cli-hero,
+    .cli-panel,
+    .cli-table-card,
+    .cli-empty {
+      border-radius: 22px;
+    }
+
+    .cli-table-card {
+      display: none;
+    }
+
+    .cli-mobile {
+      display: block;
+    }
+
+    .cli-panel {
+      padding: 1.2rem;
+    }
+
+    .cli-search-group {
+      min-height: 56px;
+    }
+
+    .cli-search-btn {
+      min-height: 56px;
+      width: 100%;
+    }
   }
-  @media (min-width: 768px) {
-    .cli-mobile { display: none !important; }
-  }
-  .mobile-card:nth-child(odd)  { background-color: #f8f9fa; }
-  .mobile-card:nth-child(even) { background-color: #ffffff; }
 </style>
 {% endblock %}
 
 {% block content %}
-
-<!-- Header -->
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-  <h1 class="h3 mb-0"><i class="bi bi-people-fill text-primary"></i> Clientes</h1>
-  <a href="{% url 'clientes:cliente_create' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
-    <i class="bi bi-plus-circle-fill"></i> Novo Cliente
-  </a>
-</div>
-
-<!-- Summary Cards -->
-<div class="row g-2 mb-3">
-  <div class="col-4">
-    <div class="card summary-card bg-primary bg-opacity-10">
-      <div class="card-body d-flex align-items-center justify-content-between py-2">
-        <div>
-          <div class="text-muted small">Total</div>
-          <div class="fw-bold fs-4">{{ total_clientes }}</div>
-        </div>
-        <i class="bi bi-people summary-icon text-primary"></i>
+<div class="container-fluid py-4 cli-shell">
+  <div class="cli-hero p-4 p-lg-5 mb-4">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-8 cli-hero-content">
+        <span class="cli-kicker"><i class="bi bi-people-fill"></i> Cadastro Comercial</span>
+        <h1 class="cli-title">Clientes com leitura mais clara, elegante e responsiva.</h1>
+        <p class="cli-subtitle">
+          Organize sua carteira com busca rápida, indicadores visíveis e uma tabela mais profissional para acompanhar os cadastros ativos.
+        </p>
+      </div>
+      <div class="col-lg-4 cli-hero-actions text-lg-end">
+        <a href="{% url 'clientes:cliente_create' %}" class="cli-hero-btn">
+          <i class="bi bi-plus-circle-fill"></i> Novo Cliente
+        </a>
       </div>
     </div>
   </div>
-  <div class="col-4">
-    <div class="card summary-card" style="background-color: rgba(25,135,84,.1);">
-      <div class="card-body d-flex align-items-center justify-content-between py-2">
-        <div>
-          <div class="text-muted small">Com Telefone</div>
-          <div class="fw-bold fs-4">{{ total_com_telefone }}</div>
-        </div>
-        <i class="bi bi-telephone summary-icon text-success"></i>
-      </div>
-    </div>
-  </div>
-  <div class="col-4">
-    <div class="card summary-card" style="background-color: rgba(13,110,253,.1);">
-      <div class="card-body d-flex align-items-center justify-content-between py-2">
-        <div>
-          <div class="text-muted small">Com E-mail</div>
-          <div class="fw-bold fs-4">{{ total_com_email }}</div>
-        </div>
-        <i class="bi bi-envelope summary-icon text-info"></i>
-      </div>
-    </div>
-  </div>
-</div>
 
-<!-- Search -->
-<div class="card border-0 shadow-sm mb-3">
-  <div class="card-body py-2 px-3">
-    <form method="get" class="d-flex search-box flex-grow-1" action="">
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="cli-metric cli-metric-primary">
+        <div class="d-flex align-items-start justify-content-between gap-3">
+          <div>
+            <div class="cli-metric-label">Total de Clientes</div>
+            <div class="cli-metric-value">{{ total_clientes }}</div>
+          </div>
+          <span class="cli-metric-icon"><i class="bi bi-people"></i></span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="cli-metric cli-metric-success">
+        <div class="d-flex align-items-start justify-content-between gap-3">
+          <div>
+            <div class="cli-metric-label">Com Telefone</div>
+            <div class="cli-metric-value">{{ total_com_telefone }}</div>
+          </div>
+          <span class="cli-metric-icon"><i class="bi bi-telephone"></i></span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="cli-metric cli-metric-info">
+        <div class="d-flex align-items-start justify-content-between gap-3">
+          <div>
+            <div class="cli-metric-label">Com E-mail</div>
+            <div class="cli-metric-value">{{ total_com_email }}</div>
+          </div>
+          <span class="cli-metric-icon"><i class="bi bi-envelope"></i></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cli-panel mb-4">
+    <div class="cli-panel-title">Busca de Clientes</div>
+    <div class="cli-panel-subtitle">Pesquise por nome, CPF, telefone ou e-mail para localizar o cadastro com mais agilidade.</div>
+    <form method="get" class="cli-search-form" action="">
       <input type="hidden" name="per_page" value="{{ per_page }}">
-      <div class="input-group input-group-sm">
-        <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
-        <input type="text" name="q" value="{{ busca }}" class="form-control border-start-0"
-               placeholder="Buscar por nome, CPF, telefone ou e-mail...">
+      <div class="cli-search-group">
+        <i class="bi bi-search"></i>
+        <input
+          type="text"
+          name="q"
+          value="{{ busca }}"
+          placeholder="Buscar por nome, CPF, telefone ou e-mail..."
+        >
         {% if busca %}
-        <a href="?per_page={{ per_page }}" class="btn btn-outline-secondary btn-sm">
+        <a href="?per_page={{ per_page }}" class="cli-search-clear" title="Limpar busca">
           <i class="bi bi-x-lg"></i>
         </a>
         {% endif %}
       </div>
+      <button type="submit" class="cli-search-btn">
+        <i class="bi bi-funnel-fill me-1"></i> Filtrar
+      </button>
     </form>
   </div>
-</div>
 
-<!-- Results count + per_page -->
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
-  <small class="text-muted">
-    <i class="bi bi-list-ul"></i> {{ total_resultado }} cliente{{ total_resultado|pluralize:"s" }} encontrado{{ total_resultado|pluralize:"s" }}
-  </small>
-  <div class="d-flex align-items-center gap-1">
-    <small class="text-muted me-1">Exibir:</small>
-    <a href="?per_page=10{% if busca %}&q={{ busca }}{% endif %}"
-       class="badge text-decoration-none px-2 py-1 {% if per_page == 10 %}bg-dark{% else %}bg-light text-dark border{% endif %}">10</a>
-    <a href="?per_page=15{% if busca %}&q={{ busca }}{% endif %}"
-       class="badge text-decoration-none px-2 py-1 {% if per_page == 15 %}bg-dark{% else %}bg-light text-dark border{% endif %}">15</a>
-    <a href="?per_page=20{% if busca %}&q={{ busca }}{% endif %}"
-       class="badge text-decoration-none px-2 py-1 {% if per_page == 20 %}bg-dark{% else %}bg-light text-dark border{% endif %}">20</a>
+  <div class="cli-toolbar">
+    <div class="cli-results">
+      <i class="bi bi-list-ul me-1"></i>
+      {{ total_resultado }} cliente{{ total_resultado|pluralize:"s" }} encontrado{{ total_resultado|pluralize:"s" }}
+    </div>
+    <div class="cli-display">
+      <span>Exibir:</span>
+      <a href="?per_page=10{% if busca %}&q={{ busca }}{% endif %}" class="{% if per_page == 10 %}active{% endif %}">10</a>
+      <a href="?per_page=15{% if busca %}&q={{ busca }}{% endif %}" class="{% if per_page == 15 %}active{% endif %}">15</a>
+      <a href="?per_page=20{% if busca %}&q={{ busca }}{% endif %}" class="{% if per_page == 20 %}active{% endif %}">20</a>
+    </div>
   </div>
-</div>
 
-{% if clientes %}
-
-<!-- Desktop Table -->
-<div class="card border-0 shadow-sm cli-table">
-  <div class="table-responsive">
-    <table class="table table-borderless mb-0">
-      <thead>
-        <tr class="border-bottom" style="background-color: #e9ecef;">
-          <th class="ps-3"><i class="bi bi-person"></i> Nome</th>
-          <th><i class="bi bi-card-text"></i> CPF</th>
-          <th><i class="bi bi-telephone"></i> Telefone</th>
-          <th><i class="bi bi-envelope"></i> E-mail</th>
-          <th class="text-center" style="width: 120px;">Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for c in clientes %}
-        <tr class="cli-row border-bottom">
-          <td class="ps-3">
-            <a href="{% url 'clientes:cliente_detail' c.pk %}" class="text-decoration-none fw-semibold text-dark">
-              {{ c.nome }}
-            </a>
-            {% if c.endereco %}
-            <div class="text-muted small text-truncate" style="max-width: 250px;">
-              <i class="bi bi-geo-alt"></i> {{ c.endereco }}
-            </div>
-            {% endif %}
-          </td>
-          <td class="small">
-            <span class="font-monospace">{{ c.cpf }}</span>
-          </td>
-          <td class="small">
-            {% if c.telefone %}
-              <i class="bi bi-telephone text-success"></i> {{ c.telefone }}
-            {% else %}
-              <span class="text-muted">—</span>
-            {% endif %}
-          </td>
-          <td class="small">
-            {% if c.email %}
-              <i class="bi bi-envelope text-info"></i> {{ c.email }}
-            {% else %}
-              <span class="text-muted">—</span>
-            {% endif %}
-          </td>
-          <td class="text-center">
-            <div class="d-flex justify-content-center gap-1">
-              <a href="{% url 'clientes:cliente_detail' c.pk %}" class="btn btn-sm btn-outline-primary" title="Ver detalhes">
-                <i class="bi bi-eye"></i>
+  {% if clientes %}
+  <div class="cli-table-card d-none d-md-block">
+    <div class="table-responsive">
+      <table class="table cli-table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>CPF</th>
+            <th>Telefone</th>
+            <th>E-mail</th>
+            <th class="text-center" style="width: 132px;">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in clientes %}
+          <tr class="cli-row">
+            <td>
+              <a href="{% url 'clientes:cliente_detail' c.pk %}" class="cli-name">
+                <span class="cli-avatar"><i class="bi bi-person-fill"></i></span>
+                <span>{{ c.nome }}</span>
               </a>
-              <a href="{% url 'clientes:cliente_update' c.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar">
-                <i class="bi bi-pencil"></i>
-              </a>
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+              {% if c.endereco %}
+              <div class="cli-address text-truncate">
+                <i class="bi bi-geo-alt"></i> {{ c.endereco }}
+              </div>
+              {% endif %}
+            </td>
+            <td>
+              <span class="cli-mono">{{ c.cpf }}</span>
+            </td>
+            <td>
+              {% if c.telefone %}
+              <span class="cli-contact">
+                <i class="bi bi-telephone-fill"></i> {{ c.telefone }}
+              </span>
+              {% else %}
+              <span class="cli-empty-value">Não informado</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if c.email %}
+              <span class="cli-contact email">
+                <i class="bi bi-envelope-fill"></i> {{ c.email }}
+              </span>
+              {% else %}
+              <span class="cli-empty-value">Não informado</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="cli-actions">
+                <a href="{% url 'clientes:cliente_detail' c.pk %}" class="cli-action-btn primary" title="Ver detalhes">
+                  <i class="bi bi-eye"></i>
+                </a>
+                <a href="{% url 'clientes:cliente_update' c.pk %}" class="cli-action-btn secondary" title="Editar cliente">
+                  <i class="bi bi-pencil"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
-</div>
 
-<!-- Mobile Cards -->
-<div class="cli-mobile">
-  {% for c in clientes %}
-  <div class="card border-0 shadow-sm mb-2 mobile-card">
-    <div class="card-body py-2 px-3">
-      <div class="d-flex justify-content-between align-items-start">
-        <div class="min-w-0 flex-grow-1">
-          <a href="{% url 'clientes:cliente_detail' c.pk %}" class="text-decoration-none fw-semibold text-dark d-block text-truncate">
-            <i class="bi bi-person-fill text-primary me-1"></i>{{ c.nome }}
-          </a>
-          <div class="small text-muted mt-1 font-monospace">
-            <i class="bi bi-card-text"></i> {{ c.cpf }}
-          </div>
-        </div>
-        <div class="d-flex gap-1 ms-2 flex-shrink-0">
-          <a href="{% url 'clientes:cliente_detail' c.pk %}" class="btn btn-sm btn-outline-primary" title="Ver">
+  <div class="cli-mobile d-md-none">
+    {% for c in clientes %}
+    <div class="cli-mobile-card">
+      <div class="cli-mobile-top">
+        <a href="{% url 'clientes:cliente_detail' c.pk %}" class="cli-mobile-name">
+          <span class="cli-avatar"><i class="bi bi-person-fill"></i></span>
+          <span>
+            <span class="d-block fw-bold">{{ c.nome }}</span>
+            <span class="cli-mono small">{{ c.cpf }}</span>
+          </span>
+        </a>
+        <div class="cli-actions">
+          <a href="{% url 'clientes:cliente_detail' c.pk %}" class="cli-action-btn primary" title="Ver detalhes">
             <i class="bi bi-eye"></i>
           </a>
-          <a href="{% url 'clientes:cliente_update' c.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar">
+          <a href="{% url 'clientes:cliente_update' c.pk %}" class="cli-action-btn secondary" title="Editar cliente">
             <i class="bi bi-pencil"></i>
           </a>
         </div>
       </div>
-      <div class="d-flex flex-wrap gap-2 mt-2 small">
-        {% if c.telefone %}
-          <span class="text-muted"><i class="bi bi-telephone text-success"></i> {{ c.telefone }}</span>
-        {% endif %}
-        {% if c.email %}
-          <span class="text-muted"><i class="bi bi-envelope text-info"></i> {{ c.email }}</span>
-        {% endif %}
+      <div class="cli-mobile-meta">
+        <div class="cli-mobile-item">
+          <i class="bi bi-telephone-fill"></i>
+          <span>{% if c.telefone %}{{ c.telefone }}{% else %}Não informado{% endif %}</span>
+        </div>
+        <div class="cli-mobile-item">
+          <i class="bi bi-envelope-fill"></i>
+          <span class="text-break">{% if c.email %}{{ c.email }}{% else %}Não informado{% endif %}</span>
+        </div>
         {% if c.endereco %}
-          <span class="text-muted text-truncate" style="max-width: 200px;"><i class="bi bi-geo-alt"></i> {{ c.endereco }}</span>
+        <div class="cli-mobile-item">
+          <i class="bi bi-geo-alt-fill"></i>
+          <span>{{ c.endereco }}</span>
+        </div>
         {% endif %}
       </div>
     </div>
-  </div>
-  {% endfor %}
-</div>
-
-<!-- Pagination -->
-{% if is_paginated %}
-<nav class="mt-3" aria-label="Paginação">
-  <ul class="pagination pagination-sm justify-content-center mb-0">
-    {% if page_obj.has_previous %}
-    <li class="page-item">
-      <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">
-        <i class="bi bi-chevron-left"></i>
-      </a>
-    </li>
-    {% else %}
-    <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
-    {% endif %}
-
-    {% for num in page_obj.paginator.page_range %}
-      {% if page_obj.number == num %}
-      <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-      {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-      <li class="page-item">
-        <a class="page-link" href="?page={{ num }}{% if querystring %}&{{ querystring }}{% endif %}">{{ num }}</a>
-      </li>
-      {% elif num == 1 or num == page_obj.paginator.num_pages %}
-      <li class="page-item">
-        <a class="page-link" href="?page={{ num }}{% if querystring %}&{{ querystring }}{% endif %}">{{ num }}</a>
-      </li>
-      {% elif num == 2 or num == page_obj.paginator.num_pages|add:'-1' %}
-      <li class="page-item disabled"><span class="page-link">...</span></li>
-      {% endif %}
     {% endfor %}
+  </div>
 
-    {% if page_obj.has_next %}
-    <li class="page-item">
-      <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">
-        <i class="bi bi-chevron-right"></i>
-      </a>
-    </li>
-    {% else %}
-    <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
-    {% endif %}
-  </ul>
-</nav>
-{% endif %}
+  {% if is_paginated %}
+  <nav class="mt-4 cli-pagination" aria-label="Paginação">
+    <ul class="pagination justify-content-center mb-0">
+      {% if page_obj.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">
+          <i class="bi bi-chevron-left"></i>
+        </a>
+      </li>
+      {% else %}
+      <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
+      {% endif %}
 
-{% else %}
-<div class="card border-0 shadow-sm">
-  <div class="card-body text-center py-5 text-muted">
-    <i class="bi bi-people fs-1"></i>
-    <p class="mt-2 mb-0">Nenhum cliente encontrado.</p>
+      {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ num }}{% if querystring %}&{{ querystring }}{% endif %}">{{ num }}</a>
+        </li>
+        {% elif num == 1 or num == page_obj.paginator.num_pages %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ num }}{% if querystring %}&{{ querystring }}{% endif %}">{{ num }}</a>
+        </li>
+        {% elif num == 2 or num == page_obj.paginator.num_pages|add:'-1' %}
+        <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">
+          <i class="bi bi-chevron-right"></i>
+        </a>
+      </li>
+      {% else %}
+      <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+  {% else %}
+  <div class="cli-empty">
+    <div class="cli-empty-icon">
+      <i class="bi bi-people"></i>
+    </div>
+    <h2 class="h4 fw-bold text-dark">Nenhum cliente encontrado.</h2>
+    <p class="text-muted mb-0">Ajuste a busca ou cadastre um novo cliente para começar a preencher a carteira.</p>
     {% if busca %}
-    <a href="{% url 'clientes:cliente_list' %}" class="btn btn-sm btn-outline-primary mt-3">
+    <a href="{% url 'clientes:cliente_list' %}" class="cli-hero-btn mt-4">
       <i class="bi bi-arrow-counterclockwise"></i> Limpar busca
     </a>
     {% endif %}
   </div>
+  {% endif %}
 </div>
-{% endif %}
-
 {% endblock %}
 
 {% block extra_js %}

@@ -1,6 +1,8 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.db import models
+from django.http import Http404, HttpResponse
+from django.template.loader import render_to_string
 from .models import (
     Ferramenta, ConferenciaFerramenta, MovimentacaoFerramenta, 
     ItemConferencia, LocalizacaoFerramenta
@@ -15,9 +17,9 @@ from django.views import View
 from django.forms import inlineformset_factory
 from django.db import transaction
 from django.shortcuts import render
-from django.http import Http404
 from django.core.paginator import Paginator
 from django.utils import timezone
+from openpyxl import Workbook
 import random
 from decimal import Decimal
 import json
@@ -25,11 +27,13 @@ import json
 
 def _filtrar_ferramentas_queryset(request):
     """Aplica os filtros de listagem de ferramentas."""
-    qs = Ferramenta.objects.all()
+    qs = Ferramenta.objects.select_related('fornecedor').all()
 
     codigo = request.GET.get('codigo')
     nome = request.GET.get('nome')
     categoria = request.GET.get('categoria')
+    classificacao = request.GET.get('classificacao', '').strip()
+    fornecedor = request.GET.get('fornecedor', '').strip()
     status = request.GET.get('status', '').strip()
     busca = request.GET.get('q', '').strip()
 
@@ -49,14 +53,205 @@ def _filtrar_ferramentas_queryset(request):
         qs = qs.filter(nome__icontains=nome)
     if categoria:
         qs = qs.filter(categoria=categoria)
+    if classificacao:
+        qs = qs.filter(classificacao=classificacao)
+    if fornecedor:
+        qs = qs.filter(fornecedor_id=fornecedor)
 
-    return qs, busca, categoria, status
+    return qs, busca, categoria, classificacao, fornecedor, status
+
+
+def _build_ferramenta_relatorio_data(request, paginate=True):
+    ids = request.GET.getlist('ids')
+    ferramenta_filtro = request.GET.get('ferramenta', '').strip()
+    fornecedor_filtro = request.GET.get('fornecedor', '').strip()
+    tipo_filtro = request.GET.get('tipo', '').strip()
+    origem_filtro = request.GET.get('origem', '').strip()
+    destino_filtro = request.GET.get('destino', '').strip()
+    data_inicial = request.GET.get('data_inicial', '').strip()
+    data_final = request.GET.get('data_final', '').strip()
+
+    if ids:
+        base_ferramentas_qs = Ferramenta.objects.select_related('fornecedor').filter(id__in=ids)
+    else:
+        base_ferramentas_qs, _, _, _, _, _ = _filtrar_ferramentas_queryset(request)
+
+    ferramentas_filtro_opcoes = list(
+        base_ferramentas_qs.order_by('nome').values('id', 'codigo', 'nome')
+    )
+
+    if ferramenta_filtro:
+        base_ferramentas_qs = base_ferramentas_qs.filter(id=ferramenta_filtro)
+    if fornecedor_filtro:
+        base_ferramentas_qs = base_ferramentas_qs.filter(fornecedor_id=fornecedor_filtro)
+
+    ferramentas_lista = list(base_ferramentas_qs.order_by('nome'))
+    ferramenta_ids = [f.id for f in ferramentas_lista]
+
+    total_modelos = len(ferramentas_lista)
+    total_unidades = sum((f.quantidade_total or 0) for f in ferramentas_lista)
+    total_deposito = sum((f.quantidade_deposito or 0) for f in ferramentas_lista)
+    total_em_obra = sum((f.quantidade_em_obras or 0) for f in ferramentas_lista)
+    total_manutencao = sum((f.quantidade_manutencao or 0) for f in ferramentas_lista)
+    total_perdida = sum((f.quantidade_perdida or 0) for f in ferramentas_lista)
+
+    total_descartada = MovimentacaoFerramenta.objects.filter(
+        ferramenta_id__in=ferramenta_ids,
+        tipo='descarte'
+    ).aggregate(total=models.Sum('quantidade'))['total'] or 0
+
+    obras_distribuicao_qs = (
+        LocalizacaoFerramenta.objects
+        .filter(ferramenta_id__in=ferramenta_ids, local_tipo='obra', quantidade__gt=0)
+        .values('obra_id', 'obra__nome')
+        .annotate(total=models.Sum('quantidade'))
+        .order_by('obra__nome')
+    )
+
+    movimentacoes_qs = (
+        MovimentacaoFerramenta.objects
+        .filter(ferramenta_id__in=ferramenta_ids)
+        .select_related('ferramenta', 'ferramenta__fornecedor', 'responsavel', 'obra_origem', 'obra_destino')
+        .order_by('-data_movimentacao', '-id')
+    )
+
+    if tipo_filtro:
+        movimentacoes_qs = movimentacoes_qs.filter(tipo=tipo_filtro)
+    if origem_filtro:
+        movimentacoes_qs = movimentacoes_qs.filter(
+            models.Q(origem_tipo__icontains=origem_filtro) |
+            models.Q(obra_origem__nome__icontains=origem_filtro)
+        )
+    if destino_filtro:
+        movimentacoes_qs = movimentacoes_qs.filter(
+            models.Q(destino_tipo__icontains=destino_filtro) |
+            models.Q(obra_destino__nome__icontains=destino_filtro)
+        )
+    if data_inicial:
+        movimentacoes_qs = movimentacoes_qs.filter(data_movimentacao__date__gte=data_inicial)
+    if data_final:
+        movimentacoes_qs = movimentacoes_qs.filter(data_movimentacao__date__lte=data_final)
+
+    def _query_sem(*remove_keys):
+        params = request.GET.copy()
+        for key in remove_keys:
+            params.pop(key, None)
+        return params.urlencode()
+
+    if paginate:
+        per_page = 10
+        ferramentas = Paginator(ferramentas_lista, per_page).get_page(request.GET.get('page_ferramenta', 1))
+        obras_distribuicao = Paginator(obras_distribuicao_qs, per_page).get_page(request.GET.get('page_obra', 1))
+        movimentacoes = Paginator(movimentacoes_qs, per_page).get_page(request.GET.get('page_historico', 1))
+    else:
+        ferramentas = ferramentas_lista
+        obras_distribuicao = list(obras_distribuicao_qs)
+        movimentacoes = list(movimentacoes_qs)
+
+    return {
+        'title': 'Relatório de Ferramentas',
+        'ferramentas': ferramentas,
+        'ferramentas_lista': ferramentas_lista,
+        'movimentacoes': movimentacoes,
+        'movimentacoes_lista': list(movimentacoes_qs) if paginate else movimentacoes,
+        'obras_distribuicao': obras_distribuicao,
+        'obras_distribuicao_lista': list(obras_distribuicao_qs) if paginate else obras_distribuicao,
+        'tipo_choices': MovimentacaoFerramenta.TIPO_CHOICES,
+        'ferramentas_filtro_opcoes': ferramentas_filtro_opcoes,
+        'fornecedor_choices': Ferramenta.objects.filter(fornecedor__isnull=False).values_list('fornecedor__id', 'fornecedor__nome').distinct().order_by('fornecedor__nome'),
+        'obra_choices': Obra.objects.filter(ativo=True).order_by('nome').values_list('nome', flat=True),
+        'ids_selecionados': ids,
+        'qs_sem_page_obras': _query_sem('page_obra'),
+        'qs_sem_page_ferramenta': _query_sem('page_ferramenta'),
+        'qs_sem_page_historico': _query_sem('page_historico'),
+        'export_query': _query_sem('page_obra', 'page_ferramenta', 'page_historico', 'export'),
+        'total_modelos': total_modelos,
+        'total_unidades': total_unidades,
+        'total_deposito': total_deposito,
+        'total_em_obra': total_em_obra,
+        'total_manutencao': total_manutencao,
+        'total_perdida': total_perdida,
+        'total_descartada': total_descartada,
+        'gerado_em': timezone.localtime(),
+        'filtros': {
+            'q': request.GET.get('q', '').strip(),
+            'categoria': request.GET.get('categoria', '').strip(),
+            'status': request.GET.get('status', '').strip(),
+            'ferramenta': ferramenta_filtro,
+            'fornecedor': fornecedor_filtro,
+            'tipo': tipo_filtro,
+            'origem': origem_filtro,
+            'destino': destino_filtro,
+            'data_inicial': data_inicial,
+            'data_final': data_final,
+        },
+    }
+
+
+def _exportar_ferramenta_relatorio_excel(context):
+    wb = Workbook()
+    ws_resumo = wb.active
+    ws_resumo.title = 'Resumo'
+
+    ws_resumo.append(['Indicador', 'Valor'])
+    ws_resumo.append(['Modelos', context['total_modelos']])
+    ws_resumo.append(['Unidades', context['total_unidades']])
+    ws_resumo.append(['No depósito', context['total_deposito']])
+    ws_resumo.append(['Em obra', context['total_em_obra']])
+    ws_resumo.append(['Em manutenção', context['total_manutencao']])
+    ws_resumo.append(['Perdidas', context['total_perdida']])
+    ws_resumo.append(['Baixas', context['total_descartada']])
+
+    ws_ferramentas = wb.create_sheet('Ferramentas')
+    ws_ferramentas.append(['Código', 'Ferramenta', 'Classificação', 'Fornecedor', 'Total', 'Depósito', 'Obras', 'Manutenção'])
+    for f in context['ferramentas_lista']:
+        ws_ferramentas.append([
+            f.codigo,
+            f.nome,
+            f.get_classificacao_display(),
+            f.fornecedor.nome if f.fornecedor else '-',
+            f.quantidade_total,
+            f.quantidade_deposito,
+            f.quantidade_em_obras,
+            f.quantidade_manutencao,
+        ])
+
+    ws_obras = wb.create_sheet('Distribuição Obras')
+    ws_obras.append(['Obra', 'Quantidade'])
+    for item in context['obras_distribuicao_lista']:
+        ws_obras.append([item.get('obra__nome') or 'Sem obra', item.get('total') or 0])
+
+    ws_mov = wb.create_sheet('Movimentações')
+    ws_mov.append(['Data/Hora', 'Ferramenta', 'Classificação', 'Tipo', 'Quantidade', 'Origem', 'Destino', 'Responsável'])
+    for mov in context['movimentacoes_lista']:
+        ws_mov.append([
+            timezone.localtime(mov.data_movimentacao).strftime('%d/%m/%Y %H:%M'),
+            f'{mov.ferramenta.codigo} - {mov.ferramenta.nome}',
+            mov.ferramenta.get_classificacao_display(),
+            mov.get_tipo_display(),
+            mov.quantidade,
+            mov.get_origem_label(),
+            mov.get_destino_label(),
+            mov.responsavel.username if mov.responsavel else '-',
+        ])
+
+    for sheet in wb.worksheets:
+        for column_cells in sheet.columns:
+            max_length = max(len(str(cell.value or '')) for cell in column_cells)
+            sheet.column_dimensions[column_cells[0].column_letter].width = min(max_length + 2, 40)
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="relatorio_ferramentas.xlsx"'
+    wb.save(response)
+    return response
 
 
 @login_required
 def ferramenta_list(request):
     """Lista ferramentas"""
-    qs, busca, categoria, status = _filtrar_ferramentas_queryset(request)
+    qs, busca, categoria, classificacao, fornecedor, status = _filtrar_ferramentas_queryset(request)
 
     # Ordering
     order = request.GET.get('order', 'nome')
@@ -82,6 +277,13 @@ def ferramenta_list(request):
         base_status_qs = base_status_qs.filter(ativo=False)
         localizacao_filters['ferramenta__ativo'] = False
 
+    if categoria:
+        base_status_qs = base_status_qs.filter(categoria=categoria)
+    if classificacao:
+        base_status_qs = base_status_qs.filter(classificacao=classificacao)
+    if fornecedor:
+        base_status_qs = base_status_qs.filter(fornecedor_id=fornecedor)
+
     total_ferramentas = base_status_qs.count()
     
     # Somar quantidades por localização
@@ -102,10 +304,7 @@ def ferramenta_list(request):
 
     # Pagination
     from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-    per_page_param = request.GET.get('per_page', '15')
-    if per_page_param not in ('10', '15', '20'):
-        per_page_param = '15'
-    per_page = int(per_page_param)
+    per_page = 10
     paginator = Paginator(qs, per_page)
     page = request.GET.get('page')
     try:
@@ -115,9 +314,9 @@ def ferramenta_list(request):
     except EmptyPage:
         ferramentas_page = paginator.page(paginator.num_pages)
 
-    # Build base querystring (keep filters but remove page/order/dir)
+    # Build base querystring (keep filters but remove paging/sorting params)
     params = request.GET.copy()
-    for k in ('page', 'order', 'dir'):
+    for k in ('page', 'order', 'dir', 'per_page'):
         if k in params:
             params.pop(k)
     base_qs = params.urlencode()
@@ -131,8 +330,12 @@ def ferramenta_list(request):
         'paginator': paginator,
         'per_page': per_page,
         'category_choices': [(k, v) for k, v in Ferramenta._meta.get_field('categoria').choices],
+        'classificacao_choices': Ferramenta.CLASSIFICACAO_CHOICES,
+        'fornecedor_choices': Ferramenta.objects.filter(fornecedor__isnull=False).values_list('fornecedor__id', 'fornecedor__nome').distinct().order_by('fornecedor__nome'),
         'busca': busca,
         'categoria_filter': categoria or '',
+        'classificacao_filter': classificacao,
+        'fornecedor_filter': fornecedor,
         'status_filter': status,
         'total_ferramentas': total_ferramentas,
         'total_deposito': total_deposito,
@@ -145,6 +348,37 @@ def ferramenta_list(request):
 
 @login_required
 def ferramenta_relatorio_impressao(request):
+    export = request.GET.get('export', '').strip().lower()
+    if export in {'pdf', 'xlsx'}:
+        context = _build_ferramenta_relatorio_data(request, paginate=False)
+        if export == 'xlsx':
+            return _exportar_ferramenta_relatorio_excel(context)
+
+        html = render_to_string(
+            'ferramentas/ferramenta_relatorio_pdf.html',
+            context,
+            request=request,
+        )
+        try:
+            from weasyprint import HTML
+            pdf = HTML(string=html, base_url=request.build_absolute_uri('/')).write_pdf()
+        except Exception:
+            from io import BytesIO
+            from xhtml2pdf import pisa
+
+            pdf_buffer = BytesIO()
+            pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+            if pisa_status.err:
+                messages.error(request, 'Não foi possível gerar o PDF deste relatório agora.')
+                return render(request, 'ferramentas/ferramenta_relatorio_impressao.html', _build_ferramenta_relatorio_data(request, paginate=True))
+            pdf = pdf_buffer.getvalue()
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="relatorio_ferramentas.pdf"'
+        return response
+
+    context = _build_ferramenta_relatorio_data(request, paginate=True)
+    return render(request, 'ferramentas/ferramenta_relatorio_impressao.html', context)
+
     """
     Relatório imprimível de localização e histórico de ferramentas.
     Se ids forem informados, imprime apenas os selecionados.
@@ -152,6 +386,7 @@ def ferramenta_relatorio_impressao(request):
     """
     ids = request.GET.getlist('ids')
     ferramenta_filtro = request.GET.get('ferramenta', '').strip()
+    fornecedor_filtro = request.GET.get('fornecedor', '').strip()
     tipo_filtro = request.GET.get('tipo', '').strip()
     origem_filtro = request.GET.get('origem', '').strip()
     destino_filtro = request.GET.get('destino', '').strip()
@@ -159,7 +394,7 @@ def ferramenta_relatorio_impressao(request):
     if ids:
         base_ferramentas_qs = Ferramenta.objects.filter(id__in=ids)
     else:
-        base_ferramentas_qs, _, _, _ = _filtrar_ferramentas_queryset(request)
+        base_ferramentas_qs, _, _, _, _, _ = _filtrar_ferramentas_queryset(request)
 
     ferramentas_filtro_opcoes = list(
         base_ferramentas_qs.order_by('nome').values('id', 'codigo', 'nome')
@@ -167,6 +402,8 @@ def ferramenta_relatorio_impressao(request):
 
     if ferramenta_filtro:
         base_ferramentas_qs = base_ferramentas_qs.filter(id=ferramenta_filtro)
+    if fornecedor_filtro:
+        base_ferramentas_qs = base_ferramentas_qs.filter(fornecedor_id=fornecedor_filtro)
 
     ferramentas_qs = base_ferramentas_qs.order_by('nome')
     ferramentas = list(ferramentas_qs)
@@ -198,7 +435,7 @@ def ferramenta_relatorio_impressao(request):
     movimentacoes_qs = (
         MovimentacaoFerramenta.objects
         .filter(ferramenta_id__in=ferramenta_ids)
-        .select_related('ferramenta', 'responsavel', 'obra_origem', 'obra_destino')
+        .select_related('ferramenta', 'ferramenta__fornecedor', 'responsavel', 'obra_origem', 'obra_destino')
         .order_by('-data_movimentacao', '-id')
     )
 
@@ -233,6 +470,7 @@ def ferramenta_relatorio_impressao(request):
         'obras_distribuicao': obras_distribuicao,
         'tipo_choices': MovimentacaoFerramenta.TIPO_CHOICES,
         'ferramentas_filtro_opcoes': ferramentas_filtro_opcoes,
+        'fornecedor_choices': Ferramenta.objects.filter(fornecedor__isnull=False).values_list('fornecedor__id', 'fornecedor__nome').distinct().order_by('fornecedor__nome'),
         'ids_selecionados': ids,
         'qs_sem_page_obras': _query_sem('page_obra'),
         'qs_sem_page_ferramenta': _query_sem('page_ferramenta'),
@@ -249,6 +487,7 @@ def ferramenta_relatorio_impressao(request):
             'categoria': request.GET.get('categoria', '').strip(),
             'status': request.GET.get('status', '').strip(),
             'ferramenta': ferramenta_filtro,
+            'fornecedor': fornecedor_filtro,
             'tipo': tipo_filtro,
             'origem': origem_filtro,
             'destino': destino_filtro,
@@ -260,8 +499,8 @@ def ferramenta_relatorio_impressao(request):
 @login_required
 def ferramenta_detail(request, pk):
     """Detalhes de uma ferramenta"""
-    ferramenta = get_object_or_404(Ferramenta, pk=pk)
-    movimentacoes_qs = ferramenta.movimentacoes.select_related('responsavel', 'obra_origem', 'obra_destino').all()
+    ferramenta = get_object_or_404(Ferramenta.objects.select_related('fornecedor'), pk=pk)
+    movimentacoes_qs = ferramenta.movimentacoes.select_related('responsavel', 'obra_origem', 'obra_destino', 'ferramenta__fornecedor').all()
     from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
     paginator = Paginator(movimentacoes_qs, 10)
     page = request.GET.get('page')
@@ -332,7 +571,7 @@ def ferramenta_create(request):
     else:
         form = FerramentaForm()
 
-    return render(request, 'ferramentas/ferramenta_form.html', {'form': form, 'title': 'Nova Ferramenta'})
+    return render(request, 'ferramentas/ferramenta_form.html', {'form': form, 'title': 'Nova Ferramenta', 'classificacao_choices': Ferramenta.CLASSIFICACAO_CHOICES})
 
 
 @login_required
@@ -348,23 +587,23 @@ def ferramenta_update(request, pk):
     else:
         form = FerramentaForm(instance=ferramenta)
 
-    return render(request, 'ferramentas/ferramenta_form.html', {'form': form, 'ferramenta': ferramenta, 'title': 'Editar Ferramenta'})
+    return render(request, 'ferramentas/ferramenta_form.html', {'form': form, 'ferramenta': ferramenta, 'title': 'Editar Ferramenta', 'classificacao_choices': Ferramenta.CLASSIFICACAO_CHOICES})
 
 
 @login_required
 def movimentacao_create(request):
-    """Registra movimenta??o de ferramenta"""
+    """Registra movimentação de ferramenta"""
     if request.method == 'POST':
         itens_json = request.POST.get('itens_json', '').strip()
         if itens_json:
             try:
                 itens = json.loads(itens_json)
             except json.JSONDecodeError:
-                messages.error(request, 'Lista de movimenta??es inv?lida.')
+                messages.error(request, 'Lista de movimentações inválida.')
                 return render(request, 'ferramentas/movimentacao_form.html', {'form': MovimentacaoForm(), 'title': 'Movimentar Ferramenta'})
 
             if not isinstance(itens, list) or not itens:
-                messages.error(request, 'Adicione ao menos uma movimenta??o antes de salvar.')
+                messages.error(request, 'Adicione ao menos uma movimentação antes de salvar.')
                 return render(request, 'ferramentas/movimentacao_form.html', {'form': MovimentacaoForm(), 'title': 'Movimentar Ferramenta'})
 
             with transaction.atomic():
@@ -388,7 +627,7 @@ def movimentacao_create(request):
                     mov.save()
                     total_criadas += 1
 
-            messages.success(request, f'{total_criadas} movimenta??o(?es) registrada(s).')
+            messages.success(request, f'{total_criadas} movimentação(ões) registrada(s).')
             return redirect('ferramentas:ferramenta_list')
 
         form = MovimentacaoForm(request.POST)
@@ -396,7 +635,7 @@ def movimentacao_create(request):
             mov = form.save(commit=False)
             mov.responsavel = request.user
             mov.save()
-            messages.success(request, 'Movimenta??o registrada.')
+            messages.success(request, 'Movimentação registrada.')
             return redirect('ferramentas:ferramenta_detail', pk=mov.ferramenta.pk)
     else:
         # allow preselecting ferramenta via GET param ?f=<pk>
@@ -591,31 +830,63 @@ def conferencia_conferir(request, pk):
 def conferencia_list(request):
     """Lista conferências de ferramentas com informações de divergências"""
     conferencias = ConferenciaFerramenta.objects.all().select_related(
-        'obra', 'fiscal'
+        'obra', 'obra__cliente', 'fiscal'
     ).prefetch_related('itens')
     
     # Filtros
-    obra_id = request.GET.get('obra')
-    if obra_id:
-        conferencias = conferencias.filter(obra_id=obra_id)
-    
-    fiscal_id = request.GET.get('fiscal')
-    if fiscal_id:
-        conferencias = conferencias.filter(fiscal_id=fiscal_id)
+    obra = request.GET.get('obra', '').strip()
+    cliente = request.GET.get('cliente', '').strip()
+    fiscal = request.GET.get('fiscal', '').strip()
+    data = request.GET.get('data', '').strip()
+    status = request.GET.get('status', '').strip()
+
+    if obra:
+        conferencias = conferencias.filter(obra__nome__icontains=obra)
+
+    if cliente:
+        conferencias = conferencias.filter(obra__cliente__nome__icontains=cliente)
+
+    if fiscal:
+        conferencias = conferencias.filter(
+            models.Q(fiscal__first_name__icontains=fiscal) |
+            models.Q(fiscal__last_name__icontains=fiscal) |
+            models.Q(fiscal__username__icontains=fiscal)
+        )
+
+    if data:
+        conferencias = conferencias.filter(data_conferencia__date=data)
     
     # Adicionar informações de divergência
     conferencias_com_info = []
     for conf in conferencias:
-        conferencias_com_info.append({
+        info = {
             'conferencia': conf,
             'total_itens': conf.total_itens,
             'total_divergencias': conf.total_divergencias,
             'tem_divergencias': conf.tem_divergencias
-        })
-    
+        }
+        if status == 'ok' and info['tem_divergencias']:
+            continue
+        if status == 'divergencia' and not info['tem_divergencias']:
+            continue
+        conferencias_com_info.append(info)
+
+    paginator = Paginator(conferencias_com_info, 10)
+    conferencias_page = paginator.get_page(request.GET.get('page'))
+
+    params = request.GET.copy()
+    if 'page' in params:
+        params.pop('page')
+    base_qs = params.urlencode()
+
     context = {
-        'conferencias_info': conferencias_com_info,
-        'obras': Obra.objects.filter(ativo=True).order_by('nome'),
+        'conferencias_info': conferencias_page,
+        'base_qs': base_qs,
+        'filtro_obra': obra,
+        'filtro_cliente': cliente,
+        'filtro_fiscal': fiscal,
+        'filtro_data': data,
+        'filtro_status': status,
         'title': 'Conferências de Ferramentas'
     }
     return render(request, 'ferramentas/conferencia_list.html', context)

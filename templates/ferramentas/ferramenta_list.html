@@ -3,398 +3,424 @@
 {% block title %}Ferramentas{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <style>
-  .ferr-row:nth-child(odd)  { background-color: #f8f9fa; }
-  .ferr-row:nth-child(even) { background-color: #ffffff; }
-  .ferr-row:hover { background-color: #e9ecef; transition: background-color .15s; }
-  .ferr-row td { vertical-align: middle; }
-  .summary-card { border: none; border-radius: .75rem; }
-  .summary-card .card-body { padding: 1rem 1.25rem; }
-  .summary-icon { font-size: 1.5rem; opacity: .7; }
-  .search-box { max-width: 300px; }
-  .badge-deposito { background-color: #198754; }
-  .badge-em_obra { background-color: #0d6efd; }
-  .badge-manutencao { background-color: #ffc107; color: #000; }
-  .badge-perdida { background-color: #dc3545; }
-  .badge-descartada { background-color: #6c757d; }
-  .sort-link { color: inherit; text-decoration: none; }
-  .sort-link:hover { color: #0d6efd; }
+  .tools-page {
+    --tools-navy: #123a5c;
+    --tools-blue: #0d6efd;
+    --tools-cyan: #20c997;
+    --tools-amber: #f6c453;
+    --tools-soft: #f4f8fc;
+    --tools-line: rgba(18, 58, 92, .12);
+  }
+
+  .tools-hero {
+    position: relative;
+    overflow: hidden;
+    border: 0;
+    border-radius: 1.6rem;
+    background:
+      radial-gradient(circle at top right, rgba(246, 196, 83, .34), transparent 24%),
+      radial-gradient(circle at left center, rgba(32, 201, 151, .18), transparent 28%),
+      linear-gradient(135deg, #113b5d 0%, #1666a8 55%, #1db1a9 100%);
+    color: #fff;
+    box-shadow: 0 22px 44px rgba(17, 59, 93, .18);
+  }
+
+  .tools-hero::before {
+    content: "";
+    position: absolute;
+    inset: auto auto -80px -70px;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .08);
+  }
+
+  .tools-hero .card-body {
+    position: relative;
+    z-index: 1;
+    padding: 1.5rem;
+  }
+
+  .tools-hero-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .45rem .8rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .14);
+    font-size: .85rem;
+    font-weight: 600;
+  }
+
+  .tools-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+  }
+
+  .tools-stat {
+    height: 100%;
+    border: 0;
+    border-radius: 1.3rem;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, .08);
+  }
+
+  .tools-stat .card-body {
+    padding: 1.15rem 1.1rem;
+  }
+
+  .tools-stat-total { background: linear-gradient(135deg, rgba(13, 110, 253, .14), rgba(13, 110, 253, .04)); }
+  .tools-stat-deposito { background: linear-gradient(135deg, rgba(32, 201, 151, .16), rgba(32, 201, 151, .05)); }
+  .tools-stat-obra { background: linear-gradient(135deg, rgba(13, 110, 253, .12), rgba(32, 201, 151, .06)); }
+  .tools-stat-manutencao { background: linear-gradient(135deg, rgba(246, 196, 83, .22), rgba(246, 196, 83, .06)); }
+
+  .tools-panel {
+    border: 0;
+    border-radius: 1.5rem;
+    box-shadow: 0 18px 38px rgba(15, 23, 42, .08);
+  }
+
+  .tools-panel .card-body {
+    padding: 1.2rem;
+  }
+
+  .tools-filter-label {
+    font-size: .82rem;
+    font-weight: 700;
+    color: #30526e;
+    margin-bottom: .35rem;
+  }
+
+  .tools-table thead th {
+    background: #eef5fb;
+    color: #355671;
+    font-size: .83rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    border-bottom: 0;
+  }
+
+  .tools-table tbody tr + tr td {
+    border-top: 1px solid var(--tools-line);
+  }
+
+  .tools-code {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .35rem .65rem;
+    border-radius: 999px;
+    background: #edf4fb;
+    color: #20415c;
+    font-family: monospace;
+    font-size: .84rem;
+    border: 1px solid rgba(18, 58, 92, .08);
+  }
+
+  .tools-stock-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+  }
+
+  .tools-mobile-list {
+    display: none;
+  }
+
+  .tools-mobile-card {
+    border: 1px solid rgba(18, 58, 92, .08);
+    border-radius: 1.25rem;
+    padding: 1rem;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbfe 100%);
+  }
+
+  .tools-mobile-card + .tools-mobile-card {
+    margin-top: .9rem;
+  }
+
+  .tools-mobile-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
+  }
+
+  .tools-mobile-meta small {
+    display: block;
+    color: #6b8195;
+  }
+
+  .tools-empty {
+    padding: 2.5rem 1rem;
+    text-align: center;
+    color: #6b8195;
+  }
+
+  @media (max-width: 991.98px) {
+    .tools-hero .card-body {
+      padding: 1.2rem;
+    }
+  }
+
   @media (max-width: 767.98px) {
-    .ferr-table { display: none; }
-    .ferr-mobile { display: block !important; }
+    .tools-desktop-table {
+      display: none;
+    }
+
+    .tools-mobile-list {
+      display: block;
+    }
+
+    .tools-mobile-meta {
+      grid-template-columns: 1fr;
+    }
   }
-  @media (min-width: 768px) {
-    .ferr-mobile { display: none !important; }
-  }
-  .mobile-card:nth-child(odd)  { background-color: #f8f9fa; }
-  .mobile-card:nth-child(even) { background-color: #ffffff; }
-  .ferr-inativa { opacity: .72; }
 </style>
 {% endblock %}
 
 {% block content %}
-
-<!-- Header -->
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-  <h1 class="h3 mb-0"><i class="bi bi-tools text-primary"></i> Ferramentas</h1>
-  <div class="d-flex flex-wrap gap-2">
-    <button type="button" id="btn-imprimir-relatorio" class="btn btn-outline-dark btn-sm d-flex align-items-center gap-1">
-      <i class="bi bi-printer"></i> Imprimir Relatório
-    </button>
-    <a href="{% url 'ferramentas:ferramenta_create' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
-      <i class="bi bi-plus-circle-fill"></i> Nova Ferramenta
-    </a>
-    <a href="{% url 'ferramentas:movimentacao_create' %}" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
-      <i class="bi bi-arrow-left-right"></i> Movimentar
-    </a>
-    <a href="{% url 'ferramentas:conferencia_list' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
-      <i class="bi bi-clipboard-check"></i> Conferências
-    </a>
-  </div>
-</div>
-
-<!-- Summary Cards -->
-<div class="row g-2 mb-3">
-  <div class="col-6 col-md-3">
-    <div class="card summary-card bg-primary bg-opacity-10">
-      <div class="card-body d-flex align-items-center justify-content-between py-2">
+<div class="tools-page">
+  <div class="card tools-hero mb-4">
+    <div class="card-body">
+      <div class="d-flex flex-column flex-xl-row justify-content-between align-items-start gap-3">
         <div>
-          <div class="text-muted small">Total</div>
-          <div class="fw-bold fs-4">{{ total_ferramentas }}</div>
+          <span class="tools-hero-chip mb-3"><i class="bi bi-tools"></i> Estoque, aluguel e movimentações</span>
+          <h1 class="h2 mb-2">Ferramentas</h1>
+          <p class="mb-0 opacity-75">
+            Acompanhe o estoque por depósito, obras e manutenção com uma leitura mais clara e alinhada ao restante do sistema.
+          </p>
         </div>
-        <i class="bi bi-tools summary-icon text-primary"></i>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card summary-card" style="background-color: rgba(25,135,84,.1);">
-      <div class="card-body d-flex align-items-center justify-content-between py-2">
-        <div>
-          <div class="text-muted small">No Depósito</div>
-          <div class="fw-bold fs-4">{{ total_deposito }}</div>
-        </div>
-        <i class="bi bi-box-seam summary-icon text-success"></i>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card summary-card" style="background-color: rgba(13,110,253,.1);">
-      <div class="card-body d-flex align-items-center justify-content-between py-2">
-        <div>
-          <div class="text-muted small">Em Obra</div>
-          <div class="fw-bold fs-4">{{ total_em_obra }}</div>
-        </div>
-        <i class="bi bi-building summary-icon text-primary"></i>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card summary-card" style="background-color: rgba(255,193,7,.15);">
-      <div class="card-body d-flex align-items-center justify-content-between py-2">
-        <div>
-          <div class="text-muted small">Manutenção</div>
-          <div class="fw-bold fs-4">{{ total_manutencao }}</div>
-        </div>
-        <i class="bi bi-wrench-adjustable summary-icon text-warning"></i>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Filters -->
-<div class="card border-0 shadow-sm mb-3">
-  <div class="card-body py-2 px-3">
-    <div class="d-flex flex-wrap align-items-center gap-3">
-      <!-- Search -->
-      <form method="get" class="d-flex search-box flex-grow-1" action="">
-        {% if categoria_filter %}<input type="hidden" name="categoria" value="{{ categoria_filter }}">{% endif %}
-        {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
-        <input type="hidden" name="per_page" value="{{ per_page }}">
-        <div class="input-group input-group-sm">
-          <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
-          <input type="text" name="q" value="{{ busca }}" class="form-control border-start-0"
-                 placeholder="Buscar por nome ou código...">
-          {% if busca %}
-          <a href="?{% if categoria_filter %}categoria={{ categoria_filter }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}per_page={{ per_page }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-x-lg"></i>
+        <div class="tools-hero-actions">
+          <button type="button" id="btn-imprimir-relatorio" class="btn btn-light btn-sm">
+            <i class="bi bi-printer me-1"></i> Imprimir relatório
+          </button>
+          <a href="{% url 'ferramentas:movimentacao_create' %}" class="btn btn-outline-light btn-sm">
+            <i class="bi bi-arrow-left-right me-1"></i> Movimentar
           </a>
-          {% endif %}
+          <a href="{% url 'ferramentas:conferencia_list' %}" class="btn btn-outline-light btn-sm">
+            <i class="bi bi-clipboard-check me-1"></i> Conferências
+          </a>
+          <a href="{% url 'ferramentas:ferramenta_create' %}" class="btn btn-warning btn-sm text-dark fw-semibold">
+            <i class="bi bi-plus-circle-fill me-1"></i> Nova ferramenta
+          </a>
         </div>
-      </form>
-      <!-- Categoria dropdown -->
-      <div class="dropdown">
-        <button class="btn btn-sm {% if categoria_filter %}btn-secondary{% else %}btn-outline-secondary{% endif %} dropdown-toggle d-flex align-items-center gap-1" type="button" data-bs-toggle="dropdown">
-          <i class="bi bi-tag"></i>
-          {% if categoria_filter %}
-            {% for k,v in category_choices %}{% if k == categoria_filter %}{{ v }}{% endif %}{% endfor %}
-          {% else %}
-            Categoria
-          {% endif %}
-        </button>
-        <ul class="dropdown-menu">
-          <li><a class="dropdown-item" href="?{% if busca %}q={{ busca }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}per_page={{ per_page }}">Todas</a></li>
-          <li><hr class="dropdown-divider"></li>
-          {% for k,v in category_choices %}
-          <li>
-            <a class="dropdown-item {% if categoria_filter == k %}active{% endif %}"
-               href="?categoria={{ k }}{% if busca %}&q={{ busca }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}">{{ v }}</a>
-          </li>
-          {% endfor %}
-        </ul>
-      </div>
-
-      <!-- Status dropdown -->
-      <div class="dropdown">
-        <button class="btn btn-sm {% if status_filter %}btn-secondary{% else %}btn-outline-secondary{% endif %} dropdown-toggle d-flex align-items-center gap-1" type="button" data-bs-toggle="dropdown">
-          <i class="bi bi-toggle-on"></i>
-          {% if status_filter == 'ativas' %}
-            Ativas
-          {% elif status_filter == 'inativas' %}
-            Inativas
-          {% else %}
-            Status
-          {% endif %}
-        </button>
-        <ul class="dropdown-menu">
-          <li><a class="dropdown-item {% if not status_filter %}active{% endif %}" href="?{% if busca %}q={{ busca }}&{% endif %}{% if categoria_filter %}categoria={{ categoria_filter }}&{% endif %}per_page={{ per_page }}">Todas</a></li>
-          <li><a class="dropdown-item {% if status_filter == 'ativas' %}active{% endif %}" href="?status=ativas{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}&per_page={{ per_page }}">Ativas</a></li>
-          <li><a class="dropdown-item {% if status_filter == 'inativas' %}active{% endif %}" href="?status=inativas{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}&per_page={{ per_page }}">Inativas</a></li>
-        </ul>
       </div>
     </div>
   </div>
-</div>
 
-<!-- Results count + per_page -->
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
-  <small class="text-muted">
-    <i class="bi bi-list-ul"></i> {{ total_resultado }} ferramenta{{ total_resultado|pluralize:"s" }} encontrada{{ total_resultado|pluralize:"s" }}
-  </small>
-  <div class="d-flex align-items-center gap-1">
-    <small class="text-muted me-1">Exibir:</small>
-     <a href="?per_page=10{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
-       class="badge text-decoration-none px-2 py-1 {% if per_page == 10 %}bg-dark{% else %}bg-light text-dark border{% endif %}">10</a>
-     <a href="?per_page=15{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
-       class="badge text-decoration-none px-2 py-1 {% if per_page == 15 %}bg-dark{% else %}bg-light text-dark border{% endif %}">15</a>
-     <a href="?per_page=20{% if busca %}&q={{ busca }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
-       class="badge text-decoration-none px-2 py-1 {% if per_page == 20 %}bg-dark{% else %}bg-light text-dark border{% endif %}">20</a>
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+      <div class="card tools-stat tools-stat-total">
+        <div class="card-body">
+          <div class="small text-muted">Modelos cadastrados</div>
+          <div class="fs-3 fw-bold">{{ total_ferramentas }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card tools-stat tools-stat-deposito">
+        <div class="card-body">
+          <div class="small text-muted">Unidades no depósito</div>
+          <div class="fs-3 fw-bold">{{ total_deposito }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card tools-stat tools-stat-obra">
+        <div class="card-body">
+          <div class="small text-muted">Unidades em obra</div>
+          <div class="fs-3 fw-bold">{{ total_em_obra }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card tools-stat tools-stat-manutencao">
+        <div class="card-body">
+          <div class="small text-muted">Em manutenção</div>
+          <div class="fs-3 fw-bold">{{ total_manutencao }}</div>
+        </div>
+      </div>
+    </div>
   </div>
-</div>
 
-{% if ferramentas %}
-
-<!-- Desktop Table -->
-<div class="card border-0 shadow-sm ferr-table">
-  <div class="table-responsive">
-    <table class="table table-borderless mb-0">
-      <thead>
-        <tr class="border-bottom" style="background-color: #e9ecef;">
-          <th class="text-center" style="width: 44px;">
-            <input type="checkbox" id="selecionar-todos" class="form-check-input" title="Selecionar todas">
-          </th>
-          <th class="ps-3" style="width: 100px;">
-            <a class="sort-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}order=codigo&dir={% if current_order == 'codigo' and current_dir == 'asc' %}desc{% else %}asc{% endif %}">
-              Código
-              {% if current_order == 'codigo' %}<i class="bi bi-chevron-{% if current_dir == 'asc' %}up{% else %}down{% endif %} small"></i>{% endif %}
-            </a>
-          </th>
-          <th>
-            <a class="sort-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}order=nome&dir={% if current_order == 'nome' and current_dir == 'asc' %}desc{% else %}asc{% endif %}">
-              Nome
-              {% if current_order == 'nome' %}<i class="bi bi-chevron-{% if current_dir == 'asc' %}up{% else %}down{% endif %} small"></i>{% endif %}
-            </a>
-          </th>
-          <th class="text-center" style="width: 120px;">
-            <a class="sort-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}order=categoria&dir={% if current_order == 'categoria' and current_dir == 'asc' %}desc{% else %}asc{% endif %}">
-              Categoria
-              {% if current_order == 'categoria' %}<i class="bi bi-chevron-{% if current_dir == 'asc' %}up{% else %}down{% endif %} small"></i>{% endif %}
-            </a>
-          </th>
-          <th class="text-center" style="width: 80px;">
-            <a class="sort-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}order=quantidade&dir={% if current_order == 'quantidade' and current_dir == 'asc' %}desc{% else %}asc{% endif %}">
-              <i class="bi bi-stack"></i> Total
-              {% if current_order == 'quantidade' %}<i class="bi bi-chevron-{% if current_dir == 'asc' %}up{% else %}down{% endif %} small"></i>{% endif %}
-            </a>
-          </th>
-          <th class="text-center" style="width: 280px;">Distribuição</th>
-          <th class="text-center" style="width: 130px;">Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for f in ferramentas %}
-        <tr class="ferr-row border-bottom {% if not f.ativo %}ferr-inativa{% endif %}">
-          <td class="text-center">
-            <input type="checkbox" class="form-check-input chk-ferramenta" value="{{ f.id }}">
-          </td>
-          <td class="ps-3">
-            <span class="badge bg-light text-dark border font-monospace">{{ f.codigo }}</span>
-          </td>
-          <td>
-            <a href="{% url 'ferramentas:ferramenta_detail' f.pk %}" class="text-decoration-none fw-semibold text-dark">
-              {% if f.categoria == 'manual' %}<i class="bi bi-wrench text-secondary me-1"></i>
-              {% elif f.categoria == 'eletrica' %}<i class="bi bi-lightning-charge text-warning me-1"></i>
-              {% elif f.categoria == 'medicao' %}<i class="bi bi-rulers text-info me-1"></i>
-              {% elif f.categoria == 'seguranca' %}<i class="bi bi-shield-check text-success me-1"></i>
-              {% else %}<i class="bi bi-box text-muted me-1"></i>
-              {% endif %}
-              {{ f.nome }}
-            </a>
-            {% if f.ativo %}
-            <span class="badge bg-success-subtle text-success border ms-2">Ativa</span>
-            {% else %}
-            <span class="badge bg-secondary-subtle text-secondary border ms-2">Inativa</span>
-            {% endif %}
-          </td>
-          <td class="text-center small">{{ f.get_categoria_display }}</td>
-          <td class="text-center">
-            <span class="badge bg-primary px-2 py-1">{{ f.quantidade_total }}</span>
-          </td>
-          <td class="small">
-            <div class="d-flex gap-2 justify-content-center align-items-center flex-wrap">
-              <span class="badge badge-deposito" title="Depósito">
-                <i class="bi bi-box-seam"></i> {{ f.quantidade_deposito }}
-              </span>
-              <span class="badge badge-em_obra" title="Em Obras">
-                <i class="bi bi-building"></i> {{ f.quantidade_em_obras }}
-              </span>
-              <span class="badge badge-manutencao" title="Manutenção">
-                <i class="bi bi-wrench-adjustable"></i> {{ f.quantidade_manutencao }}
-              </span>
-              {% if f.quantidade_perdida > 0 %}
-              <span class="badge badge-perdida" title="Perdida">
-                <i class="bi bi-exclamation-triangle"></i> {{ f.quantidade_perdida }}
-              </span>
-              {% endif %}
-            </div>
-          </td>
-          <td class="text-center">
-            <div class="d-flex justify-content-center gap-1">
-              <a href="{% url 'ferramentas:ferramenta_detail' f.pk %}" class="btn btn-sm btn-outline-primary" title="Ver detalhes">
-                <i class="bi bi-eye"></i>
-              </a>
-              <a href="{% url 'ferramentas:ferramenta_update' f.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar">
-                <i class="bi bi-pencil"></i>
-              </a>
-              <a href="{% url 'ferramentas:movimentacao_create' %}?f={{ f.pk }}" class="btn btn-sm btn-outline-info" title="Movimentar">
-                <i class="bi bi-arrow-left-right"></i>
-              </a>
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<!-- Mobile Cards -->
-<div class="ferr-mobile">
-  {% for f in ferramentas %}
-  <div class="card border-0 shadow-sm mb-2 mobile-card">
-    <div class="card-body py-2 px-3 {% if not f.ativo %}ferr-inativa{% endif %}">
-      <div class="d-flex justify-content-between align-items-start">
-        <div class="min-w-0 flex-grow-1">
-          <a href="{% url 'ferramentas:ferramenta_detail' f.pk %}" class="text-decoration-none fw-semibold text-dark d-block text-truncate">
-            {% if f.categoria == 'manual' %}<i class="bi bi-wrench text-secondary me-1"></i>
-            {% elif f.categoria == 'eletrica' %}<i class="bi bi-lightning-charge text-warning me-1"></i>
-            {% elif f.categoria == 'medicao' %}<i class="bi bi-rulers text-info me-1"></i>
-            {% elif f.categoria == 'seguranca' %}<i class="bi bi-shield-check text-success me-1"></i>
-            {% else %}<i class="bi bi-box text-muted me-1"></i>
-            {% endif %}
-            {{ f.nome }}
-          </a>
-          <div class="d-flex flex-wrap gap-2 mt-1 small">
-            <span class="badge bg-light text-dark border font-monospace">{{ f.codigo }}</span>
-            {% if f.ativo %}
-            <span class="badge bg-success-subtle text-success border">Ativa</span>
-            {% else %}
-            <span class="badge bg-secondary-subtle text-secondary border">Inativa</span>
-            {% endif %}
-            <span class="badge bg-primary px-2 py-1">
-              <i class="bi bi-stack"></i> Total: {{ f.quantidade_total }}
-            </span>
+  <div class="card tools-panel mb-3">
+    <div class="card-body">
+      <form method="get" class="row g-3">
+        <div class="col-12 col-xl-3">
+          <label class="tools-filter-label">Busca rápida</label>
+          <div class="input-group">
+            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+            <input type="text" name="q" value="{{ busca }}" class="form-control" placeholder="Nome ou código">
           </div>
         </div>
-        <div class="d-flex gap-1 ms-2 flex-shrink-0">
-          <a href="{% url 'ferramentas:ferramenta_detail' f.pk %}" class="btn btn-sm btn-outline-primary" title="Ver">
-            <i class="bi bi-eye"></i>
-          </a>
-          <a href="{% url 'ferramentas:ferramenta_update' f.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar">
-            <i class="bi bi-pencil"></i>
-          </a>
+        <div class="col-6 col-md-4 col-xl-2">
+          <label class="tools-filter-label">Categoria</label>
+          <select name="categoria" class="form-select">
+            <option value="">Todas</option>
+            {% for k, v in category_choices %}
+              <option value="{{ k }}" {% if categoria_filter == k %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+          <label class="tools-filter-label">Classificação</label>
+          <select name="classificacao" class="form-select">
+            <option value="">Todas</option>
+            {% for k, v in classificacao_choices %}
+              <option value="{{ k }}" {% if classificacao_filter == k %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+          <label class="tools-filter-label">Fornecedor</label>
+          <select name="fornecedor" class="form-select">
+            <option value="">Todos</option>
+            {% for id, nome in fornecedor_choices %}
+              <option value="{{ id }}" {% if fornecedor_filter == id|stringformat:"s" %}selected{% endif %}>{{ nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-4 col-xl-1">
+          <label class="tools-filter-label">Status</label>
+          <select name="status" class="form-select">
+            <option value="">Todos</option>
+            <option value="ativas" {% if status_filter == 'ativas' %}selected{% endif %}>Ativas</option>
+            <option value="inativas" {% if status_filter == 'inativas' %}selected{% endif %}>Inativas</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-8 col-xl-2 d-flex gap-2 align-items-end">
+          <button type="submit" class="btn btn-primary flex-fill">Filtrar</button>
+          <a href="{% url 'ferramentas:ferramenta_list' %}" class="btn btn-outline-secondary flex-fill">Limpar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div class="small text-muted">
+      {{ total_resultado }} ferramenta{{ total_resultado|pluralize:"s" }} encontrada{{ total_resultado|pluralize:"s" }}
+    </div>
+    <div class="small text-muted">Listagem responsiva para computador e celular</div>
+  </div>
+
+  <div class="card tools-panel">
+    <div class="card-body p-0">
+      <div class="tools-desktop-table">
+        <div class="table-responsive">
+          <table class="table tools-table align-middle mb-0">
+            <thead>
+              <tr>
+                <th class="text-center" style="width: 42px;"><input type="checkbox" id="selecionar-todos" class="form-check-input"></th>
+                <th>Código</th>
+                <th>Ferramenta</th>
+                <th>Categoria</th>
+                <th>Classificação</th>
+                <th class="text-center">Total</th>
+                <th>Distribuição</th>
+                <th class="text-end">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for f in ferramentas %}
+                <tr {% if not f.ativo %}class="text-muted"{% endif %}>
+                  <td class="text-center"><input type="checkbox" class="form-check-input chk-ferramenta" value="{{ f.id }}"></td>
+                  <td><span class="tools-code">{{ f.codigo }}</span></td>
+                  <td>
+                    <a href="{% url 'ferramentas:ferramenta_detail' f.pk %}" class="fw-semibold text-decoration-none text-dark">{{ f.nome }}</a>
+                    <div class="small text-muted">
+                      {% if f.fornecedor %}{{ f.fornecedor.nome }}{% else %}Sem fornecedor{% endif %}
+                    </div>
+                  </td>
+                  <td>{{ f.get_categoria_display }}</td>
+                  <td>
+                    <span class="badge {% if f.eh_alugada %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                      {{ f.get_classificacao_display }}
+                    </span>
+                  </td>
+                  <td class="text-center"><span class="badge bg-primary">{{ f.quantidade_total }}</span></td>
+                  <td>
+                    <div class="tools-stock-badges">
+                      <span class="badge bg-success">{{ f.quantidade_deposito }} depósito</span>
+                      <span class="badge bg-primary">{{ f.quantidade_em_obras }} obra</span>
+                      <span class="badge bg-warning text-dark">{{ f.quantidade_manutencao }} manutenção</span>
+                      {% if f.quantidade_perdida %}<span class="badge bg-danger">{{ f.quantidade_perdida }} perdida</span>{% endif %}
+                    </div>
+                  </td>
+                  <td class="text-end">
+                    <a href="{% url 'ferramentas:ferramenta_detail' f.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                    <a href="{% url 'ferramentas:ferramenta_update' f.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                    <a href="{% url 'ferramentas:movimentacao_create' %}?f={{ f.pk }}" class="btn btn-sm btn-outline-info"><i class="bi bi-arrow-left-right"></i></a>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="8" class="tools-empty">Nenhuma ferramenta encontrada.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
       </div>
-      <div class="d-flex flex-wrap gap-2 mt-2 small">
-        <span class="text-muted"><i class="bi bi-tag"></i> {{ f.get_categoria_display }}</span>
-        <span class="badge badge-deposito"><i class="bi bi-box-seam"></i> {{ f.quantidade_deposito }}</span>
-        <span class="badge badge-em_obra"><i class="bi bi-building"></i> {{ f.quantidade_em_obras }}</span>
-        <span class="badge badge-manutencao"><i class="bi bi-wrench-adjustable"></i> {{ f.quantidade_manutencao }}</span>
-        {% if f.quantidade_perdida > 0 %}
-        <span class="badge badge-perdida"><i class="bi bi-exclamation-triangle"></i> {{ f.quantidade_perdida }}</span>
-        {% endif %}
+
+      <div class="tools-mobile-list p-3">
+        {% for f in ferramentas %}
+          <div class="tools-mobile-card {% if not f.ativo %}opacity-75{% endif %}">
+            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+              <div>
+                <div class="tools-code mb-2">{{ f.codigo }}</div>
+                <a href="{% url 'ferramentas:ferramenta_detail' f.pk %}" class="fw-semibold text-decoration-none text-dark d-block">{{ f.nome }}</a>
+                <small>{% if f.fornecedor %}{{ f.fornecedor.nome }}{% else %}Sem fornecedor{% endif %}</small>
+              </div>
+              <span class="badge {% if f.eh_alugada %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                {{ f.get_classificacao_display }}
+              </span>
+            </div>
+
+            <div class="tools-mobile-meta mb-3">
+              <div>
+                <small>Categoria</small>
+                <strong>{{ f.get_categoria_display }}</strong>
+              </div>
+              <div>
+                <small>Total</small>
+                <strong>{{ f.quantidade_total }} unidade{{ f.quantidade_total|pluralize:"s" }}</strong>
+              </div>
+            </div>
+
+            <div class="tools-stock-badges mb-3">
+              <span class="badge bg-success">{{ f.quantidade_deposito }} depósito</span>
+              <span class="badge bg-primary">{{ f.quantidade_em_obras }} obra</span>
+              <span class="badge bg-warning text-dark">{{ f.quantidade_manutencao }} manutenção</span>
+              {% if f.quantidade_perdida %}<span class="badge bg-danger">{{ f.quantidade_perdida }} perdida</span>{% endif %}
+            </div>
+
+            <div class="d-flex gap-2">
+              <a href="{% url 'ferramentas:ferramenta_detail' f.pk %}" class="btn btn-sm btn-outline-primary flex-fill">Ver</a>
+              <a href="{% url 'ferramentas:ferramenta_update' f.pk %}" class="btn btn-sm btn-outline-secondary flex-fill">Editar</a>
+              <a href="{% url 'ferramentas:movimentacao_create' %}?f={{ f.pk }}" class="btn btn-sm btn-outline-info flex-fill">Movimentar</a>
+            </div>
+          </div>
+        {% empty %}
+          <div class="tools-empty">Nenhuma ferramenta encontrada.</div>
+        {% endfor %}
       </div>
     </div>
   </div>
-  {% endfor %}
+
+  {% if ferramentas.paginator.num_pages > 1 %}
+    <nav class="mt-3">
+      <ul class="pagination justify-content-center">
+        {% if ferramentas.has_previous %}
+          <li class="page-item"><a class="page-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ ferramentas.previous_page_number }}">Anterior</a></li>
+        {% endif %}
+        <li class="page-item active"><span class="page-link">{{ ferramentas.number }}</span></li>
+        {% if ferramentas.has_next %}
+          <li class="page-item"><a class="page-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ ferramentas.next_page_number }}">Próxima</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+  {% endif %}
 </div>
-
-<!-- Pagination -->
-{% if ferramentas.paginator.num_pages > 1 %}
-<nav class="mt-3" aria-label="Paginação">
-  <ul class="pagination pagination-sm justify-content-center mb-0">
-    {% if ferramentas.has_previous %}
-    <li class="page-item">
-      <a class="page-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ ferramentas.previous_page_number }}{% if current_order %}&order={{ current_order }}&dir={{ current_dir }}{% endif %}">
-        <i class="bi bi-chevron-left"></i>
-      </a>
-    </li>
-    {% else %}
-    <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
-    {% endif %}
-
-    {% for num in ferramentas.paginator.page_range %}
-      {% if ferramentas.number == num %}
-      <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-      {% elif num > ferramentas.number|add:'-3' and num < ferramentas.number|add:'3' %}
-      <li class="page-item">
-        <a class="page-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ num }}{% if current_order %}&order={{ current_order }}&dir={{ current_dir }}{% endif %}">{{ num }}</a>
-      </li>
-      {% elif num == 1 or num == ferramentas.paginator.num_pages %}
-      <li class="page-item">
-        <a class="page-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ num }}{% if current_order %}&order={{ current_order }}&dir={{ current_dir }}{% endif %}">{{ num }}</a>
-      </li>
-      {% elif num == 2 or num == ferramentas.paginator.num_pages|add:'-1' %}
-      <li class="page-item disabled"><span class="page-link">...</span></li>
-      {% endif %}
-    {% endfor %}
-
-    {% if ferramentas.has_next %}
-    <li class="page-item">
-      <a class="page-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ ferramentas.next_page_number }}{% if current_order %}&order={{ current_order }}&dir={{ current_dir }}{% endif %}">
-        <i class="bi bi-chevron-right"></i>
-      </a>
-    </li>
-    {% else %}
-    <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
-    {% endif %}
-  </ul>
-</nav>
-{% endif %}
-
-{% else %}
-<div class="card border-0 shadow-sm">
-  <div class="card-body text-center py-5 text-muted">
-    <i class="bi bi-tools fs-1"></i>
-    <p class="mt-2 mb-0">Nenhuma ferramenta encontrada.</p>
-    {% if busca or categoria_filter or status_filter %}
-    <a href="{% url 'ferramentas:ferramenta_list' %}" class="btn btn-sm btn-outline-primary mt-3">
-      <i class="bi bi-arrow-counterclockwise"></i> Limpar filtros
-    </a>
-    {% endif %}
-  </div>
-</div>
-{% endif %}
 
 <script>
 (function () {
@@ -402,13 +428,14 @@
   const selecionarTodos = document.getElementById('selecionar-todos');
 
   function getSelecionadas() {
-    return Array.from(document.querySelectorAll('.chk-ferramenta:checked')).map(el => el.value);
+    return Array.from(document.querySelectorAll('.chk-ferramenta:checked')).map((el) => el.value);
   }
 
   if (selecionarTodos) {
     selecionarTodos.addEventListener('change', function () {
-      const checked = this.checked;
-      document.querySelectorAll('.chk-ferramenta').forEach(el => { el.checked = checked; });
+      document.querySelectorAll('.chk-ferramenta').forEach((el) => {
+        el.checked = this.checked;
+      });
     });
   }
 
@@ -416,23 +443,20 @@
     btnImprimir.addEventListener('click', function () {
       const selecionadas = getSelecionadas();
       const url = new URL("{% url 'ferramentas:ferramenta_relatorio_impressao' %}", window.location.origin);
-
-      if (selecionadas.length > 0) {
-        selecionadas.forEach(id => url.searchParams.append('ids', id));
+      if (selecionadas.length) {
+        selecionadas.forEach((id) => url.searchParams.append('ids', id));
       } else {
         const paramsAtual = new URLSearchParams(window.location.search);
-        const q = paramsAtual.get('q');
-        const categoria = paramsAtual.get('categoria');
-        const status = paramsAtual.get('status');
-        if (q) url.searchParams.set('q', q);
-        if (categoria) url.searchParams.set('categoria', categoria);
-        if (status) url.searchParams.set('status', status);
+        ['q', 'categoria', 'classificacao', 'fornecedor', 'status'].forEach((key) => {
+          const valor = paramsAtual.get(key);
+          if (valor) {
+            url.searchParams.set(key, valor);
+          }
+        });
       }
-
       window.open(url.toString(), '_blank');
     });
   }
 })();
 </script>
-
 {% endblock %}

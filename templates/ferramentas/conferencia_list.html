@@ -2,17 +2,488 @@
 
 {% block title %}Conferências{% endblock %}
 
+{% block extra_css %}
+<style>
+  :root {
+    --conf-bg: linear-gradient(180deg, #f4f7fb 0%, #edf4fb 52%, #f9fbfe 100%);
+    --conf-hero: linear-gradient(135deg, #14324d 0%, #24517a 56%, #5a8866 100%);
+    --conf-surface: rgba(255, 255, 255, 0.96);
+    --conf-border: rgba(20, 50, 77, 0.12);
+    --conf-text: #17324d;
+    --conf-muted: #687c90;
+    --conf-shadow: 0 24px 58px rgba(18, 43, 68, 0.12);
+  }
+
+  body {
+    background: var(--conf-bg);
+  }
+
+  .conf-shell {
+    max-width: 1440px;
+  }
+
+  .conf-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 30px;
+    background: var(--conf-hero);
+    color: #fff;
+    box-shadow: 0 28px 68px rgba(18, 50, 77, 0.2);
+  }
+
+  .conf-hero::before,
+  .conf-hero::after {
+    content: "";
+    position: absolute;
+    border-radius: 999px;
+    pointer-events: none;
+  }
+
+  .conf-hero::before {
+    width: 300px;
+    height: 300px;
+    top: -145px;
+    right: -90px;
+    background: rgba(255,255,255,.12);
+  }
+
+  .conf-hero::after {
+    width: 190px;
+    height: 190px;
+    bottom: -90px;
+    right: 20%;
+    background: rgba(164, 216, 255, .14);
+  }
+
+  .conf-hero > .row {
+    position: relative;
+    z-index: 1;
+  }
+
+  .conf-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .42rem .92rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.22);
+    background: rgba(255,255,255,.14);
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .conf-title {
+    font-size: clamp(2rem, 3vw, 2.7rem);
+    font-weight: 800;
+    line-height: 1.04;
+    margin: 1rem 0 .7rem;
+  }
+
+  .conf-subtitle {
+    max-width: 700px;
+    color: rgba(255,255,255,.82);
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .conf-hero-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .65rem;
+    min-height: 54px;
+    padding: .95rem 1.3rem;
+    border-radius: 18px;
+    background: #fff;
+    color: #14324d;
+    text-decoration: none;
+    font-weight: 700;
+    box-shadow: 0 16px 34px rgba(16, 33, 52, .18);
+  }
+
+  .conf-panel,
+  .conf-table-card,
+  .conf-empty {
+    background: var(--conf-surface);
+    border: 1px solid var(--conf-border);
+    border-radius: 28px;
+    box-shadow: var(--conf-shadow);
+  }
+
+  .conf-panel {
+    padding: 1.4rem;
+  }
+
+  .conf-panel-title {
+    color: var(--conf-text);
+    font-size: 1.1rem;
+    font-weight: 800;
+    margin-bottom: .3rem;
+  }
+
+  .conf-panel-subtitle {
+    color: var(--conf-muted);
+    margin-bottom: 1rem;
+  }
+
+  .conf-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: .9rem;
+  }
+
+  .conf-filter-item {
+    background: linear-gradient(180deg, #fbfdff 0%, #f4f8fc 100%);
+    border: 1px solid #dfe9f3;
+    border-radius: 18px;
+    padding: .82rem;
+    min-width: 0;
+  }
+
+  .conf-filter-label {
+    display: block;
+    font-size: .74rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #6a8094;
+    margin-bottom: .45rem;
+  }
+
+  .conf-filter-item input,
+  .conf-filter-item select {
+    min-height: 48px;
+    border-radius: 14px;
+    border: 1px solid #cfdae6;
+    width: 100%;
+  }
+
+  .conf-filter-item input:focus,
+  .conf-filter-item select:focus {
+    border-color: #5d92c3;
+    box-shadow: 0 0 0 .2rem rgba(42, 98, 143, .12);
+    outline: none;
+  }
+
+  .conf-filter-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .75rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .conf-filter-actions .btn {
+    min-height: 52px;
+    padding: 0 1.2rem;
+    border-radius: 16px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+  }
+
+  .conf-table-card {
+    overflow: hidden;
+  }
+
+  .conf-table {
+    margin: 0;
+  }
+
+  .conf-table thead th {
+    border: 0;
+    background: linear-gradient(135deg, #17324d 0%, #234d73 100%);
+    color: #fff;
+    font-size: .76rem;
+    font-weight: 800;
+    letter-spacing: .07em;
+    padding: 1rem .95rem;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .conf-table tbody tr:nth-child(odd) {
+    background: rgba(249, 252, 255, .98);
+  }
+
+  .conf-table tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, .98);
+  }
+
+  .conf-table tbody tr:hover {
+    background: #eef5ff;
+  }
+
+  .conf-table tbody td {
+    padding: 1rem .95rem;
+    border-top: 1px solid rgba(20, 50, 77, .08);
+    vertical-align: middle;
+  }
+
+  .conf-obra {
+    color: var(--conf-text);
+    font-weight: 800;
+  }
+
+  .conf-cliente,
+  .conf-fiscal,
+  .conf-data {
+    color: var(--conf-muted);
+    font-weight: 600;
+  }
+
+  .conf-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 112px;
+    padding: .45rem .75rem;
+    border-radius: 999px;
+    font-weight: 800;
+  }
+
+  .conf-status.ok {
+    background: rgba(25, 135, 84, .12);
+    color: #198754;
+  }
+
+  .conf-status.warn {
+    background: rgba(255, 193, 7, .18);
+    color: #7b5b00;
+  }
+
+  .conf-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .55rem;
+    flex-wrap: wrap;
+  }
+
+  .conf-action-btn {
+    min-height: 40px;
+    padding: 0 .95rem;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .45rem;
+    text-decoration: none;
+    font-weight: 700;
+  }
+
+  .conf-mobile-list {
+    display: none;
+  }
+
+  .conf-mobile-card {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border: 1px solid #dde8f2;
+    border-radius: 24px;
+    padding: 1rem;
+    box-shadow: 0 14px 30px rgba(18, 43, 68, .08);
+  }
+
+  .conf-mobile-card + .conf-mobile-card {
+    margin-top: 1rem;
+  }
+
+  .conf-mobile-top {
+    display: flex;
+    justify-content: space-between;
+    gap: .8rem;
+    align-items: flex-start;
+    margin-bottom: .9rem;
+  }
+
+  .conf-mobile-obra {
+    color: var(--conf-text);
+    font-weight: 800;
+    font-size: 1rem;
+  }
+
+  .conf-mobile-meta {
+    display: grid;
+    gap: .7rem;
+  }
+
+  .conf-mobile-item {
+    background: rgba(255,255,255,.86);
+    border: 1px solid #e4edf5;
+    border-radius: .95rem;
+    padding: .75rem .85rem;
+  }
+
+  .conf-mobile-label {
+    display: block;
+    font-size: .72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #6a8094;
+    margin-bottom: .3rem;
+  }
+
+  .conf-mobile-value {
+    color: var(--conf-text);
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  .conf-mobile-actions {
+    display: flex;
+    gap: .55rem;
+    margin-top: .95rem;
+    flex-wrap: wrap;
+  }
+
+  .conf-mobile-actions .conf-action-btn {
+    flex: 1 1 140px;
+  }
+
+  .conf-pagination .pagination {
+    gap: .35rem;
+    flex-wrap: wrap;
+  }
+
+  .conf-pagination .page-link {
+    border-radius: 14px;
+    border: 1px solid rgba(20, 50, 77, .12);
+    color: var(--conf-text);
+    box-shadow: 0 10px 20px rgba(18, 43, 68, .06);
+  }
+
+  .conf-pagination .page-item.active .page-link {
+    background: #17324d;
+    border-color: #17324d;
+    color: #fff;
+  }
+
+  .conf-empty {
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: var(--conf-muted);
+  }
+
+  .conf-empty i {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: .85rem;
+    color: #79a4c7;
+  }
+
+  @media (max-width: 1199.98px) {
+    .conf-filter-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 991.98px) {
+    .conf-hero {
+      border-radius: 26px;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .conf-shell {
+      padding-left: .35rem;
+      padding-right: .35rem;
+    }
+
+    .conf-hero,
+    .conf-panel,
+    .conf-table-card,
+    .conf-empty {
+      border-radius: 22px;
+    }
+
+    .conf-filter-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .conf-filter-actions .btn,
+    .conf-hero-btn {
+      width: 100%;
+    }
+
+    .conf-table-wrap {
+      display: none;
+    }
+
+    .conf-mobile-list {
+      display: block;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>Conferências</h3>
-    <a href="{% url 'ferramentas:conferencia_create' %}" class="btn btn-primary">Nova Conferência</a>
+<div class="container-fluid py-4 conf-shell">
+  <div class="conf-hero p-4 p-lg-5 mb-4">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-8">
+        <span class="conf-badge"><i class="bi bi-clipboard-check"></i> Ferramentas</span>
+        <h1 class="conf-title">Conferências com leitura mais clara e profissional.</h1>
+        <p class="conf-subtitle">Acompanhe obra, cliente, fiscal, data e divergências em uma tela mais elegante, organizada e responsiva.</p>
+      </div>
+      <div class="col-lg-4 text-lg-end">
+        <a href="{% url 'ferramentas:conferencia_create' %}" class="conf-hero-btn">
+          <i class="bi bi-plus-circle-fill"></i> Nova Conferência
+        </a>
+      </div>
+    </div>
   </div>
-  <div class="card">
-    <div class="card-body p-0">
+
+  <div class="conf-panel mb-4">
+    <div class="conf-panel-title">Filtros de Conferência</div>
+    <div class="conf-panel-subtitle">Pesquise rapidamente por obra, cliente, fiscal, data e status.</div>
+    <form method="get">
+      <div class="conf-filter-grid">
+        <div class="conf-filter-item">
+          <label for="filtro-obra" class="conf-filter-label">Obra</label>
+          <input id="filtro-obra" type="text" name="obra" value="{{ filtro_obra }}" class="form-control" placeholder="Nome da obra">
+        </div>
+        <div class="conf-filter-item">
+          <label for="filtro-cliente" class="conf-filter-label">Cliente</label>
+          <input id="filtro-cliente" type="text" name="cliente" value="{{ filtro_cliente }}" class="form-control" placeholder="Nome do cliente">
+        </div>
+        <div class="conf-filter-item">
+          <label for="filtro-fiscal" class="conf-filter-label">Fiscal</label>
+          <input id="filtro-fiscal" type="text" name="fiscal" value="{{ filtro_fiscal }}" class="form-control" placeholder="Nome do fiscal">
+        </div>
+        <div class="conf-filter-item">
+          <label for="filtro-data" class="conf-filter-label">Data</label>
+          <input id="filtro-data" type="date" name="data" value="{{ filtro_data }}" class="form-control">
+        </div>
+        <div class="conf-filter-item">
+          <label for="filtro-status" class="conf-filter-label">Status</label>
+          <select id="filtro-status" name="status" class="form-select">
+            <option value="">Todos</option>
+            <option value="ok" {% if filtro_status == 'ok' %}selected{% endif %}>OK</option>
+            <option value="divergencia" {% if filtro_status == 'divergencia' %}selected{% endif %}>Divergência</option>
+          </select>
+        </div>
+      </div>
+      <div class="conf-filter-actions">
+        <a href="{% url 'ferramentas:conferencia_list' %}" class="btn btn-outline-secondary">
+          <i class="bi bi-x-circle"></i> Limpar
+        </a>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-funnel"></i> Filtrar
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {% if conferencias_info %}
+  <div class="conf-table-card">
+    <div class="conf-table-wrap">
       <div class="table-responsive">
-        <table class="table table-hover mb-0">
-          <thead class="table-light">
+        <table class="table conf-table">
+          <thead>
             <tr>
               <th>Obra</th>
               <th>Cliente</th>
@@ -25,31 +496,113 @@
           <tbody>
             {% for info in conferencias_info %}
             <tr>
-              <td>{{ info.conferencia.obra.nome }}</td>
-              <td>{{ info.conferencia.obra.cliente }}</td>
-              <td>{{ info.conferencia.fiscal.get_full_name|default:info.conferencia.fiscal.username }}</td>
-              <td>{{ info.conferencia.data_conferencia|date:"d/m/Y H:i" }}</td>
+              <td><span class="conf-obra">{{ info.conferencia.obra.nome }}</span></td>
+              <td><span class="conf-cliente">{{ info.conferencia.obra.cliente }}</span></td>
+              <td><span class="conf-fiscal">{{ info.conferencia.fiscal.get_full_name|default:info.conferencia.fiscal.username }}</span></td>
+              <td><span class="conf-data">{{ info.conferencia.data_conferencia|date:"d/m/Y H:i" }}</span></td>
               <td class="text-center">
                 {% if info.tem_divergencias %}
-                  <span class="badge bg-warning text-dark">⚠️ {{ info.total_divergencias }} divergência(s)</span>
+                <span class="conf-status warn">{{ info.total_divergencias }} divergência(s)</span>
                 {% else %}
-                  <span class="badge bg-success">✓ OK</span>
+                <span class="conf-status ok">OK</span>
                 {% endif %}
               </td>
-              <td class="text-end">
-                <a href="{% url 'ferramentas:conferencia_detail' info.conferencia.pk %}" class="btn btn-sm btn-outline-primary">Ver</a>
-                <a href="{% url 'ferramentas:conferencia_conferir' info.conferencia.pk %}" class="btn btn-sm btn-outline-secondary ms-2">Conferir</a>
+              <td>
+                <div class="conf-actions">
+                  <a href="{% url 'ferramentas:conferencia_detail' info.conferencia.pk %}" class="btn btn-outline-primary conf-action-btn">
+                    <i class="bi bi-eye"></i> Ver
+                  </a>
+                  <a href="{% url 'ferramentas:conferencia_conferir' info.conferencia.pk %}" class="btn btn-outline-secondary conf-action-btn">
+                    <i class="bi bi-clipboard-check"></i> Conferir
+                  </a>
+                </div>
               </td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="6" class="text-center">Nenhuma conferência encontrada.</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
+
+    <div class="conf-mobile-list p-3">
+      {% for info in conferencias_info %}
+      <div class="conf-mobile-card">
+        <div class="conf-mobile-top">
+          <div>
+            <div class="conf-mobile-obra">{{ info.conferencia.obra.nome }}</div>
+            {% if info.tem_divergencias %}
+            <span class="conf-status warn mt-2">{{ info.total_divergencias }} divergência(s)</span>
+            {% else %}
+            <span class="conf-status ok mt-2">OK</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="conf-mobile-meta">
+          <div class="conf-mobile-item">
+            <span class="conf-mobile-label">Cliente</span>
+            <div class="conf-mobile-value">{{ info.conferencia.obra.cliente }}</div>
+          </div>
+          <div class="conf-mobile-item">
+            <span class="conf-mobile-label">Fiscal</span>
+            <div class="conf-mobile-value">{{ info.conferencia.fiscal.get_full_name|default:info.conferencia.fiscal.username }}</div>
+          </div>
+          <div class="conf-mobile-item">
+            <span class="conf-mobile-label">Data</span>
+            <div class="conf-mobile-value">{{ info.conferencia.data_conferencia|date:"d/m/Y H:i" }}</div>
+          </div>
+        </div>
+
+        <div class="conf-mobile-actions">
+          <a href="{% url 'ferramentas:conferencia_detail' info.conferencia.pk %}" class="btn btn-outline-primary conf-action-btn">
+            <i class="bi bi-eye"></i> Ver
+          </a>
+          <a href="{% url 'ferramentas:conferencia_conferir' info.conferencia.pk %}" class="btn btn-outline-secondary conf-action-btn">
+            <i class="bi bi-clipboard-check"></i> Conferir
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
   </div>
+
+  {% if conferencias_info.paginator.num_pages > 1 %}
+  <nav class="mt-4 conf-pagination" aria-label="Paginação">
+    <ul class="pagination justify-content-center mb-0">
+      <li class="page-item {% if conferencias_info.number == 1 %}disabled{% endif %}">
+        {% if conferencias_info.number == 1 %}
+        <span class="page-link">Primeira</span>
+        {% else %}
+        <a class="page-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}page=1">Primeira</a>
+        {% endif %}
+      </li>
+
+      {% for num in conferencias_info.paginator.page_range %}
+      <li class="page-item {% if conferencias_info.number == num %}active{% endif %}">
+        {% if conferencias_info.number == num %}
+        <span class="page-link">{{ num }}</span>
+        {% else %}
+        <a class="page-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ num }}">{{ num }}</a>
+        {% endif %}
+      </li>
+      {% endfor %}
+
+      <li class="page-item {% if conferencias_info.number == conferencias_info.paginator.num_pages %}disabled{% endif %}">
+        {% if conferencias_info.number == conferencias_info.paginator.num_pages %}
+        <span class="page-link">Última</span>
+        {% else %}
+        <a class="page-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ conferencias_info.paginator.num_pages }}">Última</a>
+        {% endif %}
+      </li>
+    </ul>
+  </nav>
+  {% endif %}
+  {% else %}
+  <div class="conf-empty">
+    <i class="bi bi-clipboard-x"></i>
+    <h5 class="fw-bold text-dark">Nenhuma conferência encontrada.</h5>
+    <p class="mb-0">Ajuste os filtros ou crie uma nova conferência para começar.</p>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

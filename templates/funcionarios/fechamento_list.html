@@ -4,123 +4,679 @@
 {% block title %}Fechamentos Semanais{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
-    <h3 class="mb-0"><i class="bi bi-calendar-week"></i> Fechamentos Semanais</h3>
-    <div class="d-flex gap-2">
-      <a href="{% url 'funcionarios:fechamento_auto' %}" class="btn btn-success">
-        <i class="bi bi-lightning-charge"></i> Fechamento Automático
-      </a>
-      <a href="{% url 'funcionarios:fechamento_create' %}" class="btn btn-primary">
-        <i class="bi bi-plus-lg"></i> Novo Fechamento
-      </a>
+<div class="container-fluid py-4 fechamento-page">
+  <section class="fechamento-hero mb-4">
+    <div class="row g-4 align-items-center">
+      <div class="col-12 col-xl-7">
+        <div class="fechamento-hero__content">
+          <span class="fechamento-eyebrow">
+            <i class="bi bi-calendar-week"></i>
+            Painel de fechamentos
+          </span>
+          <h1 class="fechamento-hero__title">Fechamentos semanais com leitura mais clara e rapida</h1>
+          <p class="fechamento-hero__text mb-0">
+            Visualize periodos, valores, equipe e status de pagamento em um layout pensado para computador e dispositivos moveis.
+          </p>
+        </div>
+      </div>
+      <div class="col-12 col-xl-5">
+        <div class="fechamento-hero__panel">
+          <div class="fechamento-hero__stats">
+            <article class="hero-stat-card">
+              <span class="hero-stat-card__label">Semanas</span>
+              <strong class="hero-stat-card__value">{{ semanas|length }}</strong>
+              <small class="hero-stat-card__meta">historico disponivel</small>
+            </article>
+            <article class="hero-stat-card">
+              <span class="hero-stat-card__label">Ultima semana</span>
+              <strong class="hero-stat-card__value">
+                {% if semanas %}
+                  {{ semanas.0.data_inicio|date:'d/m' }}
+                {% else %}
+                  --
+                {% endif %}
+              </strong>
+              <small class="hero-stat-card__meta">
+                {% if semanas %}
+                  ate {{ semanas.0.data_fim|date:'d/m' }}
+                {% else %}
+                  sem registros
+                {% endif %}
+              </small>
+            </article>
+          </div>
+          <div class="fechamento-hero__actions">
+            <a href="{% url 'funcionarios:fechamento_auto' %}" class="btn btn-success btn-lg fechamento-btn-primary">
+              <i class="bi bi-lightning-charge-fill"></i> Fechamento Automatico
+            </a>
+            <a href="{% url 'funcionarios:fechamento_create' %}" class="btn btn-light btn-lg fechamento-btn-secondary">
+              <i class="bi bi-plus-lg"></i> Novo Fechamento
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
+  </section>
 
   {% if semanas %}
-  <div class="row g-3">
-    {% for s in semanas %}
-    <div class="col-12">
-      <div class="card shadow-sm border-start border-4 {% if s.status_geral == 'pago' %}border-success{% elif s.status_geral == 'fechado' %}border-primary{% elif s.status_geral == 'parcial' %}border-warning{% else %}border-secondary{% endif %} hover-card position-relative">
-        <div class="card-body py-3">
-          <a href="{% url 'funcionarios:fechamento_semana_detail' s.data_inicio|date:'Y-m-d' %}" class="stretched-link text-decoration-none text-reset"></a>
-          
-          <div class="row align-items-center">
-            <!-- Período -->
-            <div class="col-12 col-md-3 mb-2 mb-md-0">
-              <div class="d-flex align-items-center gap-2">
-                <div class="bg-light rounded-3 p-2 text-center" style="min-width: 56px;">
-                  <div class="fw-bold text-primary" style="font-size: 1.4rem; line-height: 1;">{{ s.data_inicio|date:'d' }}</div>
-                  <div class="text-muted" style="font-size: 0.7rem; text-transform: uppercase;">{{ s.data_inicio|date:'M' }}</div>
-                </div>
-                <div>
-                  <div class="text-dark fw-semibold">
-                    {{ s.data_inicio|date:'d/m/Y' }} — {{ s.data_fim|date:'d/m/Y' }}
-                  </div>
-                  <small class="text-muted">
-                    <i class="bi bi-people-fill"></i> {{ s.total_funcionarios }} funcionário{{ s.total_funcionarios|pluralize:"s" }}
-                  </small>
+  <section class="mb-3">
+    <div class="row g-3">
+      {% for s in semanas %}
+      <div class="col-12">
+        <article
+          class="week-card week-card--{{ s.status_geral }}"
+          data-href="{% url 'funcionarios:fechamento_semana_detail' s.data_inicio|date:'Y-m-d' %}"
+          role="link"
+          tabindex="0"
+          aria-label="Abrir semana {{ s.data_inicio|date:'d/m/Y' }}"
+        >
+
+          <div class="week-card__header">
+            <div class="week-card__period">
+              <div class="week-card__calendar">
+                <span class="week-card__day">{{ s.data_inicio|date:'d' }}</span>
+                <span class="week-card__month">{{ s.data_inicio|date:'M' }}</span>
+              </div>
+              <div>
+                <div class="week-card__date-range">{{ s.data_inicio|date:'d/m/Y' }} - {{ s.data_fim|date:'d/m/Y' }}</div>
+                <div class="week-card__subinfo">
+                  <span><i class="bi bi-people-fill"></i> {{ s.total_funcionarios }} funcionario{{ s.total_funcionarios|pluralize:"s" }}</span>
+                  <span><i class="bi bi-calendar-check"></i> {{ s.total_dias }} diarias</span>
                 </div>
               </div>
             </div>
 
-            <!-- Métricas -->
-            <div class="col col-md-2 text-center">
-              <div class="text-muted" style="font-size: 0.75rem;">Diárias</div>
-              <div class="fw-bold fs-5 text-dark">{{ s.total_dias }}</div>
+            <div class="week-card__status-group">
+              {% if s.total_ociosidade %}
+              <span class="metric-pill metric-pill--warning" title="Dias com ociosidade">
+                <i class="bi bi-pause-circle"></i> {{ s.total_ociosidade }} ocios.
+              </span>
+              {% endif %}
+              {% if s.total_retrabalho %}
+              <span class="metric-pill metric-pill--danger" title="Dias com retrabalho">
+                <i class="bi bi-arrow-repeat"></i> {{ s.total_retrabalho }} retrab.
+              </span>
+              {% endif %}
+
+              {% if s.status_geral == 'pago' %}
+              <span class="status-badge status-badge--success">
+                <i class="bi bi-check-circle-fill"></i> Pago
+              </span>
+              {% elif s.status_geral == 'parcial' %}
+              <span class="status-badge status-badge--warning">
+                <i class="bi bi-hourglass-split"></i> Parcial
+                <small>{{ s.qtd_pagos }} pagos / {{ s.qtd_fechados }} fechados</small>
+              </span>
+              {% else %}
+              <span class="status-badge status-badge--primary">
+                <i class="bi bi-lock-fill"></i> Fechado
+              </span>
+              {% endif %}
             </div>
-            <div class="col col-md-2 text-center">
-              <div class="text-muted" style="font-size: 0.75rem;">Valor Total</div>
-              <div class="fw-bold fs-5 text-success">{{ s.total_valor|brl }}</div>
+          </div>
+
+          <div class="week-card__body">
+            <div class="week-metric">
+              <span class="week-metric__label">Valor total</span>
+              <strong class="week-metric__value text-success">{{ s.total_valor|brl }}</strong>
             </div>
-
-            <!-- Indicadores e Status -->
-            <div class="col-12 col-md-3 mt-2 mt-md-0">
-              <div class="d-flex align-items-center justify-content-md-end gap-2 flex-wrap">
-                {% if s.total_ociosidade %}
-                <span class="badge bg-warning text-dark" title="Dias com ociosidade">
-                  <i class="bi bi-pause-circle"></i> {{ s.total_ociosidade }}
-                </span>
-                {% endif %}
-                {% if s.total_retrabalho %}
-                <span class="badge bg-danger" title="Dias com retrabalho">
-                  <i class="bi bi-arrow-repeat"></i> {{ s.total_retrabalho }}
-                </span>
-                {% endif %}
-
-                {% if s.status_geral == 'pago' %}
-                  <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle"></i> Pago</span>
-                {% elif s.status_geral == 'parcial' %}
-                  <span class="badge bg-warning text-dark px-3 py-2">
-                    <i class="bi bi-hourglass-split"></i> Parcial
-                    <small>({{ s.qtd_pagos }}✓ {{ s.qtd_fechados }}●)</small>
-                  </span>
-                {% else %}
-                  <span class="badge bg-primary px-3 py-2"><i class="bi bi-lock"></i> Fechado</span>
-                {% endif %}
-
-                <i class="bi bi-chevron-right text-muted ms-1"></i>
-              </div>
+            <div class="week-metric">
+              <span class="week-metric__label">Equipe</span>
+              <strong class="week-metric__value">{{ s.total_funcionarios }}</strong>
             </div>
+            <div class="week-metric">
+              <span class="week-metric__label">Pagos</span>
+              <strong class="week-metric__value">{{ s.qtd_pagos }}</strong>
+            </div>
+            <div class="week-metric">
+              <span class="week-metric__label">Fechados</span>
+              <strong class="week-metric__value">{{ s.qtd_fechados }}</strong>
+            </div>
+          </div>
 
-            <!-- Botão Excluir -->
-            <div class="col-12 col-md-auto mt-2 mt-md-0 position-relative" style="z-index: 10;">
+          <div class="week-card__footer">
+            <div class="week-card__hint">
+              <i class="bi bi-arrow-right-circle"></i>
+              Toque ou clique para ver os detalhes da semana
+            </div>
+            <div class="week-card__actions">
+              <a href="{% url 'funcionarios:fechamento_semana_detail' s.data_inicio|date:'Y-m-d' %}" class="btn btn-outline-dark btn-sm position-relative" style="z-index:2;">
+                Ver detalhes
+              </a>
               {% if s.status_geral != 'pago' %}
-              <a href="{% url 'funcionarios:fechamento_semana_delete' s.data_inicio|date:'Y-m-d' %}" class="btn btn-sm btn-outline-danger" title="Excluir semana inteira">
+              <a href="{% url 'funcionarios:fechamento_semana_delete' s.data_inicio|date:'Y-m-d' %}" class="btn btn-outline-danger btn-sm position-relative" style="z-index:2;" title="Excluir semana inteira">
                 <i class="bi bi-trash"></i>
               </a>
               {% else %}
-              <button class="btn btn-sm btn-outline-danger" disabled title="Não é possível excluir semanas totalmente pagas">
+              <button class="btn btn-outline-danger btn-sm position-relative" style="z-index:2;" disabled title="Nao e possivel excluir semanas totalmente pagas">
                 <i class="bi bi-trash"></i>
               </button>
               {% endif %}
             </div>
           </div>
-        </div>
+        </article>
       </div>
+      {% endfor %}
     </div>
-    {% endfor %}
-  </div>
+  </section>
   {% else %}
-  <div class="card">
-    <div class="card-body text-center py-5 text-muted">
-      <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
-      <p class="mt-3 mb-0">Nenhum fechamento semanal encontrado.</p>
-      <a href="{% url 'funcionarios:fechamento_auto' %}" class="btn btn-success mt-3">
-        <i class="bi bi-lightning-charge"></i> Gerar Fechamento Automático
-      </a>
+  <section class="empty-state-card">
+    <div class="empty-state-card__icon">
+      <i class="bi bi-calendar-x"></i>
     </div>
-  </div>
+    <h2 class="empty-state-card__title">Nenhum fechamento semanal encontrado</h2>
+    <p class="empty-state-card__text">
+      Assim que houver periodos processados, eles aparecerao aqui com valores, equipe e status de pagamento.
+    </p>
+    <a href="{% url 'funcionarios:fechamento_auto' %}" class="btn btn-success btn-lg">
+      <i class="bi bi-lightning-charge-fill"></i> Gerar Fechamento Automatico
+    </a>
+  </section>
   {% endif %}
 </div>
+{% endblock %}
 
+{% block extra_css %}
 <style>
-.hover-card {
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-.hover-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 .5rem 1rem rgba(0,0,0,.12) !important;
-}
+  .fechamento-page {
+    --fechamento-bg: #f4f7f3;
+    --fechamento-surface: #ffffff;
+    --fechamento-surface-soft: #edf5ee;
+    --fechamento-text: #18332b;
+    --fechamento-muted: #60756d;
+    --fechamento-primary: #1f6f5f;
+    --fechamento-primary-deep: #12473d;
+    --fechamento-accent: #f0b44c;
+    --fechamento-border: rgba(24, 51, 43, 0.1);
+    --fechamento-shadow: 0 18px 40px rgba(20, 58, 49, 0.12);
+    color: var(--fechamento-text);
+  }
+
+  .fechamento-hero {
+    background:
+      radial-gradient(circle at top right, rgba(240, 180, 76, 0.28), transparent 28%),
+      linear-gradient(135deg, #143c35 0%, #1f6f5f 55%, #2b8b77 100%);
+    border-radius: 28px;
+    padding: clamp(1.4rem, 2vw, 2.2rem);
+    color: #fff;
+    box-shadow: var(--fechamento-shadow);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .fechamento-hero::after {
+    content: "";
+    position: absolute;
+    inset: auto -60px -80px auto;
+    width: 220px;
+    height: 220px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+    filter: blur(6px);
+  }
+
+  .fechamento-hero__content,
+  .fechamento-hero__panel {
+    position: relative;
+    z-index: 1;
+  }
+
+  .fechamento-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+
+  .fechamento-hero__title {
+    font-size: clamp(1.85rem, 3vw, 3rem);
+    line-height: 1.05;
+    font-weight: 800;
+    max-width: 12ch;
+    margin-bottom: 0.85rem;
+  }
+
+  .fechamento-hero__text {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.84);
+    max-width: 60ch;
+  }
+
+  .fechamento-hero__panel {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 24px;
+    padding: 1.1rem;
+  }
+
+  .fechamento-hero__stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  .hero-stat-card {
+    background: rgba(8, 29, 25, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    padding: 1rem;
+  }
+
+  .hero-stat-card__label,
+  .hero-stat-card__meta {
+    display: block;
+  }
+
+  .hero-stat-card__label {
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.76);
+  }
+
+  .hero-stat-card__value {
+    display: block;
+    font-size: 1.8rem;
+    line-height: 1.1;
+    margin: 0.25rem 0;
+  }
+
+  .hero-stat-card__meta {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.68);
+  }
+
+  .fechamento-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .fechamento-btn-primary,
+  .fechamento-btn-secondary {
+    border-radius: 14px;
+    font-weight: 700;
+    padding: 0.85rem 1.1rem;
+  }
+
+  .fechamento-btn-secondary {
+    color: var(--fechamento-primary-deep);
+    border: 0;
+  }
+
+  .week-card {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 243, 0.98)),
+      var(--fechamento-surface);
+    border: 1px solid var(--fechamento-border);
+    border-radius: 24px;
+    padding: 1.25rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 12px 26px rgba(20, 58, 49, 0.08);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    cursor: pointer;
+  }
+
+  .week-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 6px;
+    border-radius: 24px 0 0 24px;
+    background: var(--week-color, var(--fechamento-primary));
+  }
+
+  .week-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 20px 40px rgba(20, 58, 49, 0.12);
+    border-color: rgba(31, 111, 95, 0.22);
+  }
+
+  .week-card:focus-visible {
+    outline: 3px solid rgba(43, 109, 224, 0.35);
+    outline-offset: 3px;
+  }
+
+  .week-card--pago { --week-color: #2f9e62; }
+  .week-card--fechado { --week-color: #2b6de0; }
+  .week-card--parcial { --week-color: #e7a73c; }
+
+  .week-card__header,
+  .week-card__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .week-card__header {
+    margin-bottom: 1rem;
+  }
+
+  .week-card__period {
+    display: flex;
+    align-items: center;
+    gap: 0.95rem;
+    min-width: 0;
+  }
+
+  .week-card__calendar {
+    width: 70px;
+    min-width: 70px;
+    height: 76px;
+    border-radius: 20px;
+    background: var(--fechamento-surface-soft);
+    border: 1px solid rgba(31, 111, 95, 0.14);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+  }
+
+  .week-card__day {
+    font-size: 1.7rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--fechamento-primary-deep);
+  }
+
+  .week-card__month {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    color: var(--fechamento-muted);
+  }
+
+  .week-card__date-range {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--fechamento-text);
+    margin-bottom: 0.35rem;
+  }
+
+  .week-card__subinfo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem 1rem;
+    color: var(--fechamento-muted);
+    font-size: 0.9rem;
+  }
+
+  .week-card__subinfo span,
+  .week-card__hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .week-card__status-group {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.55rem;
+  }
+
+  .metric-pill,
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    border-radius: 999px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .metric-pill {
+    padding: 0.48rem 0.72rem;
+    font-size: 0.82rem;
+    border: 1px solid transparent;
+  }
+
+  .metric-pill--warning {
+    background: rgba(231, 167, 60, 0.16);
+    color: #946308;
+    border-color: rgba(231, 167, 60, 0.22);
+  }
+
+  .metric-pill--danger {
+    background: rgba(208, 74, 74, 0.12);
+    color: #a32828;
+    border-color: rgba(208, 74, 74, 0.18);
+  }
+
+  .status-badge {
+    padding: 0.56rem 0.9rem;
+    font-size: 0.86rem;
+  }
+
+  .status-badge small {
+    font-size: 0.74rem;
+    font-weight: 600;
+    opacity: 0.85;
+  }
+
+  .status-badge--success {
+    background: rgba(47, 158, 98, 0.16);
+    color: #1f7c4a;
+  }
+
+  .status-badge--warning {
+    background: rgba(231, 167, 60, 0.18);
+    color: #8a5a02;
+  }
+
+  .status-badge--primary {
+    background: rgba(43, 109, 224, 0.14);
+    color: #2358b0;
+  }
+
+  .week-card__body {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .week-metric {
+    background: var(--fechamento-surface);
+    border: 1px solid var(--fechamento-border);
+    border-radius: 18px;
+    padding: 0.95rem 1rem;
+  }
+
+  .week-metric__label,
+  .week-metric__value {
+    display: block;
+  }
+
+  .week-metric__label {
+    color: var(--fechamento-muted);
+    font-size: 0.82rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .week-metric__value {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--fechamento-primary-deep);
+    line-height: 1.1;
+  }
+
+  .week-card__footer {
+    border-top: 1px solid var(--fechamento-border);
+    padding-top: 0.95rem;
+  }
+
+  .week-card__hint {
+    color: var(--fechamento-muted);
+    font-size: 0.9rem;
+  }
+
+  .week-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+  }
+
+  .empty-state-card {
+    background:
+      radial-gradient(circle at top, rgba(31, 111, 95, 0.11), transparent 45%),
+      #fff;
+    border: 1px solid var(--fechamento-border);
+    border-radius: 28px;
+    box-shadow: var(--fechamento-shadow);
+    text-align: center;
+    padding: clamp(2rem, 5vw, 4rem);
+  }
+
+  .empty-state-card__icon {
+    width: 88px;
+    height: 88px;
+    margin: 0 auto 1.25rem;
+    border-radius: 24px;
+    display: grid;
+    place-items: center;
+    background: var(--fechamento-surface-soft);
+    color: var(--fechamento-primary);
+    font-size: 2.2rem;
+  }
+
+  .empty-state-card__title {
+    font-size: clamp(1.5rem, 3vw, 2.1rem);
+    margin-bottom: 0.75rem;
+  }
+
+  .empty-state-card__text {
+    color: var(--fechamento-muted);
+    max-width: 55ch;
+    margin: 0 auto 1.5rem;
+  }
+
+  body.theme-dark .fechamento-page {
+    --fechamento-bg: #0f2330;
+    --fechamento-surface: rgba(17, 42, 58, 0.88);
+    --fechamento-surface-soft: rgba(111, 193, 165, 0.12);
+    --fechamento-text: #eaf7f2;
+    --fechamento-muted: #9fb8b0;
+    --fechamento-primary: #7dcdb4;
+    --fechamento-primary-deep: #d5f3e8;
+    --fechamento-border: rgba(207, 241, 229, 0.09);
+    --fechamento-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  }
+
+  body.theme-dark .week-card,
+  body.theme-dark .empty-state-card,
+  body.theme-dark .week-metric {
+    backdrop-filter: blur(10px);
+  }
+
+  body.theme-dark .fechamento-btn-secondary {
+    background: rgba(255, 255, 255, 0.92);
+  }
+
+  @media (max-width: 991.98px) {
+    .week-card__header,
+    .week-card__footer {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .week-card__status-group {
+      justify-content: flex-start;
+    }
+
+    .week-card__body {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .fechamento-hero__title {
+      max-width: none;
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .container-fluid.fechamento-page {
+      padding-left: 0.85rem;
+      padding-right: 0.85rem;
+    }
+
+    .fechamento-hero {
+      border-radius: 22px;
+      padding: 1.2rem;
+    }
+
+    .fechamento-hero__stats,
+    .week-card__body {
+      grid-template-columns: 1fr;
+    }
+
+    .fechamento-hero__actions .btn,
+    .week-card__actions .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .week-card {
+      border-radius: 20px;
+      padding: 1rem;
+    }
+
+    .week-card__period {
+      align-items: flex-start;
+    }
+
+    .week-card__calendar {
+      width: 62px;
+      min-width: 62px;
+      height: 70px;
+      border-radius: 18px;
+    }
+
+    .week-card__hint {
+      font-size: 0.84rem;
+    }
+
+    .status-badge {
+      white-space: normal;
+    }
+  }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const cards = document.querySelectorAll('.week-card[data-href]');
+
+    cards.forEach(function (card) {
+      card.addEventListener('click', function (event) {
+        if (event.target.closest('a, button, input, select, textarea, label, form')) {
+          return;
+        }
+
+        window.location.href = card.dataset.href;
+      });
+
+      card.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+          return;
+        }
+
+        if (event.target.closest('a, button, input, select, textarea, label, form')) {
+          return;
+        }
+
+        event.preventDefault();
+        window.location.href = card.dataset.href;
+      });
+    });
+  });
+</script>
 {% endblock %}
